@@ -1,0 +1,1066 @@
+/*-----------------------------------------------------------------------------
+	Paper Plane xUI	 Virtual File System			Shell's Namespace 操作
+-----------------------------------------------------------------------------*/
+#define ONVFSDLL		// VFS.H の DLL export 指定
+#include "WINAPI.H"
+#include <shlobj.h>
+#include "PPX.H"
+#include "PPD_DEF.H"
+#include "VFS.H"
+#include "VFS_STRU.H"
+#pragma hdrstop
+
+#if defined(__BORLANDC__) && (__BORLANDC__ <= 0x509)
+#undef  INTERFACE
+#define INTERFACE IContextMenu3
+
+DECLARE_INTERFACE_(IContextMenu3, IContextMenu2)
+{
+	STDMETHOD(QueryInterface) (THIS_ REFIID riid, void **ppv) PURE;
+	STDMETHOD_(ULONG, AddRef) (THIS)  PURE;
+	STDMETHOD_(ULONG, Release) (THIS) PURE;
+	STDMETHOD(QueryContextMenu)(THIS_ HMENU hmenu, UINT indexMenu,
+			UINT idCmdFirst, UINT idCmdLast, UINT uFlags) PURE;
+	STDMETHOD(InvokeCommand)(THIS_ LPCMINVOKECOMMANDINFO lpici) PURE;
+	STDMETHOD(GetCommandString)(THIS_ UINT_PTR idCmd, UINT uType,
+			UINT * pwReserved, LPSTR pszName, UINT cchMax) PURE;
+	STDMETHOD(HandleMenuMsg)(THIS_ UINT uMsg, WPARAM wParam, LPARAM lParam) PURE;
+	STDMETHOD(HandleMenuMsg2)(THIS_ UINT uMsg, WPARAM wParam, LPARAM lParam,
+			LRESULT* plResult) PURE;
+};
+typedef IContextMenu3 * LPCONTEXTMENU3;
+#endif
+
+#ifndef CMF_ITEMMENU
+	#define CMF_ITEMMENU 0x80
+#endif
+
+
+const TCHAR MountString[] = T("SYSTEM\\MountedDevices");
+
+/*-----------------------------------------------------------------------------
+	ITEMIDLIST 関連
+-----------------------------------------------------------------------------*/
+#if 0
+//-------------------------------------- idl の一つ下の階層のITEMIDLISTを返す
+LPCITEMIDLIST GetSubPidl(LPCITEMIDLIST pidl)
+{
+	if ( pidl != NULL ){
+		return (LPCITEMIDLIST) (LPBYTE)(((LPBYTE)pidl) + pidl->mkid.cb);
+	}else{
+		return NULL;
+	}
+}
+#endif
+//-------------------------------------- idlの全体の大きさを求める
+VFSDLL UINT PPXAPI GetPidlSize(LPCITEMIDLIST pidl)
+{
+	UINT size = 0;
+
+	if ( pidl != NULL ){
+		USHORT cb;
+
+		for (;;){
+			cb = pidl->mkid.cb;
+			if ( cb == 0 ) break;
+			size += cb;
+			pidl = (LPCITEMIDLIST) (LPBYTE)(((LPBYTE)pidl) + cb);
+		}
+		size += sizeof(USHORT);	// ターミネータ分を追加
+	}
+	return size;
+}
+//-------------------------------------- idl1 に idl2 を付け足す
+LPITEMIDLIST CatPidl(LPMALLOC pMA, LPCITEMIDLIST idl1, LPCITEMIDLIST idl2)
+{
+	LPITEMIDLIST idlNew;
+	UINT cb1, cb2;
+
+	cb1 = (idl1 == NULL) ? 0 : GetPidlSize(idl1) - (sizeof(BYTE) * 2);
+	cb2 = GetPidlSize(idl2);
+	idlNew = (LPITEMIDLIST)pMA->lpVtbl->Alloc(pMA, cb1 + cb2);
+
+	if ( idlNew != NULL ){
+		if ( idl1 != NULL ) memcpy(idlNew, idl1, cb1);
+		memcpy( ((BYTE *)idlNew) + cb1, idl2, cb2);
+	}
+	return idlNew;
+}
+
+//-------------------------------------- pIDL のコピーを作成する
+LPITEMIDLIST DupIdl(LPMALLOC pMA, LPCITEMIDLIST pIDL)
+{
+	LPITEMIDLIST pNewIDL;
+	UINT idlsize;
+
+	idlsize = GetPidlSize(pIDL);
+	pNewIDL = (LPITEMIDLIST)pMA->lpVtbl->Alloc(pMA, idlsize);
+	if ( pNewIDL == NULL ) return NULL;
+	memcpy(pNewIDL, pIDL, idlsize);
+	return pNewIDL;
+}
+
+//-------------------------------------- pidl のメモリを解放する
+VFSDLL void PPXAPI FreePIDL(LPCITEMIDLIST pidl)
+{
+	LPMALLOC pMA;
+
+	if ( SUCCEEDED(SHGetMalloc(&pMA)) ){
+		pMA->lpVtbl->Free(pMA, (LPITEMIDLIST)pidl);
+		pMA->lpVtbl->Release(pMA);
+	}
+}
+
+void FreePIDLS(LPITEMIDLIST *pidls, int cnt)
+{
+	LPMALLOC pMA;
+
+	if ( FAILED(SHGetMalloc(&pMA)) ) return;
+	while( cnt ){
+		pMA->lpVtbl->Free(pMA, *pidls);
+		pidls++;
+		cnt--;
+	}
+	pMA->lpVtbl->Release(pMA);
+}
+
+//-------------------------------------- 指定の idl の表示名を取得する
+VFSDLL BOOL PPXAPI PIDL2DisplayName(TCHAR *name, LPSHELLFOLDER sfolder, LPCITEMIDLIST pidl, int SHGDNflags)
+{
+	STRRET strr;
+
+	if ( FAILED(sfolder->lpVtbl->GetDisplayNameOf(sfolder,
+			pidl, SHGDNflags, &strr)) ){
+		return FALSE;
+	}
+	switch (strr.uType){
+		case STRRET_WSTR:
+			if ( UNIONNAME(strr, pOleStr) == NULL ) return FALSE;
+			#ifdef UNICODE
+				tstrcpy(name, UNIONNAME(strr, pOleStr));
+			#else
+				UnicodeToAnsi(UNIONNAME(strr, pOleStr), name, VFPS);
+			#endif
+			CoTaskMemFree(UNIONNAME(strr, pOleStr));
+			break;
+
+		case STRRET_OFFSET:
+			#ifdef UNICODE
+				AnsiToUnicode((char *)pidl + UNIONNAME(strr, uOffset), name, VFPS);
+			#else
+				tstrcpy(name, (char *)pidl + UNIONNAME(strr, uOffset));
+			#endif
+			break;
+
+		case STRRET_CSTR:
+			#ifdef UNICODE
+				AnsiToUnicode(UNIONNAME(strr, cStr), name, VFPS);
+			#else
+				tstrcpy(name, UNIONNAME(strr, cStr));
+			#endif
+			break;
+
+		default:
+			return FALSE;
+	}
+	return TRUE;
+}
+
+VFSDLL BOOL PPXAPI PIDL2DisplayNameOf(TCHAR *name, LPSHELLFOLDER sfolder, LPCITEMIDLIST pidl)
+{
+	return PIDL2DisplayName(name, sfolder, pidl, SHGDN_INFOLDER);
+}
+
+LPITEMIDLIST PathToPidl2(const TCHAR *vfs)
+{
+	LPITEMIDLIST idl = NULL, idl2, idlc;
+	LPSHELLFOLDER pSF;
+	LPMALLOC pMA;
+	TCHAR tempdir[VFPS], *p;
+	HWND hWnd = NULL;
+
+	pSF = VFPtoIShell(hWnd, vfs, &idl);
+	if ( pSF == NULL ){ // 最後のエントリがbindできないと思われるので試行する
+		TCHAR c;
+
+		tstrcpy(tempdir, vfs);
+		p = VFSFindLastEntry(tempdir);
+		if ( (c = *p) == '\0' ) return NULL; // エントリがない
+		*p = '\0';
+		pSF = VFPtoIShell(hWnd, tempdir, &idl); // 最終エントリ以外で取得
+		if ( pSF == NULL ) return NULL;
+									// 最終エントリを処理
+		if ( c == '\\' ){
+			p++;
+		}else{
+			*p = c;
+		}
+		idl2 = BindIShellAndFname(pSF, p);
+		if ( idl2 == NULL ){
+			pSF->lpVtbl->Release(pSF);
+			return NULL;
+		}
+		(void)SHGetMalloc(&pMA);
+		idlc = CatPidl(pMA, idl, idl2);
+		pMA->lpVtbl->Free(pMA, idl2);
+		pMA->lpVtbl->Free(pMA, idl);
+		pMA->lpVtbl->Release(pMA);
+		idl = idlc;
+	}
+	pSF->lpVtbl->Release(pSF);
+	return idl;
+}
+
+/*-----------------------------------------------------------------------------
+	Fullpath で構成された pszFile を絶対指定の ITEMIDLIST に変換する。
+	NULL なら失敗
+-----------------------------------------------------------------------------*/
+VFSDLL LPITEMIDLIST PPXAPI PathToPidl(LPCTSTR pszFile)
+{
+	LPSHELLFOLDER piDesktop;
+	LPITEMIDLIST pidl;
+									// shell name space のroot(desktop)を取得
+	if ( FAILED(SHGetDesktopFolder(&piDesktop)) ) return NULL;
+
+	pidl = IShellToPidl(piDesktop, pszFile);
+	piDesktop->lpVtbl->Release(piDesktop);
+	if ( pidl == NULL ) pidl = PathToPidl2(pszFile);
+	return pidl;
+}
+/*=============================================================================
+	IShellFolder 関連
+=============================================================================*/
+/*-----------------------------------------------------------------------------
+	絶対指定のフォルダパスから IShell を取得する（末尾の \ の有無は問わない）
+	また、絶対形式のidlを取得できる
+-----------------------------------------------------------------------------*/
+VFSDLL LPSHELLFOLDER PPXAPI VFPtoIShell(HWND hWnd, const TCHAR *vfp, LPITEMIDLIST *idl)
+{
+	LPSHELLFOLDER pSF;
+	TCHAR	vfpTemp[VFPS];	// パスの保存場所
+	int		mode;
+	TCHAR	*vp, *p;
+										// 検索対象の種類を判別 ---------------
+	tstplimcpy(vfpTemp, vfp, VFPS);
+	vp = VFSGetDriveType(vfpTemp, &mode, NULL);
+	if ( vp == NULL ){		// 種類が分からない→相対指定の可能性→絶対化
+		VFSFullPath(vfpTemp, (TCHAR *)vfp, NULL);
+		vp = VFSGetDriveType(vfpTemp, &mode, NULL);
+		if ( vp == NULL ) return NULL;	// それでも種類が分からない→エラー
+	}
+										// 末尾の \ を除去 --------------------
+	p = vfpTemp;
+	if ( mode == VFSPT_UNC ) p += 2;
+	for ( ; ; ){
+		p = FindPathSeparator(p);
+		if ( p == NULL ) break;
+		p++;
+		if ( *p == '\0' ){
+			*(p - 1) = '\0';
+			break;
+		}
+	}
+										// 種類別の処理 -----------------------
+	switch (mode){
+		case VFSPT_DRIVELIST:
+			return VFPtoIShell(hWnd, vp, idl);
+
+		case VFSPT_HTTP:
+		case VFSPT_FTP:
+			return NULL;
+
+		case VFSPT_DRIVE:
+										// 「x:\...」の idl を入手する
+			if ( *vp == '\0' ){	// rootを示す「\」が無いなら追加
+				*vp = '\\';
+				*(vp + 1) = '\0';
+			}
+			vp -= 2;
+			break;
+
+		case VFSPT_UNC:
+			vp -= 2;
+			break;
+
+		case VFSPT_SHELLSCHEME:
+			vp = vfpTemp;
+			if ( (*vp == '+') || (*vp == '-') ) vp++;
+			break;
+
+		default:							// 不明 ---------------------------
+			if ( mode >= 0 ) return NULL;
+										// PIDL:Special folder ----------------
+	}
+
+	if ( VFPtoIShellSub(hWnd, vp, mode, &pSF, idl, NULL, NULL) != NO_ERROR ){
+		return NULL;
+	}
+	return pSF;
+}
+
+DWORD GetIpdlSum(LPITEMIDLIST pidl)
+{
+	DWORD sum = 0;
+	USHORT size = (USHORT)(pidl->mkid.cb - sizeof(USHORT));
+	BYTE *idlptr = (BYTE *)pidl->mkid.abID;
+
+	for(;;){
+		sum += *idlptr++;
+		if ( --size == 0 ) break;
+	}
+	// idlist が複数あるときは対象外にする
+	if ( *((USHORT*)idlptr) != 0 ) sum = 0;
+	return sum;
+}
+
+VFSDLL LPITEMIDLIST PPXAPI BindIShellAndFdata(LPSHELLFOLDER pParentFolder, WIN32_FIND_DATA *fdata)
+{
+	LPITEMIDLIST pidl, bkpidl;
+	LPENUMIDLIST pEID;
+	LPMALLOC pMA;
+
+	pidl = IShellToPidl(pParentFolder, fdata->cFileName);
+	if ( (pidl != NULL) && (GetIpdlSum(pidl) == fdata->dwReserved1) ){
+		return pidl;
+	}
+
+	if ( S_OK != pParentFolder->lpVtbl->EnumObjects(pParentFolder, NULL,
+			MAKEFLAG_EnumObjectsForFolder, &pEID) ){
+		return NULL;
+	}
+	(void)SHGetMalloc(&pMA);
+	bkpidl = NULL;
+
+	for ( ; ; ){
+		TCHAR name[VFPS];
+		DWORD count;
+
+		if ( (pEID->lpVtbl->Next(pEID, 1, &pidl, &count) != S_OK) || (count == 0) ){
+			pidl = bkpidl;
+			break;
+		}
+		if ( IsTrue(PIDL2DisplayNameOf(name, pParentFolder, pidl)) ){
+			if ( !tstricmp(name, fdata->cFileName) ){
+				if ( GetIpdlSum(pidl) == fdata->dwReserved1 ){
+					if ( bkpidl != NULL ) pMA->lpVtbl->Free(pMA, bkpidl);
+					break;
+				}else if ( bkpidl == NULL ){
+					bkpidl = pidl;
+					continue;
+				}
+			}
+		}
+		pMA->lpVtbl->Free(pMA, pidl);
+	}
+	pMA->lpVtbl->Release(pMA);
+	pEID->lpVtbl->Release(pEID);
+	return pidl;
+}
+//-------------------------------------- fname に対応した idl を求める
+VFSDLL LPITEMIDLIST PPXAPI BindIShellAndFname(LPSHELLFOLDER pParentFolder, const TCHAR *fname)
+{
+	LPITEMIDLIST pidl;
+
+	pidl = IShellToPidl(pParentFolder, fname);
+	if ( pidl == NULL ){
+		LPENUMIDLIST pEID;
+		LPMALLOC pMA;
+
+		if ( S_OK != pParentFolder->lpVtbl->EnumObjects(pParentFolder, NULL,
+				MAKEFLAG_EnumObjectsForFolder, &pEID) ){
+			return NULL;
+		}
+		(void)SHGetMalloc(&pMA);
+		for ( ; ; ){
+			TCHAR name[VFPS];
+			DWORD count;
+
+			if ( (pEID->lpVtbl->Next(pEID, 1, &pidl, &count) != S_OK) || (count == 0) ){
+				pidl = NULL;
+				break;
+			}
+			if ( IsTrue(PIDL2DisplayNameOf(name, pParentFolder, pidl)) ){
+				if ( !tstricmp(name, fname) ) break;
+			}
+			pMA->lpVtbl->Free(pMA, pidl);
+		}
+		pMA->lpVtbl->Release(pMA);
+		pEID->lpVtbl->Release(pEID);
+	}
+	return pidl;
+}
+/*-----------------------------------------------------------------------------
+	pParentFolder を親として pszFile を相対指定の ITEMIDLIST に変換する。
+	NULL なら失敗
+-----------------------------------------------------------------------------*/
+VFSDLL LPITEMIDLIST PPXAPI IShellToPidl(LPSHELLFOLDER pParent, LPCTSTR pszFile)
+{
+	LPITEMIDLIST pidl;
+	ULONG chEaten, atr = 0;
+	#ifndef UNICODE
+		OLECHAR olePath[VFPS];
+									// 32bit OLE は UNICODE を使用するので変換
+		AnsiToUnicode(pszFile, olePath, VFPS);
+									// ParseDisplayName を使ってIDLISTに変換
+		if( FAILED(pParent->lpVtbl->ParseDisplayName(
+				pParent, NULL, NULL, olePath, &chEaten, &pidl, &atr)) ){
+			#if CHECKVFXEXNAME
+				XMessage(NULL, NULL, XM_DbgLOG, T("IShellToPidl fail:%s"), pszFile);
+			#endif
+			return NULL;
+		}
+	#else
+		if( FAILED(pParent->lpVtbl->ParseDisplayName(
+				pParent, NULL, NULL, (TCHAR *)pszFile, &chEaten, &pidl, &atr)) ){
+			#if CHECKVFXEXNAME
+				XMessage(NULL, NULL, XM_DbgLOG, T("IShellToPidl fail:%s"), pszFile);
+			#endif
+			return NULL;
+		}
+	#endif
+	return pidl;
+}
+/*-----------------------------------------------------------------------------
+	pidl を IShellFolder 形式に変換
+	NULL なら失敗
+
+	※ #:\ライブラリ\ドキュメント とかは対応していない
+-----------------------------------------------------------------------------*/
+VFSDLL LPSHELLFOLDER PPXAPI PidlToIShell(LPCITEMIDLIST pidl)
+{
+	LPSHELLFOLDER piDesktop;
+	LPSHELLFOLDER pParent;
+	HRESULT hr;
+									// shell name space のroot(desktop)を取得
+	if ( FAILED(SHGetDesktopFolder(&piDesktop)) ) return NULL;
+									// BindToObject を使って関連付け
+	hr = piDesktop->lpVtbl->BindToObject(piDesktop,
+			pidl, NULL, &XIID_IShellFolder, (LPVOID *)&pParent);
+	piDesktop->lpVtbl->Release(piDesktop);
+
+	if ( FAILED(hr) ) return NULL;
+	return pParent;
+}
+//-------------------------------------- SHN パスなら、実体パスを取得
+VFSDLL BOOL PPXAPI VFSGetRealPath(HWND hWnd, TCHAR *path, const TCHAR *vfs)
+{
+	LPITEMIDLIST idl = NULL, idl2, idlc;
+	LPSHELLFOLDER pSF;
+	LPMALLOC pMA;
+	BOOL result;
+	TCHAR tempdir[VFPS], *ptr;
+
+	pSF = VFPtoIShell(hWnd, vfs, &idl);
+	if ( pSF == NULL ){ // 最後のエントリがbindできないと思われるので試行する
+		TCHAR code;
+
+		tstrcpy(tempdir, vfs);
+		ptr = VFSFindLastEntry(tempdir);
+		if ( (code = *ptr) == '\0' ) goto error; // エントリがない
+		*ptr = '\0';
+		pSF = VFPtoIShell(hWnd, tempdir, &idl); // 最終エントリ以外で取得
+		if ( pSF == NULL ) goto error;
+									// 最終エントリを処理
+		if ( code == '\\' ){
+			ptr++;
+		}else{
+			*ptr = code;
+		}
+		idl2 = BindIShellAndFname(pSF, ptr);
+		if ( idl2 == NULL ){
+			pSF->lpVtbl->Release(pSF);
+			goto error;
+		}
+		(void)SHGetMalloc(&pMA);
+		idlc = CatPidl(pMA, idl, idl2);
+		pMA->lpVtbl->Free(pMA, idl2);
+		pMA->lpVtbl->Free(pMA, idl);
+		pMA->lpVtbl->Release(pMA);
+		idl = idlc;
+	}
+	if ( (result = SHGetPathFromIDList(idl, path)) == FALSE ) path[0] = '\0';
+	FreePIDL(idl);
+	return result;
+error:
+	path[0] = '\0';
+	return FALSE;
+}
+/*=============================================================================
+	コンテキストメニュー
+=============================================================================*/
+#define MENUCLASS2 T("PPXSHC2") T(TAPITAIL)
+LRESULT CALLBACK C2Proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+WNDCLASS c2Class = { 0, C2Proc, 0, 0, NULL, NULL, NULL, NULL, NULL, MENUCLASS2 };
+
+typedef struct {
+	LPCONTEXTMENU	cm1;
+	LPCONTEXTMENU2	cm2;
+	LPCONTEXTMENU3	cm3;
+} CONTEXTMENUS;
+
+//-----------------------------------------------------------------------------
+LRESULT CALLBACK C2Proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	CONTEXTMENUS *cms;
+
+	if (	(message == WM_INITMENUPOPUP) || (message == WM_DRAWITEM) ||
+			(message == WM_MEASUREITEM) ){
+		cms = (CONTEXTMENUS *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+		if ( cms != NULL ){
+			if ( cms->cm3 != NULL ){
+				cms->cm3->lpVtbl->HandleMenuMsg(cms->cm3, message, wParam, lParam);
+			}else if ( cms->cm2 != NULL ){
+				cms->cm2->lpVtbl->HandleMenuMsg(cms->cm2, message, wParam, lParam);
+			}
+		}
+		return (message == WM_INITMENUPOPUP) ? 0 : TRUE;
+	}
+
+	if ( message == WM_MENUCHAR ){
+		LRESULT result = 0;
+
+		cms = (CONTEXTMENUS *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+		if ( (cms != NULL) && (cms->cm3 != NULL) ){
+			cms->cm3->lpVtbl->HandleMenuMsg2(cms->cm3, message, wParam, lParam, &result);
+		}
+		return result;
+	}
+
+	if ( message == WM_CREATE ){
+		SetWindowLongPtr(hWnd, GWLP_USERDATA,
+				(LONG_PTR)((CREATESTRUCT *)lParam)->lpCreateParams);
+	}
+	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+#define INVOKE_PINTOSTART 9901
+BOOL InvokeMenuError(HWND hWnd, HMENU hMenu, int idCmd, HRESULT hres)
+{
+	TCHAR item[VFPS];
+
+	if ( GetMenuString(hMenu, idCmd, item, VFPS, MF_BYCOMMAND) > 0 ){
+		if ( (tstrstr(item, T("Pin to Start")) != NULL) ||
+			 ((tstrstr(item, T("スタート")) != NULL) &&
+			  (tstrstr(item, T("ピン")) != NULL)) ){
+			return INVOKE_PINTOSTART;
+		}
+	}
+	if ( hres == HRESULT_FROM_WIN32(ERROR_INVALID_WINDOW_HANDLE) ) { // Exlorer専用？
+		XMessage(hWnd, NULL, XM_GrERRld, T("Explorer only"));
+		return FALSE;
+	}
+
+	// FACILITY_SHELL + NO_ERROR + E_FAIL、「削除」でキャンセルしたときに出る
+	if ( hres == (HRESULT)0x80270000 ) return TRUE;
+	PPErrorBox(hWnd, NULL, hres);
+	return FALSE;
+}
+
+HRESULT InvokeMenu(CONTEXTMENUS *cms, CMINVOKECOMMANDINFO *cmi)
+{
+	if ( cms->cm3 != NULL ){
+		return cms->cm3->lpVtbl->InvokeCommand(cms->cm3, cmi);
+	}else if ( cms->cm2 != NULL ){
+		return cms->cm2->lpVtbl->InvokeCommand(cms->cm2, cmi);
+	}else{
+		return cms->cm1->lpVtbl->InvokeCommand(cms->cm1, cmi);
+	}
+}
+/*-----------------------------------------------------------------------------
+	Shell's Namespace ファイル名の ContextMenu 処理を行う
+	lpsfParent + lpi	ファイル名
+	lppt				popupmenu の表示位置
+	Cmd					デフォルト
+-----------------------------------------------------------------------------*/
+#define BASEINDEX 1
+#define LASTINDEX 0x7fff
+VFSDLL BOOL PPXAPI SHContextMenu(HWND hWnd, LPPOINT lppt, LPSHELLFOLDER lpsfParent, LPITEMIDLIST *lpi, int flags_pieces, const TCHAR *verb)
+{
+	#ifdef UNICODE
+		CMINVOKECOMMANDINFOEX cmi;
+		char VerbA[128];
+		#define CMIFLAG CMIC_MASK_UNICODE
+		#define CMISTRUCT (CMINVOKECOMMANDINFO *)
+		#define SetIntresVerb(cmd) cmi.lpVerb = (char *)(cmi.lpVerbW = cmd)
+	#else
+		CMINVOKECOMMANDINFO cmi;
+		#define CMIFLAG 0
+		#define CMISTRUCT
+		#define SetIntresVerb(cmd) cmi.lpVerb = cmd
+	#endif
+	CONTEXTMENUS cms;
+	HWND hCWnd;
+	HMENU hMenu;
+	BOOL result = FALSE;
+
+	cms.cm1 = NULL;
+	cms.cm2 = NULL;
+										// ContextMemu callback 用ウィンドウ
+	if ( DLLWndClass.item.ContextMenuRecieve == 0 ){
+		c2Class.hCursor   = LoadCursor(NULL, IDC_ARROW);
+		c2Class.hInstance = DLLhInst;
+		DLLWndClass.item.ContextMenuRecieve = RegisterClass(&c2Class);
+	}
+
+	hCWnd = CreateWindow(MENUCLASS2, MENUCLASS2,
+			(hWnd != NULL) ? WS_CHILD : 0,
+			0, 0, 0, 0, hWnd, NULL, DLLhInst, (LPVOID)&cms);
+	if ( hCWnd == NULL ) return FALSE;
+	if ( hWnd == NULL ) hWnd = hCWnd;
+										// IContextMemu を取得 ----------------
+	if ( FAILED(lpsfParent->lpVtbl->GetUIObjectOf(lpsfParent, hWnd,
+			flags_pieces & SHCM_PIECESMASK, (LPCITEMIDLIST *)lpi,
+			&XIID_IContextMenu, NULL, (void **)&cms.cm1)) ){
+		DestroyWindow(hCWnd);
+		return FALSE;
+	}
+
+	if ( FAILED(cms.cm1->lpVtbl->QueryInterface(cms.cm1,
+				&XIID_IContextMenu3, (void **)&cms.cm3)) ){
+		cms.cm3 = NULL;
+		if ( FAILED(cms.cm1->lpVtbl->QueryInterface(cms.cm1,
+				&XIID_IContextMenu2, (void **)&cms.cm2)) ){
+			cms.cm2 = NULL;
+		}
+	}
+
+	hMenu = CreatePopupMenu();
+	if ( hMenu != NULL ){
+		LRESULT lr;
+		UINT flags;
+										// ContextMemu を PopupMenu に設定 ----
+		flags = CMF_EXPLORE;
+		if ( (flags_pieces & SHCM_EXTENDED) ||
+			 (!(flags_pieces & SHCM_NOSHIFTKEY) && (GetShiftKey() & K_s)) ){
+			setflag(flags, CMF_EXTENDEDVERBS);
+		}
+		if ( flags_pieces & SHCM_ITEMMENU ) setflag(flags, CMF_ITEMMENU);
+		if ( flags_pieces & SHCM_VIEWPANE ) resetflag(flags, CMF_EXPLORE);
+		// CMF_NOMRAL は Explorer はツリーもリストも使っていないようだ
+		// この時点で、Shift+Ctrl を押すと、ドライブ一覧が消える Win10
+		if ( cms.cm3 != NULL ){
+			lr = cms.cm3->lpVtbl->QueryContextMenu(cms.cm3, hMenu, 0,
+					BASEINDEX, LASTINDEX, flags);
+		}else if ( cms.cm2 != NULL ){
+			lr = cms.cm2->lpVtbl->QueryContextMenu(cms.cm2, hMenu, 0,
+					BASEINDEX, LASTINDEX, flags);
+		}else{
+			lr = cms.cm1->lpVtbl->QueryContextMenu(cms.cm1, hMenu, 0,
+					BASEINDEX, LASTINDEX, flags);
+		}
+		if ( SUCCEEDED(lr) ){
+			memset(&cmi, 0, sizeof(cmi));
+
+			cmi.cbSize	= sizeof(cmi);
+			cmi.fMask	= CMIFLAG;
+			cmi.hwnd	= hWnd; // ● hCWnd を使うと機能しない例(HashCheck)がある…メッセージ処理不足？
+			cmi.nShow	= SW_SHOWNORMAL;
+/*
+CMIC_MASK_FLAG_NO_UI
+CMIC_MASK_NO_CONSOLE
+CMIC_MASK_FLAG_SEP_VDM
+CMIC_MASK_ASYNCOK
+CMIC_MASK_NOASYNC // Windows Vista and later
+CMIC_MASK_SHIFT_DOWN
+CMIC_MASK_CONTROL_DOWN
+CMIC_MASK_FLAG_LOG_USAGE // Recent documents" menu.
+CMIC_MASK_NOZONECHECKS // Do not perform a zone check.
+*/
+			if ( verb > (const TCHAR *)(DWORD_PTR)0x10000 ){
+				if ( *verb == '\0' ){ // NilStr-デフォルト実行
+					MENUITEMINFO minfo;
+					int index = 0;
+
+					verb = NULL;
+					for ( ; ; index++ ){
+						minfo.cbSize = sizeof(minfo); // GetMenuItemInfo の度に内容が破壊？
+						minfo.fMask = MIIM_STATE | MIIM_ID;
+						if ( GetMenuItemInfo(hMenu, index, MF_BYPOSITION, &minfo) == FALSE ) break;
+						if ( (minfo.fState & MFS_DEFAULT) && (minfo.fState != (UINT)-1) ){
+							verb = MAKEINTRESOURCE(minfo.wID - BASEINDEX);
+							break;
+						}
+					}
+				}else if ( *(verb + 1) == '\0' ){ // 1文字... ショートカット
+					UINT menuID;
+
+					menuID = FindMenuItem(hMenu, verb, NULL);
+					if ( menuID != 0 ){
+						verb = MAKEINTRESOURCE(menuID - BASEINDEX);
+					}else{
+						verb = NULL;
+					}
+				}
+			}
+			if ( verb != NULL ){
+				#ifndef UNICODE
+					cmi.lpVerb = verb;
+				#else
+					if ( IS_INTRESOURCE(verb) ){
+						cmi.lpVerb = (char *)(cmi.lpVerbW = verb);
+					}else{
+						UnicodeToAnsi(verb, VerbA, sizeof(VerbA) - 1);
+						VerbA[sizeof(VerbA) - 1] = '\0';
+						cmi.lpVerb = VerbA;
+						cmi.lpVerbW = verb;
+					}
+				#endif
+				InvokeMenu(&cms, CMISTRUCT &cmi);
+				if ( SUCCEEDED(lr) ) result = TRUE;
+			}else{
+				int idCmd;
+
+				idCmd = TrackPopupMenu(hMenu, TPM_TDEFAULT,
+						lppt->x, lppt->y, 0, hCWnd, NULL);
+										// ContextMemu の項目を実行 --------
+				result = TRUE;
+				if ( idCmd > 0 ){
+					HRESULT hres;
+
+					SetIntresVerb((LPTSTR)MAKEINTRESOURCE(idCmd - BASEINDEX));
+					hres = InvokeMenu(&cms, CMISTRUCT &cmi);
+					if ( FAILED(hres) ){
+						result = InvokeMenuError(hWnd, hMenu, idCmd, hres);
+					}
+				}
+			}
+		}
+		DestroyMenu(hMenu);
+	}
+	if ( cms.cm3 != NULL ) cms.cm3->lpVtbl->Release(cms.cm3);
+	if ( cms.cm2 != NULL ) cms.cm2->lpVtbl->Release(cms.cm2);
+	cms.cm1->lpVtbl->Release(cms.cm1);
+	SetWindowLongPtr(hCWnd, GWLP_USERDATA, 0);
+	DestroyWindow(hCWnd);
+	return result;
+}
+
+LPITEMIDLIST GetCachedFnameIdl(LPSHELLFOLDER pSF, const TCHAR *fullpath, const TCHAR *name)
+{
+	int cachedsize;
+	LPITEMIDLIST idl;
+	LPMALLOC pMA;
+	TCHAR bufname[VFPS];
+
+	cachedsize = GetCustTableSize(IdlCacheName, fullpath + 2);
+	if ( cachedsize <= 0 ) return NULL;
+
+	(void)SHGetMalloc(&pMA);
+	idl = pMA->lpVtbl->Alloc(pMA, cachedsize);
+	GetCustTable(IdlCacheName, fullpath + 2, idl, cachedsize);
+
+	bufname[0] = '\0';
+	if ( IsTrue(PIDL2DisplayNameOf(bufname, pSF, idl)) ){
+		if ( tstrcmp(name, bufname) == 0 ){
+			pMA->lpVtbl->Release(pMA);
+			return idl;
+		}
+	}
+	pMA->lpVtbl->Free(pMA, idl);
+	pMA->lpVtbl->Release(pMA);
+	return NULL;
+}
+
+// IShellFolder を用意する
+VFSDLL BOOL PPXAPI VFSMakeIDL(const TCHAR *path, LPSHELLFOLDER *ppSF, LPITEMIDLIST *pidl, const TCHAR *filename)
+{
+	LPITEMIDLIST idl = NULL;
+	LPSHELLFOLDER pSF;
+	TCHAR name1[VFPS], *fname;
+
+	fname = VFSFullPath(name1, (TCHAR *)filename, path);
+	if ( fname == NULL ) return FALSE;
+	if ( *fname == '\0' ){		// ドライブなど
+		int mode;
+
+		VFSGetDriveType(name1, &mode, NULL);
+		if ( mode == VFSPT_DRIVE ){
+			LPSHELLFOLDER pTmpSF;
+
+			if ( FAILED(SHGetDesktopFolder(&pSF)) ) return FALSE;
+			idl = IShellToPidl(pSF, NilStr);
+			if ( idl != NULL ){
+				if ( FAILED(pSF->lpVtbl->BindToObject(pSF, idl, NULL, &XIID_IShellFolder, (LPVOID *)&pTmpSF)) ){
+					goto error;
+				}
+				FreePIDL(idl);
+				pSF->lpVtbl->Release(pSF);
+				pSF = pTmpSF;
+				idl = BindIShellAndFname(pSF, name1);
+			}
+		}else{
+			pSF = VFPtoIShell(NULL, name1, &idl);
+			if ( pSF == NULL ) return FALSE;
+			pSF->lpVtbl->Release(pSF);
+			if ( FAILED(SHGetDesktopFolder(&pSF)) ){
+				pSF = NULL;
+				goto error;
+			}
+		}
+	}else{
+		TCHAR backupChar;
+
+		backupChar = *fname;
+		*fname = '\0';
+
+		pSF = VFPtoIShell(NULL, name1, NULL);
+		if ( pSF == NULL ) goto error;
+
+		*fname = backupChar;
+		idl = GetCachedFnameIdl(pSF, name1, fname);
+		if ( idl == NULL ) idl = BindIShellAndFname(pSF, fname);
+	}
+	if ( idl != NULL ){
+		*ppSF = pSF;
+		*pidl = idl;
+		return TRUE;
+	}
+error:
+	if ( idl != NULL ) FreePIDL(idl);
+	if ( pSF != NULL ) pSF->lpVtbl->Release(pSF);
+	return FALSE;
+}
+
+int MakePIDLTableFromFileZ(const TCHAR *srcdir, const TCHAR *files, LPITEMIDLIST **pidls, LPSHELLFOLDER *pSF)
+{
+	HANDLE heap;
+	LPSHELLFOLDER pParentFolder;
+	LPITEMIDLIST *PIDLs;
+	LPITEMIDLIST *lps;
+	int cnt = 0, next = 0x400;
+	int dirlen;
+	const TCHAR *fileptr = files;
+	TCHAR srcbuf[VFPS];
+
+	heap = ProcHeap;
+	PIDLs = HeapAlloc(heap, 0, next * sizeof(LPITEMIDLIST *));
+	if ( PIDLs == NULL ) return 0;
+
+	if ( VFSGetDriveType(fileptr, NULL, NULL) != NULL ){
+		tstrcpy(srcbuf, fileptr);
+		dirlen = (int)(VFSFindLastEntry(srcbuf) - srcbuf);
+		srcbuf[dirlen] = '\0';
+
+		while ( *fileptr != '\0' ){
+			while ( dirlen && ((memcmp(srcbuf, fileptr, dirlen * sizeof(TCHAR)) != 0) || (*(fileptr + dirlen) != '\\')) ){
+				dirlen = (int)(VFSFindLastEntry(srcbuf) - srcbuf);
+				if ( srcbuf[dirlen] == '\0' ) break;
+				srcbuf[dirlen] = '\0';
+			}
+			fileptr = fileptr + tstrlen(fileptr) + 1;
+		}
+		{ // drive root の時の補正
+			TCHAR *last = VFSFindLastEntry(srcbuf);
+			if ( (last != srcbuf) && (*last != '\\') ){
+				*(last - 1) = '\0';
+			}
+		}
+		srcdir = srcbuf;
+		fileptr = files;
+	}
+
+	pParentFolder = VFPtoIShell(GetFocus(), srcdir, NULL);
+	if ( pParentFolder == NULL ){
+		HeapFree(heap, 0, PIDLs);
+		return 0;
+	}
+	dirlen = tstrlen32(srcdir);
+
+	lps = PIDLs;
+	while ( *fileptr != '\0' ){
+		if ( cnt == next ){
+			LPITEMIDLIST *P;
+
+			next += 0x400;
+			P = HeapReAlloc(heap, 0, PIDLs, next * sizeof(LPITEMIDLIST *));
+			if ( P == NULL ){
+				HeapFree(heap, 0, PIDLs);
+				cnt = 0;
+				break;
+			}else{
+				lps = P + (lps - PIDLs);
+				PIDLs = P;
+			}
+		}
+		if ( dirlen && (memcmp(srcdir, fileptr, dirlen * sizeof(TCHAR)) == 0) && (*(fileptr + dirlen) == '\\') ){
+			fileptr += dirlen + 1;
+		}
+
+		*lps = BindIShellAndFname(pParentFolder, fileptr);
+		if ( *lps == NULL ){
+			XMessage(NULL, NULL, XM_NiERRld, T("Bind error:%s"), fileptr);
+			break;
+		}else{
+			lps++;
+			cnt++;
+		}
+		fileptr = fileptr + tstrlen(fileptr) + 1;
+	}
+	*pidls = PIDLs;
+	*pSF = pParentFolder;
+	return cnt;
+}
+
+/*-----------------------------------------------------------------------------
+	Asciiz ファイル名の ContextMenu 処理を行う
+	path + entry	ファイル名
+	lppt			popupmenu の表示位置
+-----------------------------------------------------------------------------*/
+void TinyRegisterStartmenu(const TCHAR *path, const TCHAR *entry)
+{
+	TCHAR LinkedFile[VFPS], DestPath[VFPS], *last;
+
+	VFSFullPath(LinkedFile, (TCHAR *)entry, path);
+	VFSGetRealPath(NULL, DestPath, T("#11:\\"));
+
+	last = VFSFindLastEntry(entry);
+	if ( *last == '\\' ) last++;
+	CatPath(NULL, DestPath, last);
+	FOPMakeShortCut(LinkedFile, DestPath, GetFileAttributesL(LinkedFile) & FILE_ATTRIBUTE_DIRECTORY, FALSE);
+}
+
+
+VFSDLL BOOL PPXAPI VFSSHContextMenu(HWND hWnd, LPPOINT pos, const TCHAR *path, const TCHAR *entry, const TCHAR *cmd)
+{
+	LPITEMIDLIST idl;
+	LPSHELLFOLDER pSF;
+	BOOL result;
+								// dir + file 形式に変換
+	if ( VFSMakeIDL(path, &pSF, &idl, entry) == FALSE ){
+		return FALSE;
+	}
+	result = SHContextMenu(hWnd, pos, pSF, &idl, 1, cmd);
+	FreePIDL(idl);
+	pSF->lpVtbl->Release(pSF);
+	return result;
+}
+
+VFSDLL void PPXAPI GetDriveNameTitle(TCHAR *buf, TCHAR drive)
+{
+	WCHAR wbuf[VFPS];
+
+	// Floppy かどうかを判定。Win2k/XP以降用
+	thprintf(buf, MAX_PATH, T("\\DosDevices\\%c:"), drive);
+	wbuf[0] = '\0';
+	for ( ; ; ){
+		HKEY hKey;
+		DWORD size;
+
+		if ( RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+				MountString, 0, KEY_READ, &hKey) != ERROR_SUCCESS ){
+			break;
+		}
+		size = sizeof wbuf;
+		if ( RegQueryValueEx(hKey, buf, NULL, NULL, (LPBYTE)wbuf, &size) == ERROR_SUCCESS ){
+			*(WORD *)(BYTE *)((BYTE *)wbuf + (size & 0x1fe)) = '\0';
+		}
+		RegCloseKey(hKey);
+		break;
+	}
+	if ( strstrW(wbuf, L"FLOPPY") != NULL ){
+		tstrcpy(buf, T("Floppy"));
+	}else{
+		LPITEMIDLIST idl;
+		LPSHELLFOLDER pSF, pNSF;
+
+		thprintf(buf, 8, T("%c:\\"), drive);
+		if ( SUCCEEDED(SHGetDesktopFolder(&pSF)) ){
+			idl = IShellToPidl(pSF, NilStr);
+			if ( FAILED(pSF->lpVtbl->BindToObject(pSF, idl, NULL,
+						&XIID_IShellFolder, (LPVOID *)&pNSF)) ){
+				pNSF = NULL;
+			}
+			FreePIDL(idl);
+			pSF->lpVtbl->Release(pSF);
+			if ( pNSF != NULL ){
+				idl = BindIShellAndFname(pNSF, buf);
+				PIDL2DisplayNameOf(buf, pNSF, idl);
+				FreePIDL(idl);
+				pNSF->lpVtbl->Release(pNSF);
+			}
+		}
+	}
+}
+
+VFSDLL void PPXAPI GetTextFromCF_SHELLIDLIST(TCHAR *text, DWORD textsize, HGLOBAL hGMem, BOOL lf)
+{
+	LPSHELLFOLDER pDesktop, pParent;
+	LPIDA pIdA = (LPIDA)GlobalLock(hGMem);
+	LPITEMIDLIST pRootPidl;
+	TCHAR path[VFPS], name[VFPS], fullname[VFPS];
+	DWORD left;
+	UINT *aoffset;
+
+	if ( pIdA == NULL ){
+		*text = '\0';
+		return;
+	}
+/*
+	{
+		HANDLE hFile = CreateFileL("dump.dat", GENERIC_WRITE,
+				FILE_SHARE_READ, NULL, CREATE_NEW,
+				FILE_ATTRIBUTE_NORMAL, NULL);
+		WriteFile(hFile, pIdA, GlobalSize(hGMem), &left, NULL);
+		CloseHandle(hFile);
+		Messagef("%d",hFile);
+	}
+*/
+	// 親フォルダを取得
+	pRootPidl = (LPITEMIDLIST)(LPBYTE)((LPBYTE)(pIdA) + pIdA->aoffset[0]);
+	if ( IsTrue(SHGetPathFromIDList(pRootPidl, path)) ){
+		DWORD plen;
+
+		left = pIdA->cidl;
+		plen = tstrlen32(path);
+		if ( (left < 1) && (textsize > plen) ){
+			tstrcpy(text, path);
+			text += plen;
+		}else{
+			aoffset = pIdA->aoffset + 1;
+			if ( SUCCEEDED(SHGetDesktopFolder(&pDesktop)) ){
+				if ( FAILED(pDesktop->lpVtbl->BindToObject(pDesktop,
+					  pRootPidl, NULL, &XIID_IShellFolder, (LPVOID *)&pParent)) ){
+					pParent = pDesktop;
+				}
+				// アイテムを取得
+				while( left-- ){
+					DWORD len;
+
+					if ( PIDL2DisplayNameOf(name, pParent, (LPITEMIDLIST)(LPBYTE)((LPBYTE)(pIdA) + *aoffset++)) == FALSE ){
+						break;
+					}
+//					XMessage(NULL, NULL, XM_DbgLOG, T("%s  %s"),path,name);
+					CatPath(fullname, path, name);
+					len = tstrlen32(fullname);
+					if ( textsize > (len + 2) ){
+						tstrcpy(text, fullname);
+						text += len;
+					}
+					if ( left ){
+						if ( IsTrue(lf) ){
+							*text++ = '\r';
+							*text++ = '\n';
+						}else{
+							*text++ = ' ';
+						}
+					}
+				}
+				if ( pParent != pDesktop ) pParent->lpVtbl->Release(pParent);
+			}
+			pDesktop->lpVtbl->Release(pDesktop);
+		}
+	}
+	GlobalUnlock(hGMem);
+	*text = '\0';
+}
+
+// パスが長すぎるときに異常終了しないようにした ＆ X_nshf で有効の時使用する
+// SHChangeNotify
+void FolderNotifyToShell(LONG id, const TCHAR *item1, const TCHAR *item2)
+{
+	if ( X_nshf == 0 ) return;
+	if ( tstrlen(item1) >= MAX_PATH ) return;
+	if ( (item2 != NULL ) && (tstrlen(item2) >= MAX_PATH) ) return;
+	SHChangeNotify(id, SHCNF_PATH, item1, item2);
+}

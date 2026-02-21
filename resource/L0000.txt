@@ -1,0 +1,2048 @@
++1.42	=#{ English ; 0409 is Locale ID (LCID)	=#{ 日本語
+; 版数（自動更新用 123 / 1234)
+0000		2065		2065
+; ～0x0fff OS 定義
+; ID	macroID	eng	trans-e	日本語	comment
+0001		OK
+0002		Cancel		;キャンセル
+0003		&Abort		中止(&A)
+0004		&Retry		再試行(&R)
+0005		&Ignore		無視(&I)
+0006		&Yes		;はい(&Y)
+0007		&No		;いいえ(&N)
+;0009		Help		;ヘルプ
+;   COMMON 70xx(77xx,7fxx)
+;   汎用入力窓
+7000	IDD_INPUT				通常
+7001	IDD_INPUTREF				参照窓付き
+7002	IDD_INPUT_OPT				追加ボタン付き
+7003	IDE_INPUT_LINE				入力用エディットボックス
+7004	IDE_INPUT_REF				参照用エディットボックス
+7005	IDB_INPUT_EXT	&Extname	Extension(&E)	拡張子(&E)	拡張子有効化
+7006	IDE_INPUT_EXT				拡張子用エディットボックス
+7007	IDB_INPUT_OPT	&Option	Option(&O)	オプション(&O)	追加ボタン
+7008	IDT_INPUT_TREE				埋め込みツリー
+7009	IDB_DIALOG_OPTION	&...
+700A	IDS_INPUT_LINE	(&L)		(&L)	IDE_INPUT_LINE用ショートカット
+;   待機表示
+;7010 IDD_WAIT	0x7010	// ID 1.23廃止
+7011	IDD_WAITPPB	Execute		コンソール実行
+7012	IDS_WAITPPB	Wait for PPb...		PPb の空き待ち中
+7013	IDB_WAITPPB_NOPPB	Execute with self(&S)		PPbを使わず実行(&S)
+7014	IDB_WAITPPB_NEWPPB	Execute with new PPb(&N)		別のPPbで実行(&N)
+;   ログイン
+7018	IDD_LOGIN	Enter Login Password		接続先のユーザ名・パスワードを入力してください
+7019	IDS_LOGINDRIVE	Path		接続先
+701A	IDS_LOGINPATH
+701B	IDE_LOGINUSER
+701C	IDE_LOGINPASS
+701D	IDX_LOGINRE	&Connect at relogin		記憶して次回の認証入力に使用する(&C)
+701E	IDS_LOGINUSER	&Username		ユーザ名(&U)
+701F	IDS_LOGINPASS	&Password		パスワード(&P)
+;   File Operation 7020 - 707f
+7020	IDD_FOP	File Operations		ファイル操作
+7021	IDE_FOP_DESTDIR				処理先コンボボックス /dest:
+;   共通コントロール
+7022	IDR_FOP_NEWDATE	Only new date(&N)		最新のみ処理(&N)
+7023	IDR_FOP_RENAME	&Rename		名前を入力(&R)
+7024	IDR_FOP_OVER	&Overwrite		上書き(&O)
+7025	IDR_FOP_SKIP	&Skip		処理しない(&S)
+7026	IDR_FOP_ARC	With archive(&A)		更新のみ処理(&A)
+7027	IDR_FOP_ADDNUM	Add number(&B)		数字を追加(&b)
+7028	IDR_FOP_APPEND	Append(&P)		追記(&P)
+7029	IDX_FOP_SAME	All same action(&W)		全て同じ同名処理(&W)	sameSW
+702A	IDX_FOP_UPPER	&Upper case		大文字化(&U)
+702B	IDX_FOP_LOWER	&Lower case		小文字化(&L)
+702C	IDX_FOP_SFN	&Forced 8.3		8.3形式(&F)
+702D	IDX_FOP_DELSPC	Del. wrong(&G)	Delete wrong space(&G)	空白除去(&G)
+702E	IDX_FOP_DELNUM	Del. number(&B)	Delete numbers(&B)	数値除去(&B)	VFSFOP_FILTER_DELNUM
+702F	IDX_FOP_RONLY	&Readonly		読取専用(&R)
+7030	IDX_FOP_ARC	&Archive		変更(&C)
+7031	IDX_FOP_HIDE	&Hidden		隠し(&H)
+7032	IDX_FOP_SYSTEM	System(&X)		システム(&X)
+7033	IDC_FOP_MODE				処理方法テンプレート簡易ドロップボックス
+7034	IDX_FOP_SCOPY	Copy Security attr.(&E)	Copy Security attribute(&E)	セキュリティ属性(&E)	VFSFOP_OPTFLAG_SECURITY
+7035	IDX_FOP_SKIP	Skip slight error(&K)		軽微エラー無視(&K)	VFSFOP_OPTFLAG_SKIPERROR
+7036	IDX_FOP_AALL	Auto 'All' check(&U)		「全て」を指定(&U)
+7037	IDE_FOP_RENAME				IDE_FOP_RENAME
+7038	IDE_FOP_RENUM				番号 renum /snum:
+7039	IDE_FOP_DIV				分割大きさ divide
+703A	IDC_FOP_ACTION
+703B	IDS_FOP_PROGRESS				処理経過表示
+703C	IDS_FOP_SRCNAME				処理経過表示
+703D	IDS_FOP_SRCINFO				処理元情報
+703E	IDS_FOP_DESTINFO				処理先情報
+703F	IDG_FOP_SAME	Same Name Action		同名ファイル処理
+7040	IDG_FOP_NAME	Name Filter		名前加工
+7041	IDG_FOP_ATTR	Attributes		ファイル属性
+7042	IDS_FOP_DEST	&Dest	Destination(&D)	先(&D)
+7043	IDS_FOP_RENAME	Rename(&E)		名前(&E)
+7044	IDS_FOP_DIV	Divide size(&V)		分割(&V)
+7045	IDS_FOP_RENUM	S.Num(&N)	Serial Number(&N)	連番(&M)
+7046	IDE_FOP_LOG				ログ
+7047	IDX_FOP_SACL	Copy SACL(&C)		監査(&C)	VFSFOP_OPTFLAG_SACL
+7048	IDX_FOP_DIR	&Directory		ディレクトリ(&D)	PPcのフィルタで使用
+7049	IDX_FOP_BURST	Burst/self buffer(&G)	Burst/self buffering(&G)	Burst(自前バッファ,&G)
+704A	IDX_FOP_FLAT	Flat/don't make tree(&L)		平坦化/階層無し(&L)	VFSFOP_OPTFLAG_FLATMODE
+704B	IDX_FOP_KEEPDIR	&Keep directories		階層を再現する(&K)	VFSFOP_OPTFLAG_KEEPDIR
+704C	IDX_FOP_USELOGWINDOW	log window(&G)		処理経過をログとして表示(&G)	VFSFOP_OPTFLAG_LOGWINDOW
+704D	IDX_FOP_UNDOLOG	&Undo Log		元に戻す為のログを作成(&U)	VFSFOP_OPTFLAG_UNDOLOG
+704E	IDX_FOP_EXTRACTNAME	Extract '%'(&A)		'%'を展開(&A)		VFSFOP_FILTER_EXTRACTNAME
+704F	IDX_FOP_AROFF	AutoReadonly Off(&O)		CDの読取専用解除(&O)	VFSFOP_OPTFLAG_AUTOROFF
+7050	IDX_FOP_BACKUPOLD	Back up old file(&V)		削除ファイルを保存(&V)	VFSFOP_OPTFLAG_BACKUPOLD
+7051	IDX_FOP_1STSHEET	1st sheet(&S)	First sheet(&S)	開始シート&S
+7052+1.72	IDX_FOP_FILEFIX	File name(&N)		ファイル名変更&N	VFSFOP_FILTER_NOFILEFILTER
+7053	IDX_FOP_DIRFIX	&Dir name fix		ディレクトリ名を変更&D	VFSFOP_FILTER_NODIRFILTER
+7054+1.74	IDX_FOP_NOWCREATEDIR	&Silent new dir. warning	&Silent create new directory warning	ディレクトリ作成の確認無(&S)
+7055	IDX_FOP_LOWPRI	&Low priority		実行優先順位を低くする(&L)	VFSFOP_OPTFLAG_LOWPRI
+7056	IDS_FOP_SRCTITLE	Source entry		元ファイル
+7057	IDS_FOP_DESTTITLE	Destination entry		処理先
+7058	IDS_FOP_ATTRLABEL	Attribute\nFile Size\nCreate Time\nWrite Time\nAccess Time		属性\nサイズ\n作成時刻\n書込時刻\nアクセス時刻
+7059	IDX_FOP_LOGRWAIT	no wait with Result(&R)		ログ有でも終了時待機無(&R)	VFSFOP_OPTFLAG_LOGRWAIT
+705A	IDB_FOP_OPTION	&3:Option		&3:その他
+705B	IDD_FOP_OPTION
+705C	IDB_FOP_RENAME	&2:Rename		&2:名前
+705D	IDD_FOP_RENAME
+705E	IDB_FOP_GENERAL	&1:General		&1:一般
+705F	IDD_FOP_GENERAL
+7061	IDS_MSGBOX_TEXT			; PMessageBox メッセージ
+7062	IDX_QDALL	&Use all reaction		以降全て(&U)
+7063	IDB_QDADDLIST	add delay list(&D)		遅延指定(&D)
+7064	IDR_FOP_SIZE	DifferSize(&Z)	Different Size(&Z)	異サイズ(&Z)	FOPSAME_SIZE
+; 7065,7066,7067 はラジオボタン用に予約
+7068	IDX_FOP_ADDNUMDEST	Rename file on dest.(&V)	Rename file on destination(&V)	上書き先を名前変更(&V)	VFSFOP_OPTFLAG_ADDNUMDEST
+7070	IDX_FOP_PREVENTSLEEP	&Prevent from entering sleep		処理中はスリープを抑制(&P)	VFSFOP_OPTFLAG_PREVENTSLEEP
+7071	IDX_FOP_ALLOWDECRYPT	Allow Decrypted destination(&D)		暗号化ファイルの復号許可(&D)	VFSFOP_OPTFLAG_ALLOWDECRYPT
+7072	IDX_FOP_JOINBATCH	Make Join batch(&J)		結合BATファイル(&J)	VFSFOP_OPTFLAG_JOINBATCH
+7073	IDS_FOP_SRCPATH	Source Name		処理パス
+7074	IDX_FOP_COUNTSIZE	&Count total size		開始時総サイズ算出(&C)	!VFSFOP_OPTFLAG_NOCOUNT
+7075	IDX_FOP_CHECKEXISTFIRST	check Exist first(&E)		開始時存在チェック(&E)	!VFSFOP_OPTFLAG_NOFIRSTEXIST
+7076	IDX_FOP_SERIALIZE	serialize operate(&Z)	serialize operation(&Z)	順番に処理を行う(&Z)	!VFSFOP_OPTFLAG_QSTART
+7077	IDX_FOP_WAITCLOSE	Move after close file(&W)		ファイル使用後移動(&W)	!VFSFOP_OPTFLAG_WAIT_CLOSE
+7078	IDX_FOP_EXTFIX	Fix Ext.(&Y)	Fix extention name(&Y)	拡張子変更(&Y)	VFSFOP_FILTER_NOEXTFILTER
+7079	IDB_FOP_LOG	Log &4	Log(&4)		ログへのフォーカス / 表示切り替え
+707A	IDX_FOP_SYM_MAKELINK	Link for sym. link(&Y)	Link for symbolic link	Sym.(&Y)	リンクをリンクとしてコピー(&Y)
+707B	IDX_FOP_SYM_DELREFLINK	Remove sym. sources(&H)	Remove symbolic link sources(&H)	Sym.リンク元を削除(&H)
+707C	IDX_FOP_THERMAL_THROT	Thermal Throttling(&O)		高温時は一時停止(&O)
+70D0	IDT_TREECTL
+70E0	IDL_JOBLIST
+70F0	IDE_PPEMAIN
+;   PPcust ID_CUST_MIN(7400)-ID_CUST_MAX(76ff)
+7400	IDB_TEST	&Test		試験(&T)
+7402	IDD_CMDTREE	Command list		コマンド一覧
+; 740e-740f DEFxxxLIST
+7410	IDD_INFO	File		ファイル
+7411	IDG_cust	&Customize data		カスタマイズ設定(&C)
+7412	IDB_CS	&Store by text		テキストの取込(&S)
+7413	IDB_CA	&Append by text		追加取込(&A)
+7414	IDB_CU	&Update by text		更新取込(&U)
+7415	IDB_CD	&Dump to text		テキストに書出(&D)
+7416	IDB_CINIT	&Initialize		初期化(&I)
+7417	IDG_hist	&History data		ヒストリ(&H)
+7418	IDB_HD	Dump to text(&O)		書出(&O)
+7419	IDB_HINIT	Initialize(&R)		初期化(&R)
+741A	IDB_TESTKEY	&Key check		キー調査(&K)
+741B	IDS_INFO				カスタマイズ領域情報
+741C	IDB_REGPPC	Associate folder(&P)		フォルダに関連づけ(&P)
+741D	IDB_UNREGPPC	Deassociate folder(&U)		関連づけ解除(&U)
+741E	IDB_REGOPEN	Open folder with PPc(&F)		PPcでフォルダを開く(&F)
+741F	IDX_CONSOLE	Hide console(&L)		コンソールを隠す(&L)
+7421	IDB_TEXTCUST	&Edit and append		編集して取込(&E)
+7429	IDD_TEXTCUST	Customize by edited text		編集した内容の取込
+742A	IDE_CUSTEDIT
+742B	IDE_CUSTLOG
+742C	IDX_APPEND	&Append		追加する(チェック無しは取込動作)(&A)
+742D	IDS_TEXTCUST_U	Use text(&E)		取り込む内容(&E)
+742E	IDS_TEXTCUST_R	&Result		結果(&R)
+7430	IDD_COLOR	Colors		色
+7432	IDV_GCTYPE
+7433	IDS_GCITEM	&Item		項目(&I)
+7434	IDV_GCITEM
+7435	IDE_GCEDIT
+7436	IDB_GCADD	&Append		追加(&A)
+7437	IDB_GCDEL	&Delete		削除(&D)
+7438	IDS_GCWITEM	Word list(&I)		単語(&I)
+7439	IDS_GCOLOR	&Color		色(&C)
+743A	IDL_GCOLOR
+743B	IDB_GCSEL	Detail(&E)		その他(&E)
+743C	IDX_GCULINE	&Underline		下線(&U)
+743E	IDB_GCSORTN	Sort by ext.(&X)	Sort by extention(&X)	拡張子順(&X)
+743F	IDB_GCSORTC	Sort by color(&L)	Sort by color(&L)	色順(&L)
+7440	IDB_GCGROUP	Select Color-group(&G)		同じ色を一括選択(&G)
+7450	IDD_EXT	File types		ファイル判別
+7451	IDE_EXTYPE
+7452	IDV_EXTYPE				割当て種類一覧
+7453	IDE_EXITEM
+7454	IDL_EXITEM				IDV_ALCLIST の ListBox版
+7455	IDS_EXITEM				ファイル判別名の Windows 登録名称
+7457	IDS_EXTYPE	(&O E_...)		種類(&O E_～形式)
+7458	IDS_EXITEML	Type name(&I)		判別名(&I)
+7459	IDS_EXTYPES	Types(&Y)		種類(&Y)
+7460	IDD_KEYD	Keys		キー割当て
+7461	IDD_MOUSED	Mouses		マウス割当て
+7462	IDD_BARD	Buttons		ボタン
+7464	IDB_ALCKEY	Key(&S)		キー指定(&S)
+7468	IDC_ALCMOUSEB
+7469	IDC_ALCMOUSET
+746A	IDB_ALCMOUSEL	<-	←	←
+746B	IDB_ALCMOUSEU	^	↑	↑
+746C	IDB_ALCMOUSED	v	↓	↓
+746D	IDB_ALCMOUSER	->	→	→
+746E	IDX_ALCEXLIST				既定の割当ても一覧に表示
+746F	IDV_ALCLIST	List		一覧	IDE_EXTYPE で指定した種類のITEM一覧
+7470	IDD_ADDON	Susie
+7471	IDL_AOSUSIE
+7472	IDE_AOSINFO	susie information		※「詳細設定」はレジストリ操作を伴います。\n※タブの設定内容はPPx再起動後に反映されます。\n※Plug-inのパスは「全般」タブで設定します。
+7473	IDX_AOSUSE	&Use		使用する(&U)
+7474	IDB_AOSSETTING	Detail(&P)		詳細設定(&P)
+7475	IDE_AOSMASK
+7476	IDS_AOSTYPE	List(&Y)		一覧(&Y)
+7477	IDB_ADDDEFEXT	&Default ext.	&Default extention	既定の拡張子(&D)
+7478	IDX_AOSDETECT	&Auto detect		自動判別(&A)
+7479	IDB_ADDSETEXT	Extention(&P)		拡張子設定(&P)
+747A	IDS_AOSMASK	Target (.bmp,.dib)(&G)		対象、空欄なら自動判別(&E)例).bmp,.dib / *.bmp;*.dib
+747B	IDX_NOUNICODE	Disable UNICODE API(&N)		UNICODE API を使用しない(トラブル回避用, &N)
+7480	IDD_ETCTREE	misc		その他
+7481	IDS_ETCLIST
+7483+1.92	IDB_ETCEDIT	ExEdit(&E)		拡張編集(&E)
+7490	IDD_MENUD	Menus		メニュー
+7491	IDB_MEUP	&Up		上へ(&U)
+7492	IDB_MEDW	Down(&W)		下へ(&W)
+7493	IDB_MEKEY	S.C.Key(&K)	Short cut Key(&K)	キー割当表記(&K)
+7495	IDB_MECKEYS	&Sep.	Separator(&S)	線&S	区切り文字挿入
+7496	IDB_HMCHARC	&FG Color	&Foreground Color	文字色&F
+7497	IDB_HMBACKC	&BG Color	&Background Color	背景色&B
+7498	IDB_BREF	&Button edit		ボタン編集(&B)
+7499	IDL_BLIST
+; 74Ax COLOR_THEME
+74E1	IDC_TB_TYPEMASK				割当て種類名のマスク
+74E2	IDB_TB_SETITEM	save(&V)		設定(&V)	設定
+74E3	IDB_TB_DELITEM	&Delete		削除(&D)
+74E4	IDB_ALCNEW				(通信用)
+74E5	IDB_TB_INSERTTITEM	&Insert		←挿入&I
+74E6	IDG_ALCCMD	Detail(&X)		登録内容詳細(&X)
+74E7	IDC_ALCKEYG				キー割当て-グループ
+74E8	IDC_ALCKEYS				キー割当て-サブグループ
+74E9	IDE_ALCCMD				コマンドライン
+74EA	IDB_ALCCMDI	&Macro letter		マクロ文字等挿入(&M)	よく使うマクロ文字挿入
+74EB	IDE_ALCCMT				コメント欄
+74EC	IDB_ALCCMT	&Comment		コメント(&C)
+74ED	IDB_ALCCMDLIST	Commands(&L)		コマンド一覧(&L)
+74EE	IDT_ALCCMDLIST				コマンド一覧表示ツリー
+74EF	IDG_ALCCMD2	Detail(&X)		登録内容詳細(&X)
+74F0	IDD_GENERALE	General		全般
+74F1	IDT_GENERAL				分類
+74F2	IDT_GENERALITEM				各項目
+74F8	IDD_GENERAL
+74FB	IDU_FLOATUPDOWN
+74FC	IDB_FIND	&Find		検索(&F)
+74FD	IDE_FIND
+74FE	IDB_FLOAT
+74FF	IDE_FLOAT
+7600	IDD_KEYINPUT	Push use key, and click 'OK'		割り当てるキーを押して、Okをクリックして下さい
+7601	IDP_KEYINPUT_W
+7602	IDX_KEYINPUT_C	extend mode		キーボード依存の設定を使用
+7604	IDX_KEYINPUT_M	(require with 'NULL' cust)		※有効にしたときは、元の割当に\n　NULLを登録して無効化しないと\n　重複動作します。
+7608	IDD_SCOLOR	Colors		色
+760C	IDD_HIGHLIGHT	Highlight Colors
+760D	IDX_HL_TOP	&Top		行頭(&T)
+760E	IDX_HL_BOTTOM	&Bottom		行末(&B)
+;   Entry Display Format
+7610	IDD_DISPFOMAT	Display formats		表示書式
+7611	IDL_DFOMAT
+7612	IDL_DFLIST
+7613	IDS_DFPARAM1
+7614	IDC_DFPARAM1
+7615	IDS_DFPARAM2
+7616	IDC_DFPARAM2
+7617	IDX_COMMENTHID	Hide(have comment, &C)		コメントがあれば隠す(&C)
+7618	IDX_FIXFRAME	Full wide(&L)		窓幅一杯に一列表示(&L)
+7619	IDX_FIXLENGTH	Full Name length(&N)		ファイル名長一杯に表示(&N)
+761A	IDE_FIXMAX
+;   761B	表示書式
+761C	IDS_DFOMAT	Show items(&F)		表示項目(&F)
+761D	IDS_AFOMAT	Items list(&Y)		書式一覧(&Y)
+761E	IDS_FIXMAX	&Max name length		最大名前長(&M)
+;   COMMON (70xx)77xx,7fxx
+77FD	IDB_REF	Re&f	Refer(&F)	参照(&F)
+77FE	IDB_SAVE	&Save		保存(&S)
+77FF	IDB_APPLY	&Apply		適用(&A)
+;   PPc 7800-7bff
+7800	IDD_ATR	Attributes		属性変更
+7801	IDX_ATR_ATR	Attributes(&B)	Attributes(&B)	属性(&B)
+7802	IDX_ATR_C	Create(&1)		作成(&1)
+7803	IDX_ATR_W	Write(&2)		書込(&2)
+7804	IDX_ATR_A	Access(&3)		参照(&3)
+7805	IDS_ATR_CLBL	(&C)
+7806	IDS_ATR_WLBL	(&W)
+7807	IDS_ATR_ALBL	(&Q)
+7808	IDX_ATR_OLD	Old		変更前
+7809	IDX_ATR_NEW	New		変更後
+780A	IDX_ATR_MDIR	&Modify Directory		ディレクトリも対象(&M)
+780B	IDX_ATR_DETAIL	detail(&X)		詳細(&X)
+780C	IDX_ATR_NR	&Readonly		読取専用(&R)
+780D	IDX_ATR_NH	&Hidden		隠し(&H)
+780E	IDX_ATR_NS	&System		システム(&S)
+780F	IDX_ATR_NA	&Archive		アーカイブ(&A)
+7810	IDX_ATR_NP	Compression(&P)	Compression(&P)	圧縮(&P)
+7811	IDX_ATR_NY	&Encryption		暗号化(&Y)
+7812	IDX_ATR_SUBD	subdirectory(&D)		サブディレクトリ内(&D)
+7813	IDX_ATR_NI	&Index		インデックス(&I)
+7814	IDX_ATR_NT	&Temporary		一時(&T)
+7815	IDX_ATR_NO	&Offline		オフライン(&O)
+7817	IDE_ATR_OC
+7818	IDE_ATR_OW
+7819	IDE_ATR_OA
+781A	IDE_ATR_NCD
+781B	IDE_ATR_NWD
+781C	IDE_ATR_NAD
+781D	IDE_ATR_NCT
+781E	IDE_ATR_NWT
+781F	IDE_ATR_NAT
+; ※ 782x は、IDX_ATR_Nx と一対一で使用するので _Ox 以外使用禁止
+7820	IDX_ATR_OR
+7821	IDX_ATR_OH
+7822	IDX_ATR_OS
+7823	IDX_ATR_OA
+7824	IDX_ATR_OP
+7825	IDX_ATR_OY
+7827	IDX_ATR_OI
+;   Disk information 7838-787f
+783d	IDS_DSKI_RUS
+783e	IDS_DSKI_RFS
+783f	IDS_DSKI_RRF
+7840	IDD_DSKI	Drive information		ドライブ情報
+7841	IDS_DSKI_DNS	Drive name		ドライブ名
+7842	IDS_DSKI_VLABEL	Label(&L)		ラベル(&L)
+7843	IDS_DSKI_LDT	Disk type		ドライブ種類
+7844	IDS_DSKI_LSN	Serial number		シリアル番号
+7845	IDS_DSKI_LFS	File system		格納形式
+7846	IDD_DSKI_US	Used space		使用領域
+7847	IDD_DSKI_FS	Free space		空き領域
+7848	IDD_DSKI_RFS	Real free		実際の空き
+7849	IDD_DSKI_TS	Total space		全領域
+784A	IDS_DSKI_LNBS	Bytes/Sector		セクタ長
+784B	IDS_DSKI_LNBC	Bytes/Cluster		クラスタ長
+784C	IDS_DSKI_LMF	Maximum Filename length		ファイル名長
+784D	IDS_DSKI_LBYTE	Bytes		バイト数
+784E	IDS_DSKI_LCLUS	Clusters		クラスタ数
+784F	IDE_DSKI_LOG
+7851	IDS_DSKI_DN				Drive name
+7852	IDE_DSKI_VN				Volume
+7853	IDS_DSKI_DT				Disk type
+7854	IDS_DSKI_SN				Serial#
+7855	IDS_DSKI_FS				File System
+7856	IDS_DSKI_NUS				Used space
+7857	IDS_DSKI_NFS				Free space
+7858	IDS_DSKI_NRF				Free space(real)
+7859	IDS_DSKI_NTS				Total space
+785A	IDS_DSKI_NBS				Bytes/Sec
+785B	IDS_DSKI_NBC				Bytes/Clu
+785C	IDS_DSKI_CUS				Used
+785D	IDS_DSKI_CFS				Free
+785E	IDS_DSKI_CTS				Total
+785F	IDS_DSKI_MF				Max File Length
+7860		Case preserved		大／小文字保存
+7861		Case sensitive		大／小文字区別
+7862		UNICODE		UNICODE形式
+7863		ACLS		セキュリティ
+7864		File compress		ファイル圧縮
+7865		Volume comp.	Volume compression	全体圧縮
+7866		Named streams		名前付ストリーム
+7867		Quotas		クォータ
+7868		Sparse		スパース
+7869		Reparse		リパース
+786A		Remote		リモート
+786B		Object IDS		オブジェクトID
+786C		Encryption		暗号化
+786D		ReadOnly		読取専用
+786E		Seq. write once	Sequential write once	ライトワンス
+786F		Transactions		トランザクション
+7870		Hardlinks		ハードリンク
+7871		Ext.attributes	Extended attributes	拡張属性
+7872		Open by fileID	Open by file ID	ファイルID
+7873		USN Journal		USNジャーナル
+7874		Integrity streams		整合性ストリーム
+7875		Block refcounting		ブロック共有
+7876		Sparse VDL		スパースVDL
+7877		DAX,direct access
+7878		Cleanup result		クリーンアップ通知
+7879		POSIX's unlink		POSIX削除
+787A		Ghosting		ゴーストイメージ
+;   FileMask 7880-78bf
+7880	IDD_MASK
+7881	IDX_MASK_DIR	&Directory Mask		ディレクトリ&D
+7882	IDX_MASK_RTM	Real time Mask(&M)		リアルタイム&M
+7883	IDX_MASK_MODE
+7884	IDB_WILDFORMAT	format(&T)		書式(&T)
+7885	IDX_MASK_WORDMATCH	&Word match		単語単位(部分一致,&W)
+;   FileJump 78c0-78cf
+78C0	IDD_EJUMP	Incremental search		インクリメンタルサーチ
+78C2	IDB_PREV	&Up		↑ &U
+78C3	IDB_NEXT	&Down		↓ &D
+78C4	IDB_MARK	&Mark
+78C5		&Front		前方一致(&F)
+78C6	IDX_ROMAMODE	Roma(&O)		ローマ字 &O
+78C7	IDB_FINDTYPE	Details(&T)		詳細(&T)
+78D0	IDD_CWINDOW	PPc Window setting
+78D1	IDX_CWIN_DBL	&Double Boot		２枚起動(&D)
+78D2	IDX_CWIN_CLO	Double Close(&C)		同時終了(&C)
+78D3	IDX_CWIN_DAC	Double Active(&A)		同時前面(&A)
+78D4	IDG_CWIN_J	&JointWindow(_)	&Joint Window(_)	連結処理(&J)
+78D5	IDX_CWIN_JLR	&Left/Right		左右連結(&L)
+78D6	IDX_CWIN_JUD	&Up/Down		上下連結(&U)
+78D7	IDX_CWIN_JP	&Piled		重ねる(&P)
+78D8	IDX_CWIN_JF	Fix Size(&S)		揃える(&S)
+78D9	IDG_CWIN_F	&Fix Active PPc		前面処理(&F)
+78DA	IDX_CWIN_FP	Size(&Z)		大きさ(&Z)
+78DB	IDX_CWIN_FUD	Size+Position(&O)		大+位置(&O)
+78DC	IDX_CWIN_CMB	Combo(&M)		一体化(&M)
+78E0	IDD_SORT	Sort Detail		ソート詳細
+78E1	IDC_SORT_TYPE1
+78E2	IDX_SORT_CASE	&Case		A/a区別(&C)
+78E3	IDX_SORT_KANA	&Kana		あ/ア区別(&K)
+78E4+1.67	IDX_SORT_SPACE	&Non space		発音区別符号区別(&N)
+78E5	IDX_SORT_SYM	Symbols(&Y)		記号区別(&Y)
+78E6	IDX_SORT_WIDE	&Wide		Ａ/A区別(&W)
+78E7	IDX_SORT_SS	String sort(&T)		区切り区別(&T)
+78E8	IDX_SORT_NUM	Number(&U)		数値順(&U)
+78E9	IDC_SORT_TYPE2
+78EA	IDC_SORT_TYPE3
+78EB	IDC_SORT_TYPE4
+78EC	IDX_SORT_LE	Last Entry(&E)		最後の\以降でソート(&E)
+78ED	IDX_SORT_REV1	Rev.&1	Reverse &1	逆順&1
+78EE	IDX_SORT_REV2	Rev.&2	Reverse &2	逆順&2
+78EF	IDX_SORT_REV3	Rev.&3	Reverse &3	逆順&3
+78F0	IDD_WHERE	Where is file?		ファイル検索
+78F1	IDS_WHERE_SRC	&Source		検索対象(&S)
+78F2	IDE_WHERE_SRC
+78F3	IDS_WHERE_F1	File name(&N)		検索名前(&N)
+78F4	IDE_WHERE_F1
+78F5	IDS_WHERE_F2	&And,Filename		限定名前(&A)
+78F6	IDE_WHERE_F2
+78F7	IDE_WHERE_STR
+78F8	IDE_WHERE_DAY
+78F9	IDE_WHERE_SIZE
+78FA	IDX_WHERE_MARK	Search marks(&M)		選択エントリ限定(&M)
+78FB	IDX_WHERE_DIR	&Have Directory		ディレクトリも対象(&H)
+78FC	IDX_WHERE_SDIR	SubDirectory(&U)		サブディレクトリ内(&U)
+78FD	IDX_WHERE_VFS	&Virtual FS		仮想ディレクトリ(&V)
+78FE	IDS_WHERE_STR
+;   Compare mark 7900-790f
+7900	IDD_CMARK	Compare mark Detail		ファイル比較
+7901	IDC_TYPE
+;   Property General Page 7910-792f
+
+7910	IDD_PROPGENERAL	General		全般
+7911	IDS_ICON
+7912	IDE_FILENAME
+7913	IDE_FILETYPE
+7914	IDE_PASSOC
+7915	IDE_PPATH
+7916	IDE_PSIZE
+7917	IDE_PALLOCSIZE
+7918	IDE_PCREATETIME
+7919	IDE_PMODIFYTIME
+791A	IDE_PACCESSTIME
+791B	IDX_PREADATTR
+791C	IDX_PHIDEATTR
+792A	IDS_PACCESSTIME	Access Time:		アクセス日時:
+792B	IDS_SMODIFYTIME	Modify Time:		更新日時:
+792C	IDS_PCREATETIME	Create Time:		作成日時:
+792D	IDS_PSIZE	Size:		サイズ:
+792E	IDS_PPATH	Path:		場所:
+792F	IDS_FILETYPE	Type:		種類:
+;   PPv 7c00-7cff
+7C00	IDD_PASTETYPE	Select Paste Type		貼り付け形式を選択してください
+7C01	IDL_PT_LIST
+7C08	IDD_PRINTDLG	Print		印刷
+7C09	IDD_MULTIPRINTDLG
+7C0A	IDS_PRINTDLGTXT	Now Printing...		印刷中……
+;   non dialog text
+ACET		\n, and %d application		\n他、%d種
+ADDE		D&&D emulate	Drag and Drop emulate	ドラッグ(エミュレート式)
+ADDH		D&&D hook	Drag and Drop hook	ドラッグ(フック式)
+ADDP		Post files		Post式
+ADDR		Right button D&&D	Right button Drag and Drop	右ボタンドラッグ
+ADHD		This file is using by applications;\n		以下のアプリケーションが使用しています\n
+ADTE		Enter a title		表示名称を入力してください
+AICP		Add check pattern		透明部を格子模様に変更
+ALLI		All		全て
+ANSP		Stop animate		アニメーションを停止しました
+ASRA		Aspect rate		アスペクト比
+ASTL		Add start list		スタートの一覧に登録
+BRAK		Job breaked		中止しました
+BREX		Need regexp library		正規表現ライブラリがありません。bregonig.dll等が必要です
+BRKD		Broken data		データ破損
+BUSY		Busy...		処理中です
+CAOF		Cache : off		キャッシュを使いません
+CAON		Cache : on		キャッシュを使用します
+CCAN		Cancel		キャンセル
+CCMC		All matched		全て一致しました
+CCMP		Compare completed		比較完了しました
+CDAT		&Atr-Time-Name	Attributes - Time - Name(&A)	属性-日時-名前(&A)
+CDCM		Comments(&M)		コメント付(&M)
+CDD1		&Details1		詳細1(&D)
+CDD2		Details2(&4)		詳細2(&4)
+CDFN		Fullname(&N)		名前欄優先(&N)
+CDI1		Icons1(&5)	Icons 1(&5)	アイコン付1(&5)
+CDI2		Icons2(&6)	Icons 2(&6)	アイコン付2(&6)
+CDI3		Icons3(&7)	Icons 3(&7)	アイコン付3(&7)
+CDID		&Icon details		アイコン付詳細(&I)
+CDL1		&List1		一覧1(&L)
+CDL2		List&2		一覧2(&2)
+CDL3		List&3		一覧3(&3)
+CDT1		&Thumbnails1		サムネイル1(&T)
+CDT2		Thumbnails2(&8)		サムネイル2(&8)
+CDT3		Thumbnails3(&9)		サムネイル3(&9)
+CMP1		Same SHA-1(&H)		SHA-1が一致(サブディレクトリ,&H)
+CMP6		Same SHA-1, any name(&J)		SHA-1が一致する任意ファイル名(&J)
+CMP7		Same SHA-1, all sub-entries(&L)		SHA-1が一致、全比較ログ(サブディレクトリ,&L)
+CMPA		Same size && time(&A)		大きさと時刻が同じファイル(&A)
+CMPB		Same Binary(&B)		中身が一致(サブディレクトリ,&B)
+; v reserved text
+CMPC		Same Comment(&W)		コメントが一致(&W)
+CMPD		&Detail...		詳細(&D)...
+CMPE		&Exist file		どちらにも存在するファイル(&E)
+CMPF		&Filename without ext.	&Filename without extention	同ファイル名(拡張子無視,&F)
+CMPG		Same Binary, all sub-entries(&G)		中身が一致、全比較ログ(サブディレクトリ,&G)
+CMPH		Compare Hash to Clipboard(&C)		クリップボード内ハッシュと比較(&C)
+CMPI		file size(no name check, &I)		同じ大きさ、任意ファイル名(&I)
+CMPL		&Large file		大きいファイル(&L)
+CMPM		comment(1window, &M)		同じコメント(1窓内,&M)
+CMPN		new File(&F)		新規又は新しいファイル(&F)
+CMPQ		same size, any name(&Q)		同サイズ、任意ファイル名(&Q)
+CMPS		file Size(&S)		大きさが異なるファイル(&S)
+CMPT		&Time stamp		新しいファイル(&T)
+CMPW		alone file(&O)		孤立ファイル(&O)
+CMPX		Exist(with sub-dir, &X)		どちらにも存在(サブディレクトリ,&X)
+CMPY		Comment, any name(&Y)		同コメントの任意ファイル名(&Y)
+CMPZ		same file size(1 window, &Z)		同じ大きさ(1窓内,&Z)
+COMP		completed.		完了しました
+COMT		comment		コメント
+COSE		split extension(&S)		拡張子を分離判定(&S)
+CPDN		Clip done		エントリをコピーしました
+CPML		Leave Select mode		選択を中止します
+CPMS		Select mode		選択開始します
+CPPN		Clip dir done		ディレクトリ名をコピーしました
+CPTX		Clip		コピーしました
+CRSS		Save setting		選択肢を記憶しました
+CTHE		HookEdit(&E)	Hook &Edit	編集拡張(&E)
+CUTR		Cut ready		切り取りの準備ができました
+DDAB		Add button		ボタンとして登録
+DDAI		Add item to tree		ツリーに登録
+DDAL		Add item to listfile		リストファイルに登録
+DDCM		Can\'t move on		ここに移動できません
+DDCP		&Copy to		ここにコピー(&C)
+DDDP		&Dup on	&Duplicate on	ここに複製(&D)
+DDDT		Detail(&A)		詳細(&A)
+DDET		another type...(&E)		その他の形式で保存...(&E)
+DDJP		&Jump from		該当エントリを表示(&J)
+DDLI		&Shortcut to		ショートカットを作成(&S)
+DDML		Make List file(&L)		リストファイルを作成(&L)
+DDMV		&Move to		ここに移動(&M)
+DDOP		&Open to		これで開く(&O)
+DDSC		&Shortcut on		ショートカットをここに作成(&S)
+DDSW		Swap to(&W)		ここに挿入(&W)
+DDTX		&text		テキストで保存(&T)
+DEFA		default		デフォルト
+DEXT		Delete %s		拡張子「%s」を削除します
+DICD		CD/DVD/BD...		CD/DVD/BD等
+DIFI		Fixed		固定ディスク
+DIRA		Ramdisk		RAMディスク
+DIRE		Remote		リモート
+DIRM		Removable		取り外し可
+DIRS		<dir>
+DREN		directory(&I)		ディレクトリ内へ(&i)
+DSAR		&Asynchronous read		非同期読み込み(&A)
+DSCA		&Cancel		解除(&C)
+DSCV		&Cache view		キャッシュ表示(&C)
+DSEI		Entry icon(&Y)		エントリアイコン(&Y)
+DSFO		&0:Force		&0:窓別強制設定
+DSHO		&0:Default		&0:窓別初期設定
+DSIA		overlay(safety)		オーバレイ(安定重視)
+DSIB		blank		空欄
+DSIF		frame		枠のみ
+DSIH		overlay(no cache)		オーバレイ(キャッシュ無)
+DSII		info. setting	information setting	情報行指定を利用
+DSIL		&Info. line icon	information line icon	情報行アイコン(&I)
+DSIN		normal		通常
+DSIO		with overlay		オーバレイ有
+DSIS		simple		簡易
+DSIT		through		既定指定
+DSIW		no show		無し
+DSMA		Magnify thumbnail		サムネイルを大きく
+DSMI		Minify thumbnail		サムネイルを小さく
+DSSD		-save cache to Disk(&D)		-キャッシュをディスクに保存(&D)
+DSSE		-save cache Every time(&E)		-キャッシュを常に更新(&E)
+DSSM		&Slow mode		低速モード(&S)
+DSTA		&4:Archive		&4:書庫
+DSTD		&5:Directory mode		&5:階層表示
+DSTE		&3:Temporality		&3:一時設定
+DSTF		&4:Listfile		&4:リストファイル
+DSTL		&2:This path and subdir		&2:このパス以降
+DSTP		&1:This path		&1:このパス限定
+DSTS		&6:Path separate		&6:ファイル名のみ表示
+DSWM		&Watch modified		更新監視(&W)
+; error messages
+EACO		Already counting		算出中のためできません
+EBDK		%s is bad key name		%s は正しいキーではありません
+EBPC		bad *pane command : %s		*pane %s はありません
+EBRK		Braket error		「{」が見つかりません
+EBRV		Require Windows Vista or later.		XP以前では機能しません
+EBSG		%s is bad signature		%sの署名が異常です
+EBWA		Bad wildcard attributes
+EBWS		Bad filesystem		ここには書き込めません
+EC32		comdlg32.dll load error		comdlg32.dllが読込めません
+ECAL		Calculation error: %s		数式が誤っています: %s
+ECCF		Settings are not allowed except color/font.		色とフォント以外の設定はできません
+ECDR		Can\'t unpack		展開できません
+ECFD		'Full' can't multi use.		「～一杯に表示」指定は、１つしか使用できません。
+ECFL		Customize area flow		カスタマイズ領域が不足しています
+ECHF		Check report fault log.		失敗しました。\nコンソールに詳細が出力されています。
+ECME		ContextMenu Error		コンテキストメニューのエラー
+ECPL		frame read error		フレーム読み込みに失敗
+ECPR		Can't change page with rotation.		回転中はページ切り替えできません
+ECPS		this frame is not full support		このフレームの表示は対応していません
+ECUD		Can\'t execute undo.		元に戻せませんでした。
+EDAD		D&D faulture		D&Dに失敗しました
+EDAL		Select All(&A)		すべて選択(&A)
+EDBL		&Block mode		範囲指定(&B)
+EDCA		Cancel(&N)		キャンセル(&N)
+EDCP		&Copy		コピー(&C)
+EDCU		Cut(&T)		切り取り(&T)
+EDDL		Delete F.O. error :%s	Delete operation error :%s	%sの遅延削除に失敗しました
+EDEC		&encode		エンコード(&E)
+EDEL		Can not delete		削除できません
+EDET		&types		表示形式(&T)
+EDIT		Edit		編集
+EDPA		&Paste		貼り付け(&P)
+EDTD		Temporary directory delete faulture		作業ディレクトリの削除に失敗しました
+EECR		Item '%s' not find in %s		項目 %s が種別 %s のメニューにありません
+EEFT		Can't execute %s		%sは実行できません
+EENF		Entry not found		該当無し
+EENM		e number error		e コマンドで数値が範囲外です
+EFAL		faulture		失敗しました
+EFLW		Buffer flow		内容が大きすぎて保存できません
+EFUT		function: missing ')'.		関数の')'が見つかりません
+EHKY		Hot key(%s) register error		%s がホットキー登録できません
+EIFC		%%F not support: %c		%%F は %c が使えません
+EKCD		Key error		漢字が入力されました
+EKFT		Key code error		キー名称が間違っています
+EKNF		Keyword not found		キーワードが見つかりません
+ELST		Erase from list(&L)		リストから消去(&L)
+ELTA		Taget list make error		処理一覧の作成に失敗
+EMDI		Error (Require without file divide mode)		分割モードを解除してください
+EMEU		Menu '%s' create error		メニュー '%s' が作成できません
+EMUT		%%*%s missing ')'.		%%*%sの')'が見つかりません
+ENFF		Not found %s		%s が見つかりません
+ENFT		Not found target		対象が見つかりません
+ENFU		Not found %%*%s		%%*%s が見つかりません
+ENOM		Not enough memories		メモリ不足です
+ENSO		Not support		このＯＳでは使用できません
+ENSP		Separetor \'%c\' not found		区切り文字「%c」が見つかりません
+ENUD		%s is not UnXXX		%sは有効なUnXXXではありません
+EOEC		Can't register more PPc.		これ以上登録できません
+EOFI		open file error		開けません
+EOLT		Size too long.		大きさ制限を超えているため使用できません
+EPBY		Use PPb error(%s)		PPbが使えません(%s)
+EPRM		Parameter error		パラメータが間違っています
+EPTH		Path Error		入力パスが正しくありません
+EREG		Regular expression error : %s		正規表現エラーです : %s
+ESCT		Short cut error		ショートカットのエラーです
+ESEP		Separator not found		区切り文字が見つかりません
+ESHO		Can't access to now open archive.		書庫が使用中のためアクセスできません
+ETMW		Too many format character 'W'/'w'		w/W 指定は１つのみです
+EUFM		Unknown format		未定義の書式です
+EUKW		Unknown keyword		未定義のキーワードです
+EUOP		Unknown option: %s		オプション %s はありません
+EUXC		Unknown command: *%s		コマンド *%s はありません
+EVFA		Download file is wrong.		ダウンロードファイルが異常です
+EWFT		W format error		Wコマンドの指定が間違っています
+EWLD		wildcard error		ワイルドカードの指定が誤っています
+EWLG		wildcard too long		ワイルドカードが長すぎます
+EWNF		Can\'t support on NTFS		NTFS では書込みできません
+EWRT		Error writing		書き込みに失敗しました
+EWUS		Use unsupport attributes on this matching		ここで使用できないワイルドカード指定が使われています
+EXEF		execute...		開始…
+EXEX		file exists		存在
+EXIT		Exit(&X)		終了(&X)
+EXNF		New creates		新規
+EXNW		New file exists		新存在
+EXOL		Old file exists		古存在
+
+FBAC		Action(I):		設定(&I):
+FBAK		Backup fault.		旧カスタマイズ内容の保存に失敗しました\nPPeに内容を転送しましたので改めて保存してください
+FBDW		PPb critical error		PPbのキー入力ができなくなりました。強制終了します。
+FDLW		PPx system table is broken %04X		PPx管理情報が破損 %04x
+FEWE		Found file seems extracting in the wrong place		意図しない場所に展開される恐れがあるエントリがあります
+FEXP		Explorer Folder		エクスプローラ フォルダ
+FIXE		This file seems type is %s and %s.\nThis file extension is not necessary to modify.		ファイルの種類は「%s」\n拡張子は「%s」です。変更は不要です。
+FIXH		PPffix check extension type, when dropped on this icon.		PPffixのアイコンにファイルをドロップすると拡張子がおかしいファイルの修復を試みることができます。
+FIXM		This file seems type is %s and %s.\nModify file extension?		ファイルの種類は「%s」\n拡張子は「%s」です。拡張子を変更しますか？
+FIXU		File type is unknown.		ファイルの種類がわかりません
+FLAC		all completed		全て完了
+FLCA		Cancelled		中止
+FLER		errors		エラー数
+FLEX		existed		未上書数
+FLLS		skipped		無視数
+FLNO		No operate		処理なし
+FLOD		<loading>		<読込中>
+FLPC		partially completed		未処理有
+FLTC		No exist		問題なし
+FLTE		Exist		同名有
+FMYF		Drive list		ドライブ一覧
+FNET		Network PC		ネットワーク
+FOCA		Cancel
+FOCL		Close		閉じる
+FOCO		Continue		続行
+FOCP		Pause		一時停止
+FOCS		Skip		計数省略
+FOFC		FC(&C)	Compare(&C)	比較(&C)
+FOOK		OK
+FOST		Start		開始
+FUPD		Directory not found, and move parent directory		指定されたパスが見つからないので上位ディレクトリに移動しました
+FUPR		Directory not found, and move root directory		指定されたパスが見つからないのでルートに移動しました
+GDAH		Zoom frame height		高さを枠に合わせる
+GDAI		Auto zoom		自動縮小
+GDAR		Auto Frame size		枠調整+自動縮小
+GDAW		Zoom frame width		幅を枠に合わせる
+GDFI		Zoom in frame		枠サイズに拡縮
+GDFR		Frame size		枠調整(等倍)
+GSIG		Signature is good.		正しい署名を確認しました
+HDRA		Attributes		属性
+HDRC		Date Created		作成日時
+HDRD		Date		日時
+HDRE		Date Accessed		アクセス日時
+HDRN		Name		名前
+HDRS		Size		サイズ
+HELP		help		ヘルプ
+HIST		histories		ヒストリ
+HPDN		Http Done.		Web 複写が終わりました
+IANI		Animate : [P]		[P]でアニメーション可能です
+IDIR		&Directory		ディレクトリ(&D)
+IDIV		Divide page mode([<][>], All read:[/])		部分表示中 (全読込モード:[/])
+IFCN		File counting...		総数算出中……
+IGAN		Animate(&M)		アニメーション(&M)
+IGNP		&Next page		次のページ(&N)
+IGPP		&Prev page		前のページ(&P)
+IICC		Include color profile		カラープロファイルがあります
+ILFI		&List File		リストファイル(&L)
+IMAB		C&ancel	Cancel(&A)	キャンセル(&A)
+IMCA		Ca&ncel	Cancel(&N)	キャンセル(&N)
+IMIG		&Igonre		無視(&I)
+IMNO		&No		いいえ(&N)
+IMOK		OK
+IMRE		&Retry		再試行(&R)
+IMSK		Skip(&I)		スキップ(&I)
+IMST		Start(&Y)		即開始(&Y)
+IMTC		&Cancel		キャンセル(&C)
+IMYE		&Yes		はい(&Y)
+IMYK		OK(&Y)
+IPAG		multi page		ページ切替できます
+ISEA		Incremental search mode		インクリメンタルサーチモードに移行します
+ITCK		&Keep highlight after closing		ハイライトを残す(&K)
+ITCM+1.74		Comment(&C)		コメント(&C)
+ITFE+1.74		name ext.(&E)	name extention(&E)	拡張子(&E)
+ITFN+1.74		Filename(&N)		ファイル名(&N)
+ITHA+1.77		Highlight all(&G)		全てハイライト(&G)
+ITHL		Highlight(&H)		ハイライト(&H)
+ITIP+1.89		Include path(&P)		パス全体対象(&P)
+ITMA		Mark all(&A)		全てマーク(&A)
+ITMO		Check Mark(&M)		マーク(&M)
+ITSH		Highlight match entry(&L)		ハイライト表示(&L)
+JLER		ERROR>		エラー>
+JLEX		exec>	execute>	実行中>
+JLPA		pause>		一時停止>
+JLWA		wait>		待機中>
+JMAE		Extract		展開
+JMAL		All		全て選択
+JMAP		Archive		書庫
+JMAT		Attributes		属性
+JMCL		Clip		コピー
+JMCO		Compare		比較
+JMCP		Copy		複写
+JMCR		Clear		全て削除
+JMCS		Size Count		算出
+JMCU		Cut		切り取り
+JMDE		Delete		削除
+JMJO		Job		処理
+JMLI		Link/Junction		リンク,ジャンクション
+JMMO		Move		移動
+JMMR		Mirror		ミラーリング
+JMPA		Paste		貼り付け
+JMPR		Properties		プロパティ
+JMPS		Paste Shortcut		ショートカットの貼り付け
+JMPV		Preview		プレビュー
+JMRE		Rename		名前
+JMRU		Execute		実行
+JMSH		Shortcut		ショートカット
+JMSL		Symlink		シンボリックリンク
+JMTE		Text Edit		テキスト編集
+JMUN		Undo		元に戻す
+JNCL		&CLSID		仮想フォルダ(&C)
+JNHL		hard links(&H)	ハードリンク一覧(&H)
+JNJL		&link		リンク先(&L)
+JNRP		Realize path(&A)		パスを実体化(&A)
+JNSH		&shortcut		ショートカット先(&S)
+JNST		stream(&T)		ストリーム一覧(&T)
+JPCL		CLSID(pair window, &I)		反対窓を仮想フォルダに(&I)
+JPDI		show pair window(&P)		反対窓でここを表示(&P)
+JPHL		hard links(pair window, &P)	反対窓でハードリンク一覧(&P)
+JPJL		link(pair window, &R)		反対窓をリンク先に(&R)
+JPLN		Jump link		リンク先に移動しました
+JPSH		shortcut(pair window, &P)		反対窓をショートカット先に(&P)
+JPST		stream(pair window, &W)		反対窓をストリーム一覧に(&W)
+JWOF		Join window: off		窓の連結が無効です
+JWON		Join window: on		窓の連結が有効です
+KWAT		\nPress any key to continue.		\nキーを押すと続行します...
+LCOK		no error.		設定完了。
+LDAD		address		アドレス
+LDDR		drives		ドライブ一覧
+LDIN		input		入力
+LDOL		Lock		ロック
+LDOS		Separator		区切り表示
+LDSI		XC_inf		情報行
+LDST		XC_stat		ステータス行
+LERE		Erased Entry from list.		リストから消去しました
+LGAP		Append		追加
+LGCR		Create		作成
+LGDE		Delete		削除
+LGER		Error		エラー
+LGOW		Overwrite		上書き
+LGWA		Warning		警告
+LHIL		Highlight		ハイライト
+LHIO		Highlight off		ハイライト解除
+LMAK		Mark		マーク
+LOAD		loading		読み込み中...
+LRMA		Reverse mark		マーク反転
+LUMA		Unmark		マーク解除
+LYCA		Pane title(&C)		ペインタイトル(&C)
+LYCI		Common Information line(&N)		共用情報行(&N)
+LYDB		Dock Bottom(&B)		下部ドック(&B)
+LYDT		&Dock Top		上部ドック(&D)
+LYHA		&Header		カラムヘッダ(&H)
+LYHL		horizontal layout(&Z)		横並び配列(&Z)
+LYIL		&Information line		情報行(&I)
+LYJL		&Job list		処理中一覧(&J)
+LYLG		Log(&G)		ログ(&G)
+LYME		&Menu bar		メニューバー(&M)
+LYOT		Others(&X)		その他(&X)
+LYSA		Standerd address bar(&A)		標準アドレスバー(&A)
+LYSC		Scroll bar(&O)		スクロールバー(&O)
+LYSL		&Status line		ステータス行(&S)
+LYSS		Swap scroll bar(&P)		スクロールバー位置変更(&P)
+LYST		Standerd Toolbar(&T)		標準ツールバー(&T)
+LYTI		Title bar(&L)		タイトルバー(&L)
+LYTL		Touch layout(&Y)		タッチ用レイアウト(&Y)
+LYTR		Tree(&R)		ツリー(&R)
+LYUS		&Unique settings for each combo window		一体化窓別の設定保存(&U)
+LYWM		&Window...		窓オプション(&W)...
+MBCP		Clip message text		メッセージをコピーする
+MCOP		&open		開く(&O)
+MCPL		&play		再生(&P)
+MCPR		&print		印刷(&P)
+MCRC		Edit common menu(&C)		共通メニューの編集(&C)
+MCRD		Set default select(&D)		デフォルトで選択する(&D)
+MCRE		Set default command(&E)		デフォルトでこの項目を実行(&E)
+MCRK		Run as(&A)		別のユーザとして実行(&A)
+MCRV		Run as administrator(&A)		管理者として実行(&A)
+MCRX		Edit filename-extention menu(&X)		拡張子別メニューの編集(&X)
+MDLC		With shift : Delete		shift同時押しで削除
+MEAD		&Add Item		項目追加(&A)
+MEDE		&Delete Item		項目削除(&D)
+MEDL		&Duplicate line		行を複製(&D)
+MEDM		original menu		元の編集メニュー
+MEDT		&Edit Menu		メニュー編集(&E)
+MEED		edit menu(&T)		編集メニュー(&T)
+MEFI		file menu(&M)		ファイルメニュー(&M)
+MEFS		Insert find str(&I)		検索文字列を挿入(&I)
+MEMD		&Modify Item		項目内容の修正(&M)
+MERE		&Rename Item name		項目名の変更(&R)
+MERO		Read only(&V)		書き込み禁止(&V)
+MERS		Regexp serach(&X)		正規表現検索(&X)
+MEST		settings menu		設定メニュー
+MEWW		&Word wrap		画面右で折り返し(&W)
+MGNR		&General		一般(&G)
+MIGE		Need MIGEMO.DLL		MIGEMO.DLL が必要です
+MSAV		Save setting		設定保存
+MSCL		close button		[閉じる]ボタン
+MSEN		entry area		エントリ
+MSFR		window frame		窓枠
+MSHA		Column header		カラムヘッダ
+MSHM		Hidden menu		隠しメニュー
+MSIC		icon area		アイコン表示
+MSIF		information lines		情報行
+MSLI		status line		ステータス行
+MSMA		make symbol		マーク
+MSME		menu bar		メニュー
+MSMI		minimize button		最小化ボタン
+MSPA		path bar		パス表示行
+MSSC		scroll bar		スクロールバー
+MSSP		blank area		空欄
+MSSY		window icon		窓枠アイコン
+MSTA		entry tail		エントリ末尾
+MSTB		tab button		タブボタン
+MSTI		title bar		タイトルバー
+MSTS		tab space		タブ空欄
+MSZO		maximize button		最大化ボタン
+MTCL		Close Tree(&X)		ツリーを閉じる(&X)
+MTDL		Drive		ドライブ変更
+MTDR		use Rename Dialog(&D)		名前変更はダイアログを使う(&D)
+MTDS		Dir. Settings	Directory Settings	ディレクトリ設定
+MTED		Eject		取り外し
+MTFA		Favorites(&A)		お気に入り(&A)
+MTFO		Folder tree(T)		フォルダツリー(&T)
+MTFP		&Focus PPc		PPc選択(&F)
+MTMI		Simple icon(&M)		アイコンを簡易表示(&M)
+MTNF		&Create folder		フォルダを作成(&C)
+MTNU		Create User tree(&U)		新規ユーザ定義ツリー(&U)
+MTNW		New		新規作成
+MTOL		icon overlay(&O)		アイコンオーバレイを表示(&O)
+MTPL+1.65		&PPc list		&PPcパス
+MTRL		&Reload		最新の情報に更新(&R)
+MTRS		Run as self		このユーザとして実行
+MTRT		Reload		最新の情報に更新
+MTSB		Show tool bar(&B)		ツールバーを表示(&B)
+MTSC		Shell Context		シェルメニュー
+MTSH		Show proteced folder(&H)		保護されたフォルダを表示(&H)
+MTSI		&Show icon		アイコンを表示(&S)
+MTSL		&Line		線を表示(&L)
+MTSN		Single Node(&N)		不要フォルダを畳む(&N)
+MTSO		Sort		並べ替え
+MTSS		Sync-select(&Y)		選択同期表示(&Y)
+MTST		&Settings		設定(&S)
+MTUE		Customize User list(&M)		ユーザ定義一覧の編集(&M)
+MTVF		View		表示
+MWOP		Wait		順番待ち中
+NEWD		Enter new disk		新しいディスクと入れ換えてください
+NEWF		(new file)		(新規)
+NEWI		new		新規
+NITX		&Text File\t.txt		テキストファイル(&T)\t.txt
+NOEL		no match any file		該当するものがありません
+NOIC		Setup is not completed. It is better to execute a SETUP.EXE.		SETUP.EXEを使っていないので設定が一般向きではありません
+NOMF		Disable show memo		情報表示を無効にしました
+NOMI		No more information		他の情報は有りません
+NOMN		Show memo		情報表示を有効にしました
+NOTX		String not found.		文字列が見つかりません
+NRGU		Width change: drag status, [, ], {, }		幅変更は ステータスドラッグ、[、]、{、}
+NWDN		tempdir		tempdir
+NWFN		tempfile		tempfile
+OPSA		Open selected Address(&A)		選択したアドレスで開く(&A)
+OWDT		Directory types(&Y)		移動形式(&Y)
+OWIT		Send to(&N)		送る・プログラム(&N)
+PACE		add extention		拡張子を付加
+PACI		individual archive		ファイル毎に１つの書庫
+PACO		other		その他
+PACT		Archive type		書庫の種類
+PJAD		Add path		現在のディレクトリを登録
+PJCP		ControlPanel		コントロールパネル
+PJDE		Desktop		デスクトップ
+PJDL		DriveList		ドライブ一覧
+PJMD		MyDocuments		マイドキュメント
+PJRB		Recycled bin		ごみ箱
+; query messages
+QABO		Break job?		作業を中止しますか？
+QBAK		Backup path?		何処に保存しますか？
+QCOM		Continue action With marked entry off screen?		画面外にマークがありますが、続行しますか？
+QCRD		Create new directory?		ディレクトリを作成しますか？
+QDAC		Delete action?		この設定を削除しますか？
+QDDL		Delete Delayed list?		遅延処理リストを消去しますか？
+QDDO		Start delayed list task?		遅延処理リストに登録されたファイル等があります。処理しますか？
+QDFA		Delete file of special attributes?		読み取り専用などの属性が付いています。削除しますか？
+QDKM		Delete key setting?		キー割当てを削除しますか？
+QDL1		delete?		を\n削除しますか？
+QDL2		,,,\n		の他\n
+QDL3		entries delete?\n		エントリを削除しますか？
+QDL4		erase form tree?		を\nツリーから消去しますか？
+QDRC		Yes\tDuplicate reparse point\nNo\tCopy files		ジャンクション/シンボリックリンクです。リンクを再現しますか？\nはい\tリンクの再現をする\nいいえ\tリンク元をコピー・移動
+QDRD		Move to recycle bin?		ごみ箱に入れますか？
+QDRP		Yes\tDelete reparse point\nNo\tDelete reparse point  & files		ジャンクション/シンボリックリンクです。解除しますか？\nはい\t解除のみ行う\nいいえ\tリンク先含めて削除
+QEFD		%s\nexisted, delete?	%s\n existed, delete?	%s\nにファイルが存在します。削除しますか？
+QETF		Extract file to temporary path?		一時的に展開しますか？
+QEWE		This file seems extracting in the wrong place. Extract?		意図しない場所に展開される恐れがあるエントリがあります。\n展開しますか？
+QICU		Initialize customize, ok?		カスタマイズ内容を初期化します。よろしいですか？
+QIHI		Initialize history, ok?		ヒストリ内容を初期化します。よろしいですか？
+QISD		%s is drive name?\nYes\tdrive name\nNo\tdirectory name\n		%s はドライブ名ですか？\nはい\tドライブ名\nいいえ\tディレクトリ名
+QMCF		Create comments file?		コメントファイルを作成しますか？
+QOSL		File size too large. Read file image partially?		ファイルが大きすぎます。ファイルの読み込みを一部のみにしますか？
+QPPC		Quit PPc?		PPcを終了しますか？
+QPPV		Quit PPv?		PPvを終了しますか？
+QRCC		Register PPc to context menu?		フォルダのコンテキストメニューにPPcを登録しますか？※レジストリに書き込みます。\n※Windows95,98,Me,NT,2000はごみ箱等の特殊フォルダでは使えません。
+QRLA		Remove this language?		この言語を削除しますか？
+QRLT		Reload text file?		テキストを再読み込みしますか？
+QSAM		Over write ok?		同名ファイルがあります。上書きしますか？
+QSAN		Found %d same name files. Select processing method.		%d個の同名ファイルがあります。どのように対処しますか？
+QSAO		Found same name file. Select processing method.		同名ファイルがあります。どのように対処しますか？
+QSAV		Save edited data?		編集内容を保存しますか？
+QSDP		Setting as dest path of pair windows?		処理先を反対窓のディレクトリとして設定しますか？
+QSIZ		Need PPx's shutdown, ok?		PPxを終了させる必要があります、よろしいですか？
+QSP2		This drive seems need to divide by 2G bytes. Divide file?		空き容量がありますが、2G以上のファイルは分割しないと保存できません。\n分割保存しますか？
+QSPT		No free space. Divide file?		書き込み先の空き容量が不足しています。\n分割しますか？\n\n※ディスクはまだ抜かないでください
+QSPW		Seems no free space. Divide file?		書き込み先の空き容量が不足している可能性があります。\n続行しますか？(続行すると分割処理を行います)
+QSUD		Start undo?		この作業を元に戻しますか？
+QSXS		Waiting synchronizing...		PPx間の同期待ちに10秒以上かかっています。\n再試行して更に10秒待って見ますか？\n※中止すると不安定になる可能性があります
+QTWP+1.79		Connect TORO's Library?		TORO's Libraryに\n接続します。よろしいですか？
+QUPD		Update customize?\n\nYes\tBackup & update\nNo\tUpdate without backup\nCancel\tNo update\n		カスタマイズ内容が古いため、アップデートを行います\n旧カスタマイズ内容を保存しますか？\n\nはい　　　\t保存してアップデート\nいいえ　　\t保存せずにアップデート\nキャンセル\tアップデートしない
+QUSV		Write using viewer application		使用するビューアプログラムをフルパスで入れて下さい
+QWRD		Order write?		書き換えを始めますか？
+REGP		Select and Regist program		プログラムを選択＆登録
+RKAL		Key command reentry error.		キー割当ての再帰エラーです。自分自身を再度実行している恐れがあります。
+RRPC		Require restart PPc		設定はPPcを再起動すると有効になります
+RTPC		Require restart PPc, soon		タブの動作設定が変更されたため、すぐにPPcを終了させてください。\n終了するまでは直前の設定を使用します。\n次回の起動時にはタブ並びが初期化されます。
+SACO		Size count... [PAUSE]:Break		大きさを算出しています、[PAUSE]で中止します
+SAUT		Auto		自動
+SAVE		Save		保存
+SAVP		Save position		表示位置を記憶しました
+SCMP		Start Compare		比較中...
+SDPF		Set dump file		書き出し先を指定してください
+SHCM		&ShellContext	&Shell Context menu	シェルメニュー(&S)
+SIOF		Sync Information:Off		連動情報表示が無効です
+SION		Sync Information:On		連動情報表示が有効です
+SJLN		Jump to line...(&J)		行へ移動...(&J)
+SJTE		End of text(&C)		テキスト末尾(&C)
+SJTT		Top of text(&R)		テキスト先頭(&R)
+SJWE		End of window(&X)		画面下端(&X)
+SJWT		Top of window(&E)		画面上端(&E)
+SLMD		Enter slow mode		低速モードです
+SNAN		(add number)		(番号付与)
+SNAP		(append)		(追記)
+SNBK		(backup)		(バックアップ)
+SNCN		(change name)		(名前変更)
+SNCP		(copy)		(複写)
+SNDE		(delete)		(削除)
+SNKP		(keep)		(維持)
+SNLN		(link)		(リンク)
+SNMV		(move)		(移動)
+SNOW		(overwrite)		(上書き)
+SNRE		(restore)		(リストア)
+SNSK		(skip)		(スキップ)
+SORG+1.47			F:no effect	F 無効
+SPOF		Sync properties : off		連動プロパティが無効です
+SPON		Sync properties : on		連動プロパティが有効です
+SPPF		Sync path : off		パス連動が無効です
+SPPN		Sync path : on		パス連動が有効です
+SRTA			A: Access time	A 参照日付順
+SRTC			C: Create time	C 作成日付順
+SRTD+1.47			D Directory	D ディレクトリ優先
+SRTE			E: Extention	E 拡張子順
+SRTH			H: Changed	H 変更順
+SRTI			I: Numbers name	I 名前(数値順)
+SRTM			M: Marked	M 選択順
+SRTN			N: Name	N 名前順
+SRTO			O: Comment	O コメント順
+SRTP			P: Plain	P 読み込み順
+SRTR			R: Attributes	R 属性順
+SRTS			S: file Size	S 大きさ順
+SRTT			T: Time stamp	T 更新日付順
+SRTX			X: Extention color	X 拡張子色順
+SSRP		Input program path(%s)		使用するプログラムを入力してください(登録先:%s)
+SSRT		sorting...		ソート中...
+STAC			G: Ascending	G 昇順
+STDE			I: Descending	I 降順
+STaR			a:R) Access time	a 参照日付逆順
+STcR			c:R) Create time	c 作成日付逆順
+STdR+1.47			D file	d ファイル優先
+STeR			e:R) Extention	e 拡張子逆順
+SThR			h:R) Changed	h 変更逆順
+STmR			m:R) Marked	m 選択逆順
+STnR			n:R) Name	n 名前逆順
+SToR			o:R) Comment	o コメント逆順
+STsR			s:R) file Size	s 大きさ逆順
+STtR			t:R)Time stamp	t 更新日付逆順
+STxR			x:R) Extention color	x 拡張子色逆順
+SVOF		SyncView : off	Sync View : off	連動ビューが無効です
+SVON		SyncView : on	Sync View : on	連動ビューが有効です
+SWCA		Word case transfer		大-小文字変換
+SWCZ		Zen/han transfer(&Z)		全-半角変換(&Z)
+SWPD		move window to desktop		窓を画面内に移動
+TABB		swap tab(&B)		タブを入れ替える(&B)
+TABC		&Close		閉じる(&C)
+TABD		&Default Color		色なし(&D)
+TABE		&Eject		独立窓にする(&E)
+TABH+1.98		close pane(&H)		ペインを閉じる(&H)
+TABI+1.92		Save tab width(&V)		タブ幅記憶(&V)
+TABK		select tab by key(&K)		タブをキーで選択(&K)
+TABL		&Lock		ロック(&L)
+TABN		&New tab		新規タブ(&N)
+TABP		new Pane(&P)		新規ペイン(&P)
+TABR		color(&O)		色設定(&O)
+TABS		closed PPc(&S)		閉じたPPc(&S)
+TABW		swap pane(&W)		ペインを入れ替える(&W)
+TACG		new group(&G)		新規グループ(&G)
+TACL		close left(&F)		左を全て閉じる(&F)
+TACM		rename group(&M)		グループ名(&M)
+TACP		close pane(&A)		ペインを閉じる(&A)
+TACR		close Right(&R)		右を全て閉じる(&R)
+TACT		show selector(&T)		グループ選択タブ(&T)
+TACU		show all group(&U)		全グループ表示(&U)
+TACV		close group(&Q)		グループを閉じる(&Q)
+TAPN		Append Filename		追加保存
+TASR		Aspect rate(X ppi x Y ppi)		アスペクト比(X ppi x Y ppi)
+TATR		Attribute		エントリ属性
+TC22		SHA-224(&2)		SHA-2&24値の算出
+TC25		SHA-256(&5)		SHA-2&56値の算出
+TC32		&CRC32		&CRC32値の算出
+TCFC		File type(&T)		ファイル種別の判別(&T)
+TCHL		&Hard links		ハードリンク数(&H)
+TCHP		Unpack(http)		Webの複写
+TCIT		Info Tip text(&P)		インフォチップの内容(&P)
+TCLE		Column Ext(T)	Column Extention(&T)	カラム拡張(&T)
+TCLP		Linked path(&K)		リンク先(&K)
+TCLR		Clear(&L)		消去(&L)
+TCM5		&MD5		&MD5値の算出
+TCME		&Edit comment		コメントの編集(&E)
+TCMT		Comment(&T)		コメント&T
+TCOW		&Owner		所有者の取得(&O)
+TCS1		&SHA-1		&SHA-1値の算出
+TDAD		D&D Window List	DnD Window List	D&D 対象一覧
+TDEL		Delete		エントリ削除
+TDFO		Delayed file operation		遅延処理
+TDUP		Dup		ファイル複製
+TEDJ		Enter editor\'s line locate option		Editerの行ジャンプオプションを入れて下さい(無い時は空欄)
+TEHC		Highlight (%s)		ハイライト (拡張子:%s)
+TEIF		Entry information		エントリ情報
+TENN		Enter new name		新しい名前を指定してください
+TEXE		Execute		ファイル名を指定して実行
+TFAC		PPc file action		PPc エントリ操作
+TFCP		Compare		ファイル比較
+TFEM		Find mask		エントリマスク
+TFMK		FindMark	Find Mark	特定の名前を選択
+TFNX		Find next		次を検索
+TFPV		Find previous		前を検索
+TFUM		FindUnmark	Find Unmark	特定の名前を選択解除
+THIL		Highlight words		ハイライト単語
+TINS		Input new menu item name		メニュー表示名を入れてください
+TISD		Path fix		パス補完
+TLDS		Logdisk		パス変更
+TLNO+1.92		Jump line number		移動する行番号
+TMCD		Disable checkered of transparent		透明部格子柄を無効
+TMCE		Enable checkered of transparent		透明部を格子柄表示
+TMCF		Create comments file		コメントファイル作成
+TMHL		Hard link		ハードリンクの設定
+TMKD		maKe directory	make directory	ディレクトリ作成
+TMKF		maKe file	make file	ファイル作成
+TOCH		enter touch mode		タッチモード
+TPAC		Pack file:		書庫作成:
+TPCL		PPc log		PPC ログ
+TPST		margin(mm) left, top, right, bottom,  Image-DPI(-1:one Page, -2:Fill width, -3:Fill height)		余白(mm) 左, 上, 右, 下,  解像度(DPI, -1:1ページ -2:用紙幅に揃える -3:用紙高に揃える)
+TPTX		Plain text(&T)		ファイル内&T
+TRDE		Read entry		エントリ読込み
+TREC		Continuous rename		連続名前変更
+TREN		Rename		名前変更
+TRER		Show reference		元の名前を表示
+TSAN		Save action name		設定名を入力してください
+TSCP		Select text code page		文字コードの種類を指定して下さい
+TSDR		Select directory		ディレクトリを指定して下さい
+TSEI		Sync Entry information		連動エントリ情報
+TSFN		Select file		ファイル選択
+TSHL		sHell		ファイル名を指定して実行
+TSMD		Module(&T)		検索モジュール&T
+TSVN		Save Filename		保存
+TTAB		TAB SIZE		タブ幅変更
+TTRE		Tree		ツリー表示
+TTWP		Jump web site		インターネット接続の確認
+TUPA		Unpack archive		書庫の展開
+TVTC		columns(0:no warp, -1:fit window)		桁数(0:折り返しなし, -1:窓幅)
+TVTR		image width		画像の幅
+TWRD		Write entry order		エントリ順の書き換え
+TXAT		All text		全体
+TXSL		Selected lines		選択行
+UCMD		:Unknown command		未定義コマンドです
+UDED		Update entry data(&.)		エントリ情報更新(&.)
+UNKN		Unknown		不明
+UPED+1.53		Updated %s		%sにバージョンアップしました。\nカスタマイズ内容を確認ください。
+USTD		Action is unsupported this directory		このディレクトリではまだ対応していません
+;   PPcust 関係
+VBAB		&Add button bitmap		ボタン画像追加(&A)
+VBCD		[btn. text/]tip name	[button text/]tip name	[ボタンテキスト/]項目名
+VBCL		x_xxx
+VBCR		extention		ext
+VBDB		Default button List(&L)		初期ボタン列画像(&L)
+VBEI		extention / wildcard		拡張子/ワイルドカード
+VBFI		Word or X_xxx		説明文 or X_xxx
+VBMA		key name		キー割当て
+VBPJ		item name		表示項目
+VBRB		&Reference of buttons list bitmap: %s		ボタン列画像ファイル(&R): %s
+VBRK		(blank)		(未設定)
+VCAU		auto		自動
+VCBA		item text		項目文字
+VCBB		item back		項目背景
+VCBC		caption		(未使用)タイトル
+VCBD		caption back		(未使用)タイトル背景
+VCBE		PPb edit line		PPb 編集時
+VCBF		frame text		枠の色
+VCBG		frame back		枠の背景
+VCBH		directory text		ディレクトリ文字
+VCBI		directory back		ディレクトリ背景
+VCBK		back ground		背景
+VCBO		PPb popup		PPb 一覧・メニュー
+VCBP		PPb palettes(Vista console host)		PPb 色パレット(Vista以降 console host)
+VCBR		PPb execute log		PPb 実行時
+VCBS		edit text		編集文字
+VCBT		edit back		編集背景
+VCBU		selected text		選択文字
+VCBV		selected back		選択背景
+VCBW		log text		参照文字
+VCBX		log back		参照背景
+VCBY		log selected text		参照選択文字
+VCBZ		log selected back		参照選択背景
+VCCA		caption, tab		ペインタイトル・タブ
+VCCC		PPv control charctor		PPv 制御文字
+VCCL		PPv cursor line		PPv 行カーソル
+VCCT		Colors theme(Some colors, require restart PPx)		配色テーマ※要PPx再起動、全般タブ-全般-画面も参照
+VCDA		text		文字
+VCDB		back		背景
+VCDI		disable		非表示
+VCEA		label		ラベル
+VCEB		PPc entry back		PPc エントリ背景/状態
+VCEC		.	current	現dir .
+VCED		directory		ディレクトリ
+VCEE		encrypted		暗号化
+VCEF		special		特殊
+VCEH		hidden		隠し
+VCEI		virtual		仮想化
+VCEL		link		リンク
+VCEM		message		メッセージ
+VCEN		normal		通常
+VCEO		compressed		圧縮
+VCEP		..	parent	親dir ..
+VCER		readonly		読出専用
+VCES		system		システム
+VCET		PPc entry text		PPc エントリ文字/属性
+VCFD		Frame and Dialog		窓枠・ダイアログ
+VCFE		PPc file extension		PPc 拡張子色
+VCFF		selected text		現在窓 文字
+VCFG		selected back		現在窓 背景
+VCFH		pair text		反対窓 文字
+VCFI		pair back		反対窓 背景
+VCFJ		normal text		非選択 文字
+VCFK		normal back		非選択 背景
+VCFL		tab x button		タブxボタン
+VCFM		tab x back		タブx背景
+VCFN		tab act. text	tab active text	タブ現在窓文字
+VCFO		tab act. back	tab active back	タブ現在窓背景
+VCFP		tab sel. text	tab selected text	タブ選択文字
+VCFQ		tab sel. back	tab selected back	タブ選択背景
+VCFR		tab nor. text	tab normal text	タブ未選文字
+VCFS		tab nor. back	tab normal back	タブ未選背景
+VCHF		find		検索
+VCHL		PPv highlight		PPv ハイライト
+VCIA		PPc info 1st		PPc 情報行 1
+VCIB		PPc info 2nd		PPc 情報行 2
+VCIN		value text		文字 内容
+VCJA		message		メッセージ
+VCJB		deleted		削除
+VCJC		normal		通常
+VCJD		gray state		不明
+VCJE		modified		更新
+VCJF		appended		追加
+VCJG		no focus		非フォーカス
+VCJH		frame		枠
+VCJI		underline		下線
+VCJJ		marked		マーク「*」
+VCJK		normal(even line)		通常(偶数行)
+VCJL		selected		選択
+VCJM		grid		区切線(グリッド)
+VCJN		highlight1		ハイライト1
+VCJO		highlight2		ハイライト2
+VCJP		highlight3		ハイライト3
+VCJQ		highlight4		ハイライト4
+VCJR		highlight5		ハイライト5
+VCJS		highlight6		ハイライト6
+VCJT		highlight7		ハイライト7
+VCJU		highlight8		ハイライト8
+VCJV		mouse hover		マウスポインタ下
+VCJW		inactive back(blend color)		非アクティブ背景(混合色)
+VCLA+1.81		log, addr., job	log, address, job	ログ、アドレスバー、処理中一覧
+VCLB		back		背景
+VCLC		text		文字
+VCLD		lbl		項目
+VCLF		PPv line feed charctor		PPv 改行文字
+VCLG		first line		先頭行
+VCLH		second line		桁折り行
+VCLI		line		境界線
+VCLK		PPv link		PPv リンク
+VCLL		gray		未確定
+VCLM		normal		通常
+VCLN		PPv line number		PPv 行番号
+VCME		message text		文字 項目名
+VCOT		other		他
+VCPB		blue		青
+VCPC		green		緑
+VCPD		cyan		水
+VCPE		red		赤
+VCPF		magenta		紫
+VCPG		yellow		黄
+VCPI		bright gray		明 灰
+VCPJ		bright blue		明 青
+VCPK		bright green		明 緑
+VCPL		bright cyan		明 水
+VCPM		bright red		明 赤
+VCPN		bright magenta		明 紫
+VCPO		bright yellow		明 黄
+VCPP		bright white		明 白
+VCPQ		black(back)		黒(背景)
+VCPR		white(default)		暗白(初期色)
+VCRE		report		報告
+VCSA		scheme colors		カラースキーム
+VCSB		black		黒
+VCSC		white		白
+VCSD		gray-back		背景 灰
+VCSE		red-back		背景 赤
+VCSF		green-back		背景 緑
+VCSG		blue-back		背景 青
+VCSH		yellow-back		背景 黄
+VCSI		cyan-back		背景 水
+VCSJ		magenta-back		背景 紫
+VCSK		white-back		背景 白
+VCSL		background		背景
+VCSM		foreground		前景(標準文字)
+VCSN		select-back		選択(背景)
+VCSO		select-text		選択(文字)
+VCSP		badge		ラベル
+VCSQ		cursor		カーソル
+VCSR		frame(line)		区切り線
+VCSZ		dark mode scheme colors		ダークモード用カラースキーム
+VCTA		PPv tab charctor		PPv タブ文字
+VCTB		before edit		編集前
+VCTC		black for CRT		黒(CRT向)
+VCTD		Dark for LCD		ダーク(LCD向)
+VCTE		Light for LCD		ライト(LCD向)
+VCTF		White for CRT		白(CRT向)
+VCTG		PPv tag		PPv タグ
+VCTH		OS colors(GDI)		Windows準拠(GDI)
+VCTI		tip window		チップ
+VCTR		tree		ツリー
+VCTS		comment		コメント
+VCTT		tag		タグ
+VCVA		(reserverd)		(未定義)
+VCVB		PPv bound line		PPv 末端線
+VCVC		old line		旧行
+VCVD		bookmark		しおり行
+VCVE		PPv line back ex.	PPv line back extra	PPv 特殊行背景
+VCVT		PPv text, back		PPv 文字・背景
+VCWA		Frame light		区切枠 明
+VCWB		Frame face		区切枠 表面
+VCWC		Frame shadow		区切枠 影
+VCWD		(heavy)Window face		(負荷増)窓背景
+VCWE		(heavy)Dialog face		(負荷増)ダイアログ背景
+VCWF		(heavy)Window Text		(負荷増)窓文字
+VCWG		Highligh back		選択背景
+VCWH		Highlight text		選択文字
+VCWI		gray text, for dark mode		灰色文字(ダークモード時用)
+VCWJ		(heavy)Dialog Text, for dark mode		(負荷増)ダイアログ文字
+VCWK		edge line, for dark mode		境界線(ダークモード時用)
+VCWL		focus back, for dark mode		フォーカス背景(ダークモード時用)
+VCWS		PPv wide space		PPv 全角空白
+VCXA		Command syntax highlight		コマンドシンタックスハイライト
+VCXB		(background)		(背景色)
+VCXC		command		コマンド
+VCXE		command separater		コマンド区切り
+VCXI		function		関数
+VCXK		option		オプション
+VCXM		strings		文字列
+VCXO		macro letter		マクロ文字
+VCXQ		illigal letter		不明文字
+VCXS		path-drive		パス-ドライブ名
+VCXU		path-part,extention		パス-相対指定・拡張子
+VCXW		path separater		パス区切り
+VCXY		keyword		キーワード
+VCYA		braket pair 1		括弧組-1
+VCYC		braket pair 2		括弧組-2
+VCYE		braket pair 3		括弧組-3
+VCYG		braket pair 4		括弧組-4
+VDLA		name width		名前幅
+VDLC		color		色
+VDLD		width		幅
+VDLE		Language list download error		言語一覧取得失敗 / Lang list download error
+VDLF		format		書式
+VDLH		height		縦行数
+VDLI		ID(1-9)
+VDLN		next line		改行
+VDLT		text		文字列
+VDLV		value name		変数名
+VDLW		width		横桁数
+VDLX		ext. width	extention width	拡張子幅
+VDLY		type		種別
+VDLZ		size		大きさ
+VDMB		check symbol		チェック
+VDME		show entries count		表示エントリ数
+VDMF		short filename		短いファイル名
+VDMG		Indent(pixels)		インデント(画素数、要注意)
+VDMI		user text		文字列
+VDMJ		trim right space		右側空白を詰める(要注意)
+VDMM		mark		マーク情報
+VDMN		image		サムネイル画像
+VDMP		page No.		現在ページ数
+VDMQ		list layout type		一覧の配置方法
+VDMS		blank for edge		空白(端用)
+VDMT		time detail		時刻詳細
+VDMU		ex-comment		コメント(拡張)
+VDMV		ID string value		id別特殊環境変数
+VDMZ		size[,]		ファイルサイズ「,」付
+VDNA		attributes		属性
+VDNB		check box		チェックボックス
+VDNC		comment		コメント
+VDND		disk space		ディスク容量
+VDNE		entry count		エントリ数
+VDNF		filename		ファイル名
+VDNG		Indent(letters)		インデント(文字数、要注意)
+VDNH		line[-]		横線「-」
+VDNI		item text		文字列(項目名)
+VDNL		line[|]		縦線「|」
+VDNM		mark symbol		マーク「*」
+VDNN		icon		アイコン
+VDNO		text color		文字色
+VDNP		all pages		全ページ数
+VDNR		directory		ディレクトリ
+VDNS		blank		空白(中用)
+VDNT		time(write)		時刻(更新)
+VDNU		columns extention		カラム拡張
+VDNV		volume label		ボリュームラベル
+VDNX		modules		モジュール拡張
+VDNY		directory type		ディレクトリ種類
+VDNZ		size		ファイルサイズ
+VEAA		Archive DLL		書庫DLL
+VEAB		alias		エイリアス
+VEAC		&Item list for priority and delete		(&I)一覧の順番で優先使用される。※優先順変更と削除のみ可
+VEAD		&I alias name = value	(&I)alias name = value	(&I) エイリアス名=内容
+VECA		PPc view style		PPc表示形式メニュー[;]
+VECC		&Item		(&I) 新規は名前を記載して「編集」
+VEDA		Async read,		非同期読込,
+VEDB		directory settings		ディレクトリ別設定
+VEDC		cache,		キャッシュ,
+VEDD		&Item		(&I) 末尾「\」付きパスは下層も有効 ※削除のみ可
+VEDH		no check,		更新監視無,
+VEDI		info.icon settings,	information icon settings,	情報行アイコン指定有,
+VEDL		cursor line icon settings,		カーソル位置アイコン指定有
+VEDN		No save async cache,		非同期読込のキャッシュ保存を禁止,
+VEDO		sort settings,		ソート指定有,
+VEDS		Async & cache save,		非同期読込後常にキャッシュ保存,
+VEEA		Delayed list		遅延処理リスト
+VEEC		&I	(&I)	(&I)処理方法 = 対象ファイル
+VEFA		*file actions		ファイル操作アクションメニュー[;]
+VEFC		&I only delete		(&I) ※削除のみ可。追加はFile Operationダイアログで
+VEGA		id saved host		ホスト,ID-パスワード
+VEGC		&I only delete		(&I) ※削除のみ可
+VEHA		PPv highlight text		PPv単語ハイライト
+VEHC		file name		ファイル名
+VEHD		directories		ディレクトリ
+VEHF		fullpath name		フルパスファイル
+VEHG		general		汎用
+VEHH		command line		コマンドライン
+VEHM		mask		エントリ名マスク
+VEHN		digits		数字
+VEHP		PPc directory		PPcディレクトリ
+VEHR		roma search		ローマ字検索
+VEHS		search		検索用文字列
+VEHU		User - u		ユーザ定義 u
+VEHV		PPv filename		PPv表示ファイル
+VEHW		PC names		ネットワークPC
+VEHX		User - x		ユーザ定義 x
+VEIA		PPc 1st info.	PPc 1st information	PPc情報行1行目書式
+VEJA		PPc 2nd info.	PPc 2nd information	PPc情報行2行目書式
+VEKA		Checked applications		確認済実行ファイル
+VEKC		&I	(&I)	(&I) 最新の先頭CRC32 ※おまけの設定が必要。削除のみ可
+VELA		PPv text columns		PPvテキスト桁数
+VELC		&Columns(0:full -1:window width)		(&I) 桁数(76等 0:最大 -1:窓幅)=該当拡張子(.ext1;.ext2) 初期値80
+VELH		&Item		項目(&I)
+VEMA		wavename / comp. commands		通知音／完了・表示時実行コマンド
+VEMC		(&I) type = wav name / commandline
+VENA		Window position		表示開始位置
+VENC		&I	(&I)	(&I) (座標) 大きさ _:&&[ALT]用 CJDLG:[J]用 ※削除のみ可
+VENL		PPc extentions icon		PPc拡張子別アイコン画像
+VEOA		PPv option		PPv種別オプション
+VEOC		&Item		(&I) 例) :HTML = -tag:off、txt = -unicode -esc:off
+VEPA		Path		表示パス
+VEPC		&ID = path/layout		ID(&I) = パス・タブ配置
+VESA		&Add	Add(&A)	追加(&A)
+VESB		PPc status line		PPcステータス行書式
+VESC		(&I)
+VESE		Edit(&A)		編集(&A)
+VETA		PPv,PPe tab columns		PPv,PPeタブ桁数
+VETC		&Item		(&I) 桁数(8)=該当拡張子(.txt;.doc)、全てに一致しなければ8
+VEUA		User command		ユーザコマンド
+VEUC		(&I) command name = value(%*arg(n)		(&I) コマンド名=内容(%*arg(n))
+VEVA		User data		ユーザデータ
+VEVC		(&I) Item name = value		(&I) 項目名=内容
+VEYA		Other configs		その他設定
+VEYC		(&I) Item name = value		(&I) 項目名=内容
+VFSL		VFS load		仮想ディレクトリのプラグインを読込みました
+VFSU		VFS unload		仮想ディレクトリのプラグインを解放しました
+VHDE		default setting		初期値
+VHPC		PPc hidden menu		PPc 隠しメニュー
+VHPV		PPv hidden menu		PPv 隠しメニュー
+VIMC		||\x9insert new column separator		||\t縦線を挿入
+VIMF+1.92		insert selected filename		選択ファイル名を挿入...
+VIMI		\\t\tinsert indent		\\t\tインデントを挿入
+VIMK		&&\x9insert shortcut key prefix		&&\tショートカット印を挿入
+VIML		*launch \tset current dir. on file, and execute		*launch \t指定したファイルがあるディレクトリをカレント/作業フォルダに指定して実行
+VIMN		Enter menu name (M_xxx)		メニュー名を指定してください(先頭のM_は必須です)
+VIMS		--\x9insert separator		--\t区切り線を挿入
+VIMY		insert key code...		キー名称を挿入...
+VKAL		PPc Auto D&D list		PPc Auto D&Dリスト
+VKBL		PPb list		PPb一覧表示時
+VKBR		PPb reference		PPbログ参照時
+VKCG		PPc general		PPc一般
+VKCI		PPc incremental search		PPcインクリメンタルサーチ
+VKCT		PPc tree		PPcツリー
+VKED		line edit and PPe		一行編集・PPe共用
+VKLI		line edit(with K_edit)		一行編集(K_editも参照)
+VKPB		PPb edit		PPb編集
+VKPC		PPv text caret mode		PPvテキスト(キャレット)追加設定
+VKPE		PPe(with K_edit)		PPe(K_editも参照)
+VKPT		PPv page text mode		PPvテキスト(ページ)追加設定
+VKPV		PPv general		PPv一般
+VKTR		general tree		一般ツリー
+VKTY		PPtray hotkey		PPtrayホットキー
+VKVI		PPv image mode		PPv画像追加設定
+VLBN		Button name		ボタン
+VLDT		Detail		登録内容
+VLFF		Press F4 key for list		F4キーで一覧表示します
+VLHT		tilt left		左チルト
+VLIL		Action(&I)		アクション(&I)
+VLIN		Item name		項目名
+VLIT		tilt right		右チルト
+VLLC		Left button		左
+VLLD		left double		左ダブル
+VLLH		left press & hold		左長押し
+VLMC		middle button		中/ホイール
+VLMD		middle double		中/ホイールダブル
+VLMH		middle press & hold		中/ホイール長押し
+VLMI		Item name		表示項目
+VLRC		right button		右
+VLRD		right double		右ダブル
+VLRG		right gesture		右ジェスチャ
+VLRH		right press & hold		右長押し
+VLTA		Target area		対象
+VLTB		Button		割当て先
+VLTK		Key		割当てキー
+VLTM		Key name		割当て説明
+VLTN		Type name		判別名
+VLWC		R & L button		左右同時
+VLWH		R & L press & hold		左右同時長押し
+VLXC		4th button		第4ボタン
+VLXD		4th double		第4ダブル
+VLXH		4th press & hold		第4長押し
+VLYC		5th button		第5ボタン
+VLYD		5th double		第5ダブル
+VLYH		5th press & hold		第5長押し
+VMCB		PPc menu bar		PPcメニューバー
+VMCR		PPc extra context		PPc [Enter] 追加分
+VMDI		PPc folder context		PPc フォルダコンテキスト
+VMEB		PPe menu bar		PPeメニューバー
+VMEC		line edit, context menu		一行編集コンテキスト
+VMEP		PPc extra pack \\[P]		PPc その他書庫作成 \\[P]
+VMET		(&O M_...)		種類(&O M_～形式)
+VMIL		&Item		項目(&I)
+VMLB		line edit, menu bar		一行編集メニューバー
+VMMD		PPc insert text D&D		PPc拡張D&D
+VMOB		PPc other convert [B]		PPc その他変換 [B]
+VMPJ		PPc path jump [0]		PPc [0]パス移動
+VMSO		PPc sort		PPcソート
+VMTA		PPc tab menu &[-]		PPc タブメニュー&[-]
+VMVB		PPv menu bar		PPvメニューバー
+VMVC		PPv extra context		PPvコンテキスト追加分
+VMWI		wildcards		ワイルドカード入力補助
+VMWS		PPc where is,source		PPc検索、検索対象入力補助
+VNMA		aux: settings		aux: 設定
+VNMB		PPx menu bar		PPxメニューバー
+VNMC		Extention menus		拡張子別メニュー
+VNMG		General		一般
+VNMO		other settings		その他設定
+VOLF		Jump online language file list		言語一覧ページに移動
+VOPF		Load from file		言語ファイルを指定して開く / Load from file
+VPPC		PPc
+VPPI		PPtray
+VPPV		PPv
+VQBA		It seems disable		この割当ては機能しない可能性があります
+VQDT		Delete %s?		%sを削除しますか？
+VQKM		Add comment key short cut to MC_menu and MV_menu?		MC_menu,MV_menu のうち、内蔵コマンドを割り当てた\n項目に、現在のキー割当てを書き込みます。\n開始してかまいませんか？(時間がかかります)
+VQNA		Setting is not preserved. Really quit?		変更した内容が反映されていませんが、終了しますか？
+VRCT		PPc toolbar		PPc標準ツールバー
+VRDF		Restore default setting?		フォントを初期値に戻しますか？
+VREF		ref	refer	参照
+VRFM		Line edit bar (mouse)		一行編集バー (マウス)
+VRFP		Line edit bar (pen)		一行編集バー (ペン)
+VRFT		Line edit bar (touch)		一行編集バー (タッチ)
+VRTB		Retry action by reload bitmap		ボタン列画像を再読み込みしたので、やり直してください
+VRTT		Tree toolbar		ツリーツールバー
+VRVT		PPv toolbar		PPv標準ツールバー
+VTAI		Tail mode(&A)		末尾表示(&A)
+VTBA		Select toolbar image.		ボタン一覧の画像を指定してください
+VTBU		Select toolbar button image.		ボタン画像を指定してください
+VTDC		Document		文書(&D)
+VTHE		Hex		16進(&H)
+VTIM		Image		画像(&I)
+VTNM		new(Save button right click)		新規(設定ボタンの右クリックメニューでも新規追加ができます)
+VTOE		Select application.		アプリケーションを指定してください
+VTRI		Raw Image		&Raw画像
+VTTX		Text		テキスト(&T)
+VUSD		Unsupport this image		この画像は現在対応していません。
+VXCR		PPc Enter
+VXSC		PPc,PPv Shift + Enter
+VXTV		PPc tip preview		PPc チッププレビュー
+;   警告
+VXUP		PPc [U]npack	PPc unpack[U}
+VYCP		clip		クリップ
+VYCT		cut		切り取り
+VYCU		customize		カスタマイズ
+VYDL		delete		削除
+VYFA		add favorites		お気に入りに追加
+VYFC		copy entry		コピー
+VYFM		move entry		移動
+VYFN		Free Network drive		ネットワークドライブ切断
+VYFT		tree pane		フォルダツリー
+VYFV		favorites		お気に入り
+VYFW		forward		進む
+VYJP		jump to parent		親へ移動
+VYLD		change drive		ドライブ選択
+VYLG		open directory		フォルダを開く
+VYND		new directory		ディレクトリ作成
+VYNE		new entry		新規作成
+VYNU		Allocate Network drive		ネットワークドライブ追加
+VYOU		operation undo		コピー・移動のアンドゥ
+VYPE		previous		戻る
+VYPP		properties		プロパティ
+VYPS		paste		貼り付け
+VYSD		sort by date		日付順
+VYSN		sort by name		名前順
+VYSO		sort		並び替え
+VYSZ		sort by size		大きさ順
+VYTR		tree		ツリー
+VYVS		view style		表示形式
+VYWS		find file		検索
+WITD		Need WININET.DLL		WININET.DLLが読み込めません。新しいInternetExplorerを導入してください
+WKSI		Keyname seems invalid		誤っているか、指定しても機能しないと思われるキーが指定されています
+WLLP		Long path directory		極長パスです。一般アプリケーションでは利用できません
+WNMM		Warning : unsupport macro letter.		警告：マクロ文字(%)は使用できません。%0の代わりに相対指定でPPxパスを指定できます。
+WNOA		No \'@\' prefix		'@'指定がないので意図しない挙動になる恐れがあります
+WUML		width unmatch line %d(this width:%d, max width:%d)		%d行目の表示幅(%d)が他の行(max %d)と揃っていないので、見た目が悪くなるかもしれません
+; PPcust
+XAAC		refresh all PPc		;属性変更、コピー、削除等の終了を全PPcに通知し、更新等する
+XACD		Make archive name folder		;書庫内ファイルの全展開時に書庫名のフォルダを作成
+XACR		Save & restore directory position		;ディレクトリ内移動後、以前のカーソル位置を再現する
+XALT		Disable menu by ALT		;ALTキーのみでメニューにしない
+XARD		Async load directory		;非同期によるディレクトリ読み込み/キャッシュ付読み込み
+XASP		Enable mouse activate window action		;クリックによるアクティブ化時にクリック動作を行う
+XASR		reload cursor position		;再読込([.]等)で、ディレクトリを読み込んだ後のカーソル位置は
+XASS		sorted cursor position		;ソート([S],\[S])で、ソート後のカーソル位置は
+XAST		attribued list		;属性変更([A])で、完了後の表示は
+XASU		file copied list		;コピー([C]),移動([M])で、完了後の表示は
+XASV		deleted list		;削除([D],\[D])で、完了後の表示は
+XASW		renamed list		;名前変更([R])で、完了後の表示は
+XASX		activated list		;アクティブ時に更新するときの表示は
+XAUT		auto		;自動
+XAWE		externd wheel		;窓外のホイールは、マウス上の窓を対象にする
+XAWI		Auto width change with view style		;エントリ表示幅が変わったら窓幅を調節する
+XBC0		show common info. line		;情報行を共用にして表示
+XBC1		show address bar		;標準アドレスバーを表示
+XBC2		common tree		;ツリーを共用にする
+XBC3		show common log		;共用ログ窓を表示する
+XBC4		stack layout pane		;ペインを上下に並べる
+XBC5		show always		;タブを常時表示
+XBC6		resizeable combo window		;窓の増減時に、一体窓の大きさも変更する
+XBC7		tiny window control		;(障害対策)特定の窓で異常があるときに設定する
+XBC8		show tool bar		;標準ツールバー(B_cdef)を表示
+XBC9		header		;ヘッダを表示
+XBCA		show pane caption		;各PPcのキャプションを表示
+XBCB		show title bar		;タイトルバーを表示
+XBCC		show menu bar		;メニューバーを表示
+XBCD		Show tab per pane		;タブをペイン毎に表示する
+XBCE		force common log		;共用ログ窓にファイル操作ログを強制表示する
+XBCF		delay show common log		;共用ログ窓で大量ログの高速化(間引き処理)をする
+XBCG		Fixed tab width		;タブ幅を固定
+XBCH		Multi line tab		;タブ列の多段表示
+XBCI		tab colored		;タブを着色する
+XBCJ		Show tab per pane2		;↑が有効のとき、タブ一覧もペイン毎に独立
+XBCK		new tab to active right		;新規タブはアクティブタブの右隣
+XBCL		new tab width sort		;新規タブは名前順となる位置
+XBCM		up dir tab after close		;窓を閉じたときに親ディレクトリタブがあれば、そこに移動
+XBCO		next combo		;[F11]で最大ペイン数を超えたら新規一体化窓
+XBCP		min close		;窓を閉じるときに起動時ペイン数未満になるなら一体化窓を閉じる
+XBCQ		Reuse same path pane		;ロック中のディレクトリ移動時に、既存の同パス窓に移動する
+XBCR		default lock		;ディレクトリ移動は新規タブにする(ロック状態を初期値にする)
+XBCS		no move tab		;タブ位置を固定 ※タブ形状が変化
+XBD0		fix tab area width		;横配列時、タブ表示領域の幅を固定にする
+XBD2		tiny scroll bar		;(障害対策)スクロールバーを省リソース表示する
+XBD3		Reset tab on boot		;起動時にタブ並びを復元しない
+XBD4		Dialog move to center on pane		;ダイアログをペインの位置に表示させる
+XBD5		bottom tab		;タブを一覧ペインの下に表示
+XBD6		close button		;閉じるボタンを表示する
+XBD7		use PPc ID "Zxxx" in Combo ID "A"		;ID A の一体化窓でも常に "Zxxx"形式IDを使用する
+XBD8		auto hide close button		;閉じるボタンを自動で隠す
+XBD9		keep panes wide rate with delete one pane		;↑が無効の時、ペイン減少時に各ペインの間隔比を維持
+XBDA		Over pane on tab null space		;横配列時、ペインの高さをタブ列表示の空行部まで拡張する
+XBDD		Tab drag or switch require ALT key		;タブのドラッグ編集・ホイールによる切替には[Alt]キーが必要
+XBEP		Error sound		;エラー時などでサウンドを鳴らす
+XBGC		tab group		;タブグループ
+XBGD		group default name		;グループ初期名
+XBGS		show selected tab groups		;アクティブ・選択中のタブグループのみ常時表示
+XBGT		show tab group selector		;タブグループを選択するタブを表示
+XBRO		Web Browser		;デフォルトブラウザ
+XBSY		logged lines		;コンソールの全体(バックログ)行数
+XBSZ		console show lines		;コンソールの表示行数
+XBTA		opaqued PPv window		;窓全体を透けるようにする／不透明度(PPv[A]専用,%)
+XBTB		picture bright(%)		;背景画像の明るさ(%)
+XBTL		show tab		;タブを記号表示
+XBTM		show LF		;改行を記号表示
+XBTN		show box space		;2byte空白を記号表示
+XBTO		opaqued window		;窓全体を透けるようにする／不透明度(PPx共用,%)
+XBTP		picture path		;使用画像(空欄→デスクトップと同じ)
+XBTY		show back picture		;PPc,PPv の背景に画像を表示
+XCAC		Cache directory		;各種キャッシュの保存場所
+XCAL		tiny Calculator		;数式が入力されたら計算して、結果を表示する
+XCAR		Auto save default entry context menu selection		;Enter/ダブルクリック(M_Ccr等)で拡張子の選択肢を自動記憶する
+XCBS		Burst buffer size		;バーストモードバッファの大きさ(単位はKbytes)
+XCBT		in file size of auto enable Burst mode		;バーストモードを自動適用する最小ファイルサイズ(単位はKbytes)
+XCBU		Min file size of disable file cache		;キャッシュ使用を止める最小ファイルサイズ(単位はKbytes)
+XCCD		dumpped text charcter set		;書き出すテキスト形式設定ファイルの文字コード(バックアップは既定値限定)
+XCDC		Sum file sizes button		;ディレクトリ選択時、マウス割当てを無視してサイズ計算を行うのは
+XCLD		Cursor type		;カーソルの形状は
+XCLE		Marked type		;マークの形状は
+XCLT		Command name list for cmd.exe		;直接指定可能な cmd.exe コマンドの一覧( ; 区切り)
+XCMB		Combo window(require restart PPc)		;一体化関連(要PPc再起動)
+XCMC		use combo		;複数PPcを一体化させ、１ウィンドウにする
+XCPA		tab caption		;タブのキャプション表示
+XCPG		scroll mode		;窓越えカーソル移動はスクロールする
+XCPS		list file		;List File内のファイル名表示は
+XCTA		no count		;しない
+XCTB		stop at 10sec		;10秒で中止
+XCTC		stop at 10sec		;30秒で中止
+XCTD		no stop		;中止しない
+XCTT		Count size		;処理ファイル数算出の自動中止を
+XCWT		Comment save		;コメントを編集したときの保存は
+XDDX		Enter dir. time by hover in DnD		;ドラッグ中のホバーによるディレクトリ移動の時間
+XDIN		Icon file for directory		;ディレクトリ用のアイコン(空欄なら自動)
+XDLF		Drive list		;ドライブリストの挙動設定
+XDLG		Drive menu(\[L])		;ドライブメニュー(PPc \[L])の挙動設定
+XDLH		Drive jump([1]...[9])		;ドライブジャンプ(PPc [1]～[9])の挙動設定
+XDLI		show (Limit) on caption(require restart PPx)		;権限制限時(Vista以降)に「(Limit)」とタイトルバーに表示(要PPx再起動)
+XDLJ		PC List(\\.\\pcname)		;PC一覧(\\.\\pcname)の挙動設定
+XDLO		archiver log		;書庫操作時のログ出力
+XDLP		error log		;エラー時のみ
+XDLQ		all log		;全て(※ログ窓がないときはエラー時のみ)
+XDPM		Show mask on caption		;現在のエントリマスク文字列をタイトルバーに表示する
+XDSA		Show icon on information area		;カーソル位置のアイコンを上側(情報行)に
+XDSB		Default entries icon		;一覧の各行に表示させるアイコンの読み込み処理は
+XDSS		Enable screen scaling		;画面のスケーリング対応
+XDST		Sort/Mask/View style default target		;ソート・マスク・表示形式の設定変更時の初期対象
+XEDI		Text Editor		;デフォルトテキストエディタ
+XEDL		Text Editor point line prefix		;テキストエディタの行番号指定オプション
+XEED		hooked editbox		;エディットボックス拡張を外部に提供する
+XELE		Use high execution level on update		;PPxの更新には昇格/管理者権限が必要
+XEMV		Ring shift on INS/DEL		;INS/DELによるエントリ位置移動をリング方式にする
+XEOC		Error flash		;一行メッセージ表示時にタイトルバーを点滅する
+XESB		show reference		;変更前の名前を表示する
+XESC		with extension		;名前と拡張子を分離しない
+XESD		first position		;カーソルの位置
+XESE		rename dialog
+XESF		top		;先頭
+XESG		ext		;拡張子前
+XESH		bottom		;末尾
+XESI		select		;選択
+XETS		extension		;ファイルの判別順は(%ME_cr等)
+XEXL		extension maximum length		;拡張子とみなして分離する最大長さ
+XEXM		Enable maked files with enter		;ダブルクリック,[Enter],[Z]はマークエントリを対象にする
+XEXS		alarm new executive file		;初めて実行する実行可能ファイルを警告する
+XFAT		fix time for FAT		;時刻の比較はFATによる誤差(±2秒)を考慮する
+XFCO		PPb(Console host, Vista-Win10)		;PPb(コンソールホスト, Vista-Win10)
+XFCT		tab and header		;タブ・ヘッダ(要PPx再起動)
+XFDI		when fill directory, without file entry		;補完でディレクトリ入力の時は、ディレクトリ以外を候補にしない
+XFDL		dialog		;ダイアログ
+XFEC		filename color		;ファイル名の文字色は
+XFFI		Fix for left text draw		;文字の右端が表示されない対策を行う
+XFFX		fixed extention is lower case		;変更する拡張子を小文字に固定する
+XFIX		PPv fix		;PPv固定ピッチ
+XFL0		List lines		;一覧の行数
+;XFL1		Partial Match		;部分一致で列挙する 2.00+2 廃止
+XFL2		Auto show(OS)		;自動補完する(OSの機能を利用,おまけ機能)
+XFL3		Auto show1		;自動補完する(1枚表示)
+XFL4		Auto show2		;自動補完する(2枚表示)
+XFL5		Auto show3		;自動補完する(2枚表示+α)
+XFL6		list show time(ms)		;一覧の強制表示時間(ms)
+XFL7		listing timeout time(ms)		;一覧作成打ち切り時間(ms)
+XFL8		List min length		;一覧の最低表示文字数(一覧表示幅)
+XFLC		Keep caption view when upper position		;上側に表示するときにキャプションを避ける
+XFLE		fix flicker		;画面のちらつき対策
+XFLS		fill list		;補完の結果を一覧表示
+XFME		general		;汎用
+XFOA		unlimit		;常に同時並行実行
+XFOB		limited		;同時に１つのみ実行(数制限無し)
+XFOC		serialized(max 32 jobs)		;１つのみ、指定した順番に実行(32超は待機無し)
+XFOW		Background copy		;コピーや展開の並行実行
+XFST		Fast read list		;一覧取得を少し高速化する(Windows7以降)
+XFSV		File save directory		;ファイルのデフォルト保存先
+XFTR		tree		;ツリー
+XFUF		PPv proportional(without size)		;PPvプロポーショナル(サイズ指定無効)
+XGMD		Careful swap([G])		;窓交換なしで[G]を処理する(低速)
+XGST		Use gesture		;マウス右ボタンでジェスチャーを使用
+XHIR		Keep cursor positions		;表示ファイル・カーソル位置・表示設定の履歴
+XHSR		Keep directory positions		;表示ディレクトリ・カーソル位置の履歴
+XIAC		Enable screen reader		;PPc,PPvでスクリーンリーダ対応(不安定になること有)
+XIFX		icon size on information area		;上側(情報行)に表示するアイコンの大きさ
+XIMC		zoom		;PPv[A]の拡大縮小時表示方法
+XIMD		zoom type		;PPv[A]の拡大縮小設定
+XIME		control IME off		;IME制御をして、不要なときはOFFにする
+XING		Gray view		;現在窓以外はグレー調にする
+XISA		incremental search		;インクリメンタルサーチの動作
+XITO		search timeout(ms)		;&\[英数字]によるインクリメンタルサーチのタイムアウト時間(ms)
+XIXO		Animate(require restart PPv)		;アニメーション表示(要PPv再起動)
+XIXP		Modify background(require restart PPv)		;透過部分の加工(要PPv再起動)
+XIXQ		Apply color profile(require restart PPv)		;カラープロファイルの適用(要PPv再起動)
+XJIA		no flash		;点滅しない
+XJIB		back flash		;裏側のとき点滅
+XJIC		flash		;常に点滅
+XJID		sound		;通知音
+XJIE		silence		;音を出さない
+XJIF		back sound		;裏側のとき音
+XJIG		sound		;常に音
+XJIH		wave file		;使用するwavファイル
+XJIN		Acion in show dialog		;ダイアログ表示時・選択要求時の通知方法
+XJIO		Action in complete		;実行完了時の通知方法
+XJLA		show		;必要なときのみ表示(固定位置)
+XJLB		show		;必要なときのみ表示(現在窓の右)
+XJLC		show always on combo PPc window		;一体化PPc上に常時表示
+XJLD		hide dialog with show job list		;処理の一覧表示時は、処理中のファイル操作ダイアログを隠す
+XJLS		Show job list window		;処理の一覧表示を
+XJLT		job list		;ファイル操作処理の一覧表示
+XKRA		reflexive key alieas		;キー割当ての再帰エイリアスを有効にする
+XKTR		PPc hotkey		;PPcを呼び出すキー
+XLAG		Display language		;表示言語
+XLDM		Show menu with left button D&D		;左D&D時に、必ずメニューを表示
+XLDN		Always show menu self window		;自窓内の左D&D時に、必ずメニューを表示
+XLDO		Drop default mode		;左D&Dのデフォルト動作は(※PPc以外へのドロップは、ドロップ先に依存)
+XLGA		completed		;完了通知
+XLGB		source path		;処理元パス
+XLGC		destination path		;処理先パス
+XLGD		backup		;バックアップ
+XLGE		Logging for operation log to X_save		;ファイル操作などのログをファイルに保存する(X_save)
+XLGG		skip		;スキップ
+XLGH		Show operation-log types		;処理結果ログの出力項目
+XLGI		make folder		;フォルダ作成
+XLIC		Entry click range		;エントリを選択可能な範囲は
+XLLZ		large file read mode		;大きなファイルの読み込み方法
+XLNM		show line number		;左端に行番号を表示する
+XLOG		Logging for status log to X_save		;ステータス行などのログをファイルに保存する(X_save)
+XLSP		general line space		;汎用 の行間隔
+XLT0		focus next item		;次の項目へフォーカス変更
+XLT1		enable customize & fill name		;補完動作 & カスタマイズ有効
+XLT2		forward		;前方一致
+XLT3		partial		;部分一致
+XLT4		partial and select		;部分一致,非共通部を選択
+XLT5		migemo		;部分一致,migemo
+XLT6		reserved1		;開発中(.区切りのand検索)
+XLT7		reserved2		;開発中(.区切りのand migemo検索)
+XLTB		use TAB fill		;TABキーの動作は
+XLTC		fill mode		;補完するときの検索動作
+XMDD		Enable edit box D&D		;エディットボックスなどへの拡張D&Dを有効にする
+XMEN		close menu on undefined key		;メニューをショートカット未定義のキーで閉じる
+XMIF		minimized focus fix		;最小化時に呼び出し元を強制アクティブ処理
+XMIS		misc		;その他
+XMLE		Show multi line		;一行編集を複数行表示にする
+XMON		Force multi monitor mode		;強制でマルチモニタとみなした動作をする
+XMPA		max pane		;最大同時表示ペイン数
+XMPB		first pane		;起動時のペイン数
+XMSD		Directory label		;ディレクトリを表すラベル(漢字は末尾が化けることあり)
+XMSL		Explorer link click		;エントリクリック動作はExplorer風にする
+XMSM		Mark from last mark(shift+click)		;[Shift]+クリック動作を直前マークからの範囲選択にする
+XMVD		Out of window by Up/down cursor		;上下カーソルキーで窓外に移動したときは
+XMVE		Out of range by Up/down cursor		;上下カーソルキーで先頭／末端外に移動したときは
+XMVL		Out of window by left/right cursor		;左右カーソルキーで窓外に移動したときは
+XMVM		Out of range by left/right cursor		;左右カーソルキーで先頭／末端外に移動したときは
+XMWI		Menu columns(require restart PPx)		;メニューの最大桁数(要PPx再起動)
+XNBF		always show cursor on window		;スクロールバー使用時でもカーソルは画面外に移動させない
+XNCP		new text charcter set		;新規時の文字コード
+XNFT		Format size(Z)		;ファイルサイズ表示Z(桁区切り無)で
+XNFU		Format size(z)		;ファイルサイズ表示z(桁区切り有)で
+XNFV		Format size(Dx,mS)		;ディスク・マークサイズ表示DX,mS(桁区切り無)で
+XNFW		Format size(Dx,ms)		;ディスク・マークサイズ表示Dx,ms(桁区切り有)で
+XNOO		no		;しない
+XOCG		thumb nail image		;表示書式に画像(n)を使用したときのサムネイル処理
+XOCH		show icon on thumb nail image		;画像枠内にアイコンを表示
+XOCI		show(use explorer)		;エクスプローラ互換画像取得(不安定かも)
+XOCJ		show file text		;テキストファイルの内容を表示
+XOCK		Reduce image in rectangle		;画像全体が表示できるように縮小
+XOCL		show in archive		;書庫内でも取得する(不安定、低速、経過ダイアログ表示有り)
+XOCM		cache to thumbnail.jpg		;取得した画像をキャッシュする(保存先は名前付ストリームの thumbnail.jpg)
+XODR		Drive name fill		;パス入力時に１文字だけ入力したときは、ドライブ名にするか
+XODS		alpha		;英字のみする
+XODT		alpha and digit		;英数字ならする
+XOFF		off		;しない
+XOND		Default new folder name(support %x)		;新規ディレクトリ名(マクロ文字使用可)
+XONF		Default new file name(support %x)		;新規ファイル名(マクロ文字使用可)
+XONN		on		;する
+XPM0		Large width		;タッチ領域の幅を広くする
+XPM1		Large height		;タッチ領域の高さを広くする
+XPM2		Disable start drag		;ドラッグ開始を無効にする
+XPM3		Disable hidden menu		;隠しメニューを無効
+XPM4		Open entry with single touch		;タッチで開く動作(ダブルクリック)
+XPM5		Auto window pair direction		;最大化+一体化の２窓の並びを縦横自動変更
+XPM6		Disable action with active		;アクティブ化時のタッチ操作を無効
+XPMB		show command bar		;コマンドバーを表示する
+XPMC		Touch mode		;タッチ操作モード
+XPMD		mouse click		;マウスクリック時
+XPME		touch		;タッチ時
+XPMF		pen tap		;ペンタップ時
+XPRS		print		;印刷
+XPRT		margin		;余白
+XPRU		image scale		;画像解像度
+XPSA		disable		;しない(ファイル名のみ表示)
+XPSB		disable(show dir)		;しない(平坦)
+XPSC		enable		;する
+XPSD		enable and skip		;する(空の上位階層をスキップ)
+XPSK		archive directory		;書庫等内のディレクトリ仮想移動を有効に
+XPSL		Hilight pointed entry		;マウスポインタ上のエントリ背景色を変化させる
+XPTG		use pair path as before active window without combo window		;独立窓・連結窓のとき、反対パス(%2等)を反対窓から直前アクティブ窓に変更する
+XRCH		migemo cache letters		;ローマ字検索キャッシュを行う最長文字数(要ヒストリサイズ拡張)
+XRCL		use PPc list		;ディレクトリ入力は、起動中PPcが３枚以上であればPPc一覧から選択する
+XREY		use Regular Expressions library		;使用する正規表現は
+XRRT		start reload time(active,sec)		;アクティブ時の更新検出後、読み込みを待つ秒数(0は不可)
+XRRU		start reload time(no active,sec)		;非アクティブ時の更新検出後、読み込みを待つ秒数(0は不可)
+XRTR		for input directory		;ディレクトリ入力方法は
+XRTS		no sub window		;常にテキストのみ
+XRTT		tree(1 ppc only)		;1枚時ツリーで選択
+XRTU		tree		;常にツリーで選択
+XSAT		&\[alphabet] action		;&\[英数字]又は[無変換]の動作は
+XSAV		Backup directory		;カスタマイズバックアップ＆ログの保存場所
+XSDI		extension in directory		;ディレクトリ中の「.」以降を拡張子として扱う(再読込後有効)
+XSEM		first letter search		;頭文字検索の検索開始位置は
+XSLW		Coefficient for slow read		;低速モードを開始する係数(大きいほど鈍感,-1 無効)
+XSPS		one process		;複数PPcを１プロセスで実行する
+XSR0		rewrite		;全書換(低性能GPU向)
+XSR1		part1		;部分1
+XSR2		part2		;部分2(最速?)
+XSRM		Scroll		;スクロール処理の方法
+XSTP		Show long name tip		;ファイル名が表示しきれないときチップ表示
+XSTQ		Show file information tip on hover		;マウスポインタが滞在しているエントリの情報をチップ表示
+XSTR		Show preview by click entry tail		;エントリ右端クリックでプレビュー表示
+XSTS		preview show position		;プレビュー表示の表示位置(試作)
+XSTV		preview show type		;プレビュー表示の既定表示方法
+XSUS		Susie directory		;Susie plug-inがあるディレクトリ(要PPx再起動)
+XSVZ		sync view size		;連動ビューで表示するファイルサイズの最大値
+XSZM		Sumed file size		;算出したディレクトリサイズは
+XTAB		tab bar(require restart PPc)		;タブの動作(要PPc再起動)
+XTAM		terminal command		;端末として使用するソフト
+XTCH		PPb on default terminal		;PPbは通常の端末を使用
+XTDD		Enable text D&D		;テキスト形式のD&Dを行う(要注意)
+XTDR		Show [.] entry		;このディレクトリ「.」を表示する
+XTDS		Show [..] entry		;親ディレクトリ「..」を表示する
+XTDT		Show [.][..] always		;相対ディレクトリ「.」「..」を上の設定で強制表示する
+XTFO		Other settings are over Option tag of the File operation dialog.		;その他の設定は、ファイル操作ダイアログのその他タグにあります。設定ボタンの設定保存で保存します。
+XTMD		always cursor mode		;常にキャレットモードにする
+XTRA		show icon		;アイコン表示をする
+XTRB		overlay		;アイコンオーバレイを表示する
+XTRC		simple icon		;アイコンを簡易表示して高速化する
+XTRD		tool bar		;ツールバーを表示する
+XTRE		Tree window		;ツリー窓
+XTRF		rename dialog		;名前変更ダイアログを使う
+XTRG		sync-view		;PPc上ツリー窓で選択したとき、PPcを同期表示
+XTRH		show proteced folder		;保護されたシステムフォルダを表示
+XTRY		Use Task Tray		;最小化時にタスクトレイに入れる(要PPtray)
+XTSB		bundle Taskbar button(after Win7, require restart PPx)		;Win7以降でPPxを１つのタスクバーボタンにまとめる(要PPx再起動)
+XTTE		Thermal Throttling end temperature		;サーマルスロットリングの終了温度
+XTTS		Thermal Throttling start temperature		;サーマルスロットリングの開始温度
+XTWC		on Legacy Console Host		;旧 Console host を使用
+XTWI		pixcel		;幅
+XTWT		on Windows Terminal		;Windows Terminal を使用
+XUCS		show line cursor		;カーソル位置に下線を使う
+XUIN		Icon file for unknowns		;不明のアイコン用のアイコン(空欄なら内蔵)
+XULH		Height of underline cursor		;カーソル／マークに使用する下線の高さ
+XUNB		Execute UNxxx on Background		;UNxxxを別プロセスで動作(要PPTRAY.EXE)
+XUNF		proportional text		;プロポーショナルフォントを使用する
+XUP0		select action		;毎回処理方法を選択
+XUP1		no action		;何もしない
+XUP2		notify		;バージョン通知のみ
+XUP3		update,notify		;更新後通知(バックアップ無)
+XUP4		update,notify,backup		;更新後通知(バックアップ有)
+XUP5		update		;更新・非通知(バックアップ無)
+XUP6		update,backup		;更新・非通知(バックアップ有)
+XUPM		Customize update		;カスタマイズ内容の自動更新方法
+XUUE		Server access error.		サーバから情報を取得できませんでした。
+XUUN		Not found update file.		最新版です
+XUUQ		Find version %s. Update from %s?		新しい %s があります。%s から更新しますか？
+XUX1		Windows standard(GDI)		;Windows準拠(GDI)
+XUX2		Dark		;黒(ダークモード)
+XUX3		Light		;白
+XUXT		Dark mode for dialog, menu(Win10 1903, require restart PPx)		;ダイアログやメニュー等のダークモード(Win10 1903以降, 要PPx再起動, 色タブの配色テーマも参照)
+XVDA		scrool button		;ドラッグスクロールを開始するボタン
+XVDB		select button		;範囲選択を開始するボタン
+XVDC		move window button		;ドラッグ窓移動を開始するボタン
+XVDD		use auto scroll		;ドラッグ時にオートスクロールを使用する
+XVDE		Use gesture		;マウス右ボタンでジェスチャーを使用する
+XVIE		File Viewer		;ファイルビューア
+XVLF		left margin		;左余白幅
+XVNM		logical line number		;途中で折り返しても１行として扱う(論理行番号)
+XVPS		Show position by PPc called		;PPcから開いたときの表示位置(試作)
+XVZS		change seleted range		;文字を選択する範囲を選択方向に応じて変える
+XWBC		new ppb		;新規PPbで実行
+XWBD		dialog time(sec)		;指定秒後ダイアログを表示
+XWDE		Delete check directory with file		;削除時にディレクトリ内にファイルがあったら警告する
+XWDF		Delete check with marked entry off screen		;削除時に画面外マークがあったら警告する
+XWDG		Delete check attribute		;削除時に読み取り専用/隠し/システム属性があれば警告する
+XWDH		Skip slight error(file not found).		;軽微エラー(削除対象無し)は無視する
+XWDL		Show dialog to recycled		;ごみ箱削除([D])の開始確認を常に行う(確認なしはごみ箱のプロパティで)
+XWDM		Show dialog to delete		;削除(\[D])の開始確認を
+XWHE		Whell lines		;ホイール１目盛り分の行数
+XWPB		use ppb		;実行時にPPbが必要なとき、空きPPbがなければ
+XWSZ		read check		;ファイルの読み込みで警告する大きさ
+XXES		Extend shiftkey		;拡張シフトキーに使用するキー
+XXFC		File Compare command(%FDC source,%2 dest)		;FCボタンで実行するコマンド(%FDC source,%2 dest)
+XYES		yes		;する
+YGBJ		break job		;処理中止
+YGBW		behind to window		;窓を最背面移動
+YGCZ		clear zoom window		;窓拡縮解除
+YGEX		exit		;終了
+YGFD		free define		;割当て解除
+YGMD		window move to down		;窓を下に移動
+YGMH		small window height		;窓枠高さを縮める
+YGML		window move to left		;窓を左に移動
+YGMR		window move to right		;窓を右に移動
+YGMU		window move to up		;窓を上に移動
+YGMZ		minimize		;最小化
+YGOW		opaque window		;窓不透明
+YGPW		transparent window		;窓透明
+YGRP		restore window position		;窓位置復帰
+YGSH		show help		;ヘルプ表示
+YGSM		system menu		;システムメニュー
+YGSP		save window position		;窓位置記憶
+YGSW		small window width		;窓枠幅を縮める
+YGTW		top to window		;窓を最前面移動
+YGWH		wide window height		;窓枠高さを広げる
+YGWW		wide window width		;窓枠幅を広げる
+YGZI		zoom in window		;窓拡大
+YGZO		zoom out window		;窓縮小
+YTGG		general		;共通・一般
+YTGW		general window action		;共通・窓操作
+ZGHL		Help; right click or F1 key		;※ 右クリックか [F1] で項目の説明
+ZTCC		Cursor
+ZTCD		Display(completed)
+ZTCE		Entry search
+ZTCI		Icon
+ZTCL		Layout and tab bar
+ZTCM		Cursor move
+ZTCN		Cursor detail
+ZTCO		Operations
+ZTCV		View
+ZTDR		Draw
+ZTFO		File Operation
+ZTFS		Font
+ZTGR		General
+ZTLE		Line editor
+ZTNS		no support
+ZTOP		Operation
+ZTOT		Others
+ZTPB		PPb - console
+ZTPC		PPc - file manager
+ZTPE		PPe - text editor
+ZTPF		PPffix - extention renamer
+ZTPU		PPcust - customizer
+ZTPV		PPv - file viewer
+ZTPY		PPtray
+ZTVD		Drag
+ZTVI		Image view
+ZTVT		Text view
+-|7883
+-|ITFC
+-|XBUW

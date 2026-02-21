@@ -1,0 +1,14 @@
+//-----------------------------------------------------------------------------
+//	Paper Plane xUI	 commom library		リソースヘッダ
+//-----------------------------------------------------------------------------
+#define DEFCUSTDATA 0x4000	// DEFCUST.CFG のリソースID
+#define JPNMESDATA 0x0411	// 日本語言語ファイルのリソースID
+//-------------------------------------------------------------------- アイコン
+#define Ic_FOP 10	// *file のアイコン
+#define Ic_PPE 11	// PPe のアイコン
+
+#ifdef UNICODE
+	#define PPFileOpWinClass "PPfileW"
+#else
+	#define PPFileOpWinClass "PPfile"
+#endif

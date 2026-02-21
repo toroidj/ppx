@@ -1,0 +1,3762 @@
+/*-----------------------------------------------------------------------------
+	Paper Plane cUI														Sub
+-----------------------------------------------------------------------------*/
+#include "WINAPI.H"
+#include <shlobj.h>
+#include "PPX.H"
+#include "PPX_64.H"
+#include "VFS.H"
+#include "PPC_STRU.H"
+#include "PPC_FUNC.H"
+#include "PPCOMBO.H"
+#pragma hdrstop
+
+#ifdef UNICODE
+#define DEFINE_strreplace
+#endif
+#if !NODLL
+#define DEFINE_stpcpyA
+#define DEFINE_tstpcpy
+#define DEFINE_tstplimcpy
+#define DEFINE_tstristr
+#define DEFINE_tstrreplace
+#endif
+#include "tstrings.c"
+
+
+#define PPcEnumInfoFunc(func, str, work) ((work)->buffer = str, cinfo->info.Function(&cinfo->info, func, work))
+
+const TCHAR LFMARK_STR[] = T(",M:1");
+const TCHAR LFMARK_STRJ[] = T(",\"M\":1");
+const TCHAR LFSIZE_STR[] = T(",Size,");
+const TCHAR LFCREATE_STR[] = T(",Create,");
+const TCHAR LFLASTWRITE_STR[] = T(",Last Write,");
+const TCHAR LFLASTACCESS_STR[] = T(",Last Access,");
+#define CopyAndSkipString(dest, string) memcpy(dest, string, SIZEOFTSTR(string)); dest += TSIZEOFSTR(string);
+
+#define GFSIZE 0x1000
+
+const TCHAR DFO_title[] = MES_TDFO;
+#define CFMT_OLDHEADERSIZE (sizeof(DWORD) * 5) // XC_CFMT_SETTING の大きさ
+
+int RefreshListModes[] = {K_ENDATTR, K_ENDCOPY, K_ENDDEL};
+
+typedef int (__stdcall *CREATEPICTURE)(LPCTSTR filepath, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, void *lpInfo, void *progressCallback, LONG_PTR lData);
+HMODULE hTSusiePlguin = NULL;
+CREATEPICTURE DCreatePicture;
+
+#ifdef _WIN64
+	#ifdef _M_ARM64
+		#define TGDIPNAME T("iftgdip.spha")
+		#define TWICNAME T("iftwic.spha")
+	#else
+		#define TGDIPNAME T("iftgdip.sph")
+		#define TWICNAME T("iftwic.sph")
+	#endif
+#else
+	#ifdef _M_ARM
+		#define TGDIPNAME T("iftgdip.spia")
+		#define TWICNAME T("iftwic.spia")
+	#else
+		#define TGDIPNAME T("iftgdip.spi")
+		#define TWICNAME T("iftwic.spi")
+	#endif
+#endif
+
+#ifdef UNICODE
+	#define TGDIPCREATENAME "CreatePictureW"
+#else
+	#define TGDIPCREATENAME "CreatePicture"
+#endif
+
+#define MAXCLIPMEMO 22 // クリップボード内容をファイル名にするときの最大文字数
+
+#define PPCLC_RUNCUST 1
+#define PPCLC_WINDOW 2
+#define PPCLC_TITLEBAR 3 // コマンド受付のみ
+#define PPCLC_MENU 4
+#define PPCLC_STATUS 5 // コマンド受付のみ
+#define PPCLC_COMMONINFO 6 // コマンド受付のみ
+#define PPCLC_INFO 7 // コマンド受付のみ
+// #define PPCLC_TOOLBAR 8
+// #define PPCLC_ADDRESSBAR 9
+#define PPCLC_CAPTION 10 // コマンド受付のみ
+#define PPCLC_COLUMN 11 // コマンド受付のみ
+#define PPCLC_TREE 12
+#define PPCLC_LOG 13
+#define PPCLC_JOBLIST 14
+// #define PPCLC_PANEHV 15
+#define PPCLC_UniqueX_Combos 30
+#define PPCLC_TOUCH 31
+#define PPCLC_XWIN 32 // ～ +32 // ※PPvも採用
+#define PPCLC_XCOMBOS 64 // ～ +32
+// #define PPCLC_XCOMBOS1 96 // ～ +32 未使用
+#define PPCLC_MAX 96
+
+const TCHAR lstr_title[] = MES_LYTI;
+const TCHAR lstr_menu[] = MES_LYME;
+const TCHAR lstr_status[] = MES_LYSL;
+const TCHAR lstr_commoninfo[] = MES_LYCI;
+const TCHAR lstr_info[] = MES_LYIL;
+const TCHAR lstr_horizontal[] = MES_LYHL;
+const TCHAR lstr_toolbar[] = MES_LYST;
+const TCHAR lstr_address[] = MES_LYSA;
+const TCHAR lstr_caption[] = MES_LYCA;
+const TCHAR lstr_header[] = MES_LYHA;
+const TCHAR lstr_tree[] = MES_LYTR;
+const TCHAR lstr_scroll[] = MES_LYSC;
+const TCHAR lstr_swapscroll[] = MES_LYSS;
+const TCHAR lstr_docktop[] = MES_LYDT;
+const TCHAR lstr_dockbottom[] = MES_LYDB;
+const TCHAR lstr_windowmenu[] = MES_LYWM;
+const TCHAR lstr_log[] = MES_LYLG;
+const TCHAR lstr_cust[] = MES_LYOT;
+const TCHAR lstr_joblist[] = MES_LYJL;
+const TCHAR lstr_touch[] = MES_LYTL;
+const TCHAR lstr_UniqueX_Combos[] = MES_LYUS;
+
+typedef struct {
+	HMENU hMenu;
+	DWORD *index;
+	ThSTRUCT *TH;
+} AppendMenuS;
+
+const TCHAR LeaveType_Leave[] = T("leave");
+const TCHAR LeaveType_OverUp[] = T("overup");
+const TCHAR Val_RootPath[] = T("RootPath");
+const TCHAR Val_NewPath[] = T("NewPath");
+
+
+int GetEntryDepth(const TCHAR *src, const TCHAR **last)
+{
+	int depth = 0;
+	const TCHAR *rp, *tp;
+
+	rp = VFSGetDriveType(src, NULL, NULL);	// ドライブ指定をスキップ
+	if ( rp == NULL ) rp = src;	// ドライブ指定が無い
+	if ( *rp != '\0' ){ // root なら *rp == 0
+		tp = FindPathSeparator( ((*rp == '\\') || (*rp == '/')) ? rp + 1 : rp);
+		if ( tp != NULL ){
+			do {
+				depth++;
+				rp = tp;
+				tp = FindPathSeparator(rp + 1);
+			} while( tp != NULL);
+		}
+	}
+	if ( last != NULL ) *last = ((*rp == '\\') || (*rp == '/')) ? rp : NULL;
+	return depth;
+}
+
+// 現在ディレクトリ/カーソル位置をヒストリに保存 ------------------------------
+void SetPPcDirPos(PPC_APPINFO *cinfo)
+{
+	if ( IsTrue(cinfo->ModifyComment) ){
+		WriteComment(cinfo, cinfo->CommentFile);
+	}
+	SavePPcDir(cinfo, FALSE);
+	cinfo->OrgPath[0] = '\0';
+}
+
+// 現在ディレクトリ/カーソル位置をヒストリに保存・履歴順を更新 ----------------
+void SavePPcDir(PPC_APPINFO *cinfo, BOOL newdir)
+{
+	int tmp[4];
+	BYTE *hist;
+	TCHAR buf[VFPS], buf2[VFPS], *path;
+	WORD histdatasize;
+
+	if ( cinfo->e.cellIMax <= 0 ) return; // エントリが無い
+
+	tmp[0] = cinfo->e.cellN;
+	tmp[1] = cinfo->cellWMin;
+
+	if ( CEL(tmp[0]).type == ECT_SYSMSG ){
+		if ( CEL(tmp[0]).f.nFileSizeLow != ERROR_FILE_NOT_FOUND ){
+			return; // エラー
+		}
+		// ERROR_FILE_NOT_FOUND のときディレクトリ自体はあるので続行
+	}
+	if ( CEL(tmp[0]).attr & ECA_THIS ) tmp[0]++; // 「.」上にはしない
+
+	if ( cinfo->OrgPath[0] == '\0' ){
+		path = cinfo->path;
+	}else{ // 書庫内書庫
+		path = cinfo->OrgPath;
+	}
+	// 書庫内dir
+	if ( cinfo->UseArcPathMask != ARCPATHMASK_OFF ){
+		VFSFullPath(buf, cinfo->ArcPathMask, path);
+		path = buf;
+	}
+	// Listfile(ベース指定あり)
+	if ( (cinfo->e.Dtype.mode == VFSDT_LFILE) &&
+		 (cinfo->e.Dtype.BasePath[0] != '\0') &&
+		 ((tstrlen(path) + tstrlen(cinfo->e.Dtype.BasePath) + 3) < VFPS) ){
+		thprintf(buf2, TSIZEOF(buf2), T(":<%s>%s"), cinfo->e.Dtype.BasePath, cinfo->path);
+		path = buf2;
+	}
+	UsePPx();
+	hist = (BYTE *)SearchHistory(PPXH_PPCPATH, path);
+	if ( hist == NULL ){
+		if ( X_hisr[0] == HIST_NO_SAVE_DIR ) goto skip;
+		histdatasize = 0;
+	}else{
+		histdatasize = GetHistoryDataSize(hist);
+	}
+		// 位置データの更新のみで済む？
+	if ( (histdatasize >= (sizeof(int) * 2)) && (newdir == FALSE) ){
+		memcpy(GetHistoryData(hist), &tmp, sizeof(int) * 2);
+	}else{ // 書き込み(履歴順の変化)が必要
+		if ( histdatasize > (sizeof(int) * 2) ){ // サイズキャッシュ有り
+			memcpy(&tmp[2], GetHistoryData(hist) + sizeof(int) * 2, sizeof(int) * 2);
+		}else{
+			histdatasize = sizeof(int) * 2;
+		}
+		WriteHistory(PPXH_PPCPATH, path, histdatasize, &tmp);
+	}
+skip:
+	FreePPx();
+}
+
+// マークファイル取得の初期化 -------------------------------------------------
+void InitEnumMarkCell(PPC_APPINFO *cinfo, int *work)
+{
+	if ( cinfo->e.markC == 0 ){			// マーク無し
+		if ( CEL(cinfo->e.cellN).state >= ECS_NORMAL ){
+			*work = CELLENUMID_ONCURSOR;
+		}else{				// SysMsgやDeletedなのでだめ
+			*work = CELLENUMID_END;
+		}
+	}else{
+		*work = cinfo->e.markTop;
+	}
+}
+
+// マークファイルを順次取得 ---------------------------------------------------
+ENTRYCELL *EnumMarkCell(PPC_APPINFO *cinfo, int *work)
+{
+	int cell;
+
+	if ( *work == CELLENUMID_ONCURSOR ){		// マーク無し
+		*work = CELLENUMID_END;
+		return &CEL(cinfo->e.cellN);
+	}
+	if ( *work < 0 ) return NULL;
+	cell = *work;
+	*work = CELdata(*work).mark_fw;
+	while ( *work >= 0 ){
+		if ( CELdata(*work).state >= ECS_NORMAL ) break;
+							// SysMsgやDeletedなのでだめ→次へ
+		cell = *work;
+		*work = CELdata(*work).mark_fw;
+	}
+	return &CELdata(cell);
+}
+
+// Cell 列挙の関数群
+#pragma argsused
+ENTRYCELL *EnumCell_Null(EnumCellStruct *enums, PPC_APPINFO *cinfo)
+{
+	UnUsedParam(cinfo);UnUsedParam(enums);
+	return NULL;
+}
+
+ENTRYCELL *EnumCell_Cursor(EnumCellStruct *enums, PPC_APPINFO *cinfo)
+{
+	enums->next = EnumCell_Null;
+	return &CEL(cinfo->e.cellN);
+}
+
+ENTRYCELL *EnumCell_Mark(EnumCellStruct *enums, PPC_APPINFO *cinfo)
+{
+	ENTRYINDEX index, nextindex;
+	ENTRYCELL *cell;
+
+	index = enums->index;
+	if ( index < 0 ){
+		enums->next = EnumCell_Null;
+		return NULL;
+	}
+
+	for (;;){
+		cell = &CELdata(index);
+		nextindex = enums->index = cell->mark_fw;
+		if ( nextindex < 0 ) break;
+		if ( CELdata(nextindex).state >= ECS_NORMAL ) break;
+		index = nextindex; // SysMsgやDeletedなのでだめ→次へ
+	}
+	return cell;
+}
+
+ENTRYCELL *EnumCell_INC(EnumCellStruct *enums, PPC_APPINFO *cinfo)
+{
+	ENTRYINDEX index;
+	ENTRYCELL *cell;
+
+	index = enums->index;
+	for (;;){
+		if ( index > enums->last ){
+			enums->next = EnumCell_Null;
+			return NULL;
+		}
+		enums->index++;
+		cell = &CEL(index);
+		if ( !(cell->attr & (ECA_THIS | ECA_PARENT)) &&
+			 (cell->state >= ECS_NORMAL) ){
+			return cell;
+		}
+		index++; // SysMsgやDeletedなのでだめ→次へ
+	}
+}
+
+ENTRYCELL *EnumCell_DEC(EnumCellStruct *enums, PPC_APPINFO *cinfo)
+{
+	ENTRYINDEX index;
+	ENTRYCELL *cell;
+
+	index = enums->index;
+	for (;;){
+		if ( index < enums->last ){
+			enums->next = EnumCell_Null;
+			return NULL;
+		}
+		enums->index--;
+		cell = &CEL(index);
+		if ( !(cell->attr & (ECA_THIS | ECA_PARENT)) &&
+			 (cell->state >= ECS_NORMAL) ){
+			return cell;
+		}
+		index--; // SysMsgやDeletedなのでだめ→次へ
+	}
+}
+
+// Cell 列挙初期化
+void InitEnumCell(EnumCellStruct *enums, PPC_APPINFO *cinfo, int mode)
+{
+	switch (mode){
+		case ENUMCELL_MARKED:
+			if ( cinfo->e.markC > 0 ){
+				enums->index = cinfo->e.markTop;
+				enums->next = EnumCell_Mark;
+				return;
+			}
+			// ENUMCELL_CURSOR / default へ
+//		case ENUMCELL_CURSOR:
+		default:
+			if ( CEL(cinfo->e.cellN).state >= ECS_NORMAL ){
+				enums->next = EnumCell_Cursor;
+			}else{				// SysMsgやDeletedなのでだめ
+				enums->next = EnumCell_Null;
+			}
+			return;
+/*
+		case ENUMCELL_MARKONLY:
+			if ( cinfo->e.markC > 0 ){
+				enums->index = cinfo->e.markTop;
+				enums->next = EnumCell_Mark;
+			}else{
+				enums->next = EnumCell_Null;
+			}
+			return;
+*/
+		case ENUMCELL_ALL:
+			enums->index = 0;
+			enums->last = cinfo->e.cellIMax - 1;
+			enums->next = EnumCell_INC;
+			return;
+
+		case ENUMCELL_RANGE:
+			if ( enums->index > enums->last ){ // 逆順なら正順に入れ替え
+				ENTRYINDEX tempindex;
+				tempindex = enums->index;
+				enums->index = enums->last;
+				enums->last = tempindex;
+			}
+		// ENUMCELL_ORDER へ
+//		case ENUMCELL_ORDER:
+			// 範囲調整
+			if ( enums->index < 0 ){
+				enums->index = 0;
+			}else if ( enums->index >= cinfo->e.cellIMax ){
+				enums->index = cinfo->e.cellIMax - 1;
+			}
+			if ( enums->last < 0 ){
+				enums->last = 0;
+			}else if ( enums->last >= cinfo->e.cellIMax ){
+				enums->last = cinfo->e.cellIMax - 1;
+			}
+			if ( enums->index <= enums->last ){ // 正順
+				enums->next = EnumCell_INC;
+			}else{ // 逆順
+				enums->next = EnumCell_DEC;
+			}
+			return;
+	}
+}
+
+// Cell 列挙中断
+void StopEnumCell(EnumCellStruct *enums)
+{
+	enums->next = EnumCell_Null;
+}
+
+void GetCellRightRanges(PPC_APPINFO *cinfo, CELLRIGHTRANGES *ranges)
+{
+	int RightEnd;
+	ranges->TouchWidth = 0;
+
+	//==== 右側反応端を決定
+	if ( TouchMode & TOUCH_LARGEWIDTH ){
+		ranges->TouchWidth = cinfo->FontDPI;
+		if ( ranges->TouchWidth != 0 ){
+			ranges->TouchWidth = CalcMinDpiSize(X_tous[tous_BUTTONSIZE], ranges->TouchWidth);
+		}
+	}
+//	if ( RightEnd > cinfo->wnd.Area.cx ) RightEnd = cinfo->wnd.Area.cx;
+	ranges->RightBorder = cinfo->fontX;
+	RightEnd = cinfo->BoxEntries.right;
+	if ( (RightEnd - cinfo->BoxEntries.left) > (cinfo->fontX * 16) ){
+		ranges->RightBorder *= 2;
+		if ( ranges->RightBorder < ranges->TouchWidth ){
+			ranges->RightBorder = ranges->TouchWidth;
+		}
+	}
+	ranges->RightBorder = RightEnd - ranges->RightBorder;
+	// 右側反応端からのTail位置を決定
+	ranges->TailRightOffset = cinfo->fontX + (cinfo->fontX / 2);
+	ranges->TailWidth = X_stip[TIP_TAIL_WIDTH];
+}
+
+// クライアント座標から、項目の種類を求める -----------------------------------
+int GetItemTypeFromPoint(PPC_APPINFO *cinfo, POINT *pos, ENTRYINDEX *ItemNo)
+{
+	ENTRYINDEX cell = -1;
+	int rc;
+
+	int x, y;
+
+	x = pos->x;
+	y = pos->y;
+	if ( (y < 0) || (x < 0) ||
+		 (x >= cinfo->wnd.Area.cx) || (y >= cinfo->wnd.Area.cy) ){
+		return PPCR_UNKNOWN;	// 範囲外
+	}
+
+									// Path / Status line =================
+	if ( y < cinfo->BoxStatus.top ) return PPCR_PATH;	// Path line
+	if ( y < cinfo->BoxStatus.bottom ) return PPCR_STATUS;	// Status line
+
+	if ( y < cinfo->BoxInfo.bottom ){	// 情報行 =================
+		if ( x < cinfo->BoxInfo.left + cinfo->iconR ){ // Info icon
+			rc = PPCR_INFOICON;
+			cell = cinfo->e.cellN;
+		}else{							// Info line / Hidden Menu
+			int items;
+
+			x = (x - (cinfo->BoxInfo.left + cinfo->iconR)) / cinfo->fontX;
+			items = (cinfo->HiddenMenu.item + 1) >> 1;
+			if ( (x < (cinfo->HiddenMenu.width * items - 1)) &&
+				 !((TouchMode & TOUCH_DISABLEHIDDENMENU) )){
+														// Self Popup Menu
+				rc = PPCR_HIDMENU;
+				cell = (x / cinfo->HiddenMenu.width) + ((y - (cinfo->BoxInfo.bottom - (cinfo->fontY * 2))) / cinfo->fontY) * items;
+				if ( cell < -1 ) return PPCR_INFOTEXT;
+			}else{							// Info line
+				return PPCR_INFOTEXT;
+			}
+		}
+	}else{								// cell 一覧 ==========================
+		x -= cinfo->BoxEntries.left;
+#if FREEPOSMODE
+		{
+			ENTRYINDEX i;
+			int tx, ty;
+			POINT *cpos;
+
+			// ●1.1x -1 を足す必要がある問題を調べること！
+			// ●ソートをしたとき、cinfo->FreePosEntries = 0、NOFREEPOS の再設定が必要
+
+			tx = x + (cinfo->cellWMin / cinfo->cel.Area.cy - 1) * cinfo->cel.Size.cx;
+			ty = y + (cinfo->cellWMin % cinfo->cel.Area.cy - 1) * cinfo->cel.Size.cy - cinfo->BoxEntries.top;
+//			ty = y + CalcFreePosOffY(cinfo);
+			for ( i = 0 ; i < cinfo->FreePosEntries ; i++ ){
+				cpos = &CEL(cinfo->FreePosList[i].index).pos;
+				if ( (cpos->x >= tx) && (cpos->x < (tx + cinfo->cel.Size.cx)) &&
+					 (cpos->y >= ty) && (cpos->y < (ty + cinfo->cel.Size.cy)) ){
+					if ( ItemNo != NULL ) *ItemNo = cinfo->FreePosList[i].index;
+					return PPCR_CELLTEXT;
+				}
+			}
+		}
+#endif
+		y = ( y - cinfo->BoxEntries.top ) / cinfo->cel.Size.cy;
+		if ( x < 0 ) {
+			rc = PPCR_UNKNOWN;
+		}else if ( y < cinfo->cel.Area.cy ){
+			CELLRIGHTRANGES ranges;
+			int xd;
+
+			GetCellRightRanges(cinfo, &ranges);
+			rc = PPCR_CELLBLANK;
+			//==== 検知対象 cell を決定
+			xd = x / cinfo->cel.Size.cx;
+			if ( cinfo->list.orderZ ){
+				cell = cinfo->cellWMin + (y * cinfo->cel.Area.cx) + xd;
+			}else{
+				cell = cinfo->cellWMin + y + (xd * cinfo->cel.Area.cy);
+			}
+			x = x - (xd * cinfo->cel.Size.cx);
+
+			// 右端は、セルの範囲であっても空欄扱いにする
+			if ( (x > (cinfo->fontX * 3)) && (pos->x >= ranges.RightBorder) ){
+				if ( ItemNo != NULL ) *ItemNo = -1;
+				return PPCR_CELLBLANK;
+			}
+#if FREEPOSMODE
+	#define FREEPOSCONDITION(cell) && (CEL(cell).pos.x == NOFREEPOS)
+#else
+	#define FREEPOSCONDITION(cell)
+#endif
+			if ( (cell < cinfo->e.cellIMax) && (cell >= cinfo->cellWMin) FREEPOSCONDITION(cell) ){
+				int TailRight = cinfo->cel.Size.cx - ranges.TailRightOffset;
+
+				if ( xd >= (cinfo->cel.VArea.cx - 1) ){ // 右端用の調整
+					TailRight = ranges.RightBorder % cinfo->cel.Size.cx;
+				}
+
+				if ( (x > (TailRight - ranges.TailWidth)) && (x < TailRight) ){
+					rc = PPCR_CELLTAIL;
+				}else if ( (DWORD)x < cinfo->CellNameWidth ){ // マーク部分の判定
+					BYTE *fmtp;
+					int markX;
+
+					// 書式頭出し
+					fmtp = cinfo->celF.fmt;
+					if ( (*fmtp == DE_WIDEV) || (*fmtp == DE_WIDEW) ){
+						fmtp += DE_WIDEV_SIZE;
+					}
+
+					if ( *fmtp == DE_BLANK ){
+						int blankX = 0;
+						do {
+							blankX += cinfo->fontX;
+							fmtp++;
+						} while ( *fmtp == DE_BLANK );
+						x -= blankX;
+						if ( x < 0 ){
+							if ( ItemNo != NULL ) *ItemNo = cell;
+							return PPCR_CELLBLANK;
+						}
+					}
+					// マークチェック
+					if ( (*fmtp == DE_ICON) || (*fmtp == DE_CHECK) || (*fmtp == DE_CHECKBOX)){
+						markX = cinfo->fontX * 2 + MARKOVERX;
+						fmtp += DE_ICON_SIZE; // DE_CHECK_SIZE / DE_CHECKBOX_SIZE
+					}else if ( *fmtp == DE_ICON2 ){
+						markX = *(fmtp + 1) + ICONBLANK + MARKOVERX;
+						fmtp += DE_ICON2_SIZE;
+					}else{
+						markX = cinfo->fontX + MARKOVERX;
+					}
+					if ( markX < ranges.TouchWidth ) markX = ranges.TouchWidth;
+
+					if ( x < markX ){
+						rc = PPCR_CELLMARK;
+					}else{ // エントリチェック
+						if ( (XC_limc == 2) && (CEL(cell).f.cFileName[0] != FINDOPTION_LONGNAME) ){
+							if ( *fmtp == DE_MARK ) fmtp += DE_MARK_SIZE;
+							if ( (*fmtp == DE_LFN) || (*fmtp == DE_SFN) ){
+								int namewidth;
+
+								if ( UsePFont ){
+									HDC hDC = GetDC(cinfo->info.hWnd);
+									SIZE boxsize;
+									HGDIOBJ hOldFont;
+									hOldFont = SelectObject(hDC, cinfo->hBoxFont);
+
+									GetTextExtentPoint32(hDC,
+											CEL(cell).f.cFileName,
+											CEL(cell).ext, &boxsize);
+									namewidth = boxsize.cx + ((cinfo->fontX * 3) / 2) + MARKOVERX;
+									SelectObject(hDC, hOldFont);	// フォント
+									ReleaseDC(cinfo->info.hWnd, hDC);
+								}else{
+									namewidth = (CEL(cell).ext + 1) * cinfo->fontX + MARKOVERX;
+								}
+								if ( namewidth < (cinfo->fontX * 2) ){
+									namewidth = (cinfo->fontX * 2);
+								}
+								if ( namewidth < ranges.TouchWidth ){
+									namewidth = ranges.TouchWidth;
+								}
+								if ( x < namewidth ) rc = PPCR_CELLTEXT;
+							}else{
+								rc = PPCR_CELLTEXT;
+							}
+						}else{
+							rc = PPCR_CELLTEXT;
+						}
+					}
+				}
+			}
+		}else{
+			rc = PPCR_CELLBLANK;
+		}
+	}
+	if ( ItemNo != NULL ) *ItemNo = cell;
+	return rc;
+}
+
+HWND USEFASTCALL GetJoinWnd(PPC_APPINFO *cinfo)
+{
+	HWND hPairWnd;
+
+	hPairWnd = PPcGetWindow(cinfo->RegNo, CGETW_PAIR);
+	if ( hPairWnd == BADHWND ) hPairWnd = NULL;
+	return hPairWnd;
+}
+
+HWND USEFASTCALL GetPairWnd(PPC_APPINFO *cinfo)
+{
+	HWND hPairWnd;
+
+	if ( cinfo->combo ){
+		hPairWnd = (HWND)SendMessage(cinfo->hComboWnd, WM_PPXCOMMAND,
+				KCW_getpairwnd, (LPARAM)cinfo->info.hWnd);
+		if ( hPairWnd != NULL ) return hPairWnd;
+	}
+	hPairWnd = PPcGetWindow(cinfo->RegNo, CGETW_PAIR);
+	if ( hPairWnd != NULL ) return hPairWnd;
+	if ( !(cinfo->swin & SWIN_JOIN) ){
+		hPairWnd = PPcGetWindow(cinfo->RegNo, CGETW_PREV);
+		if ( hPairWnd != BADHWND ) return hPairWnd;
+	}
+	return NULL;
+}
+
+void USEFASTCALL GetPairPath(PPC_APPINFO *cinfo, TCHAR *path)
+{
+	if ( cinfo->combo ){
+		*(HWND *)path = cinfo->info.hWnd;
+		if ( SENDCOMBO_OK == SendMessage(cinfo->hComboWnd,
+				WM_PPXCOMMAND, KCW_getpath, (LPARAM)path) ){
+			return;
+		}
+	}
+	PPcOldPath(cinfo->RegNo, cinfo->swin & SWIN_JOIN, path);
+	return;
+}
+
+void SetReportTextMain(HWND hLogWnd, const TCHAR *text, BOOL NoCr)
+{
+	DWORD lines;
+	DWORD lP, wP;
+
+	if ( X_Logging ){
+		XMessage(NULL, NULL, X_Logging, T("%s"), text);
+		if ( X_Logging == XM_INFOLLog ) return;
+	}
+
+	lines = SendMessage(hLogWnd, EM_GETLINECOUNT, 0, 0);
+	if ( lines > LOGLINES_MAX ){
+		SendMessage(hLogWnd, EM_SETSEL,
+				0, SendMessage(hLogWnd, EM_LINEINDEX, (WPARAM)LOGLINES_DELETE, 0));
+		SendMessage(hLogWnd, EM_REPLACESEL, 0, (LPARAM)NilStr);
+		lines = SendMessage(hLogWnd, EM_GETLINECOUNT, 0, 0);
+	}
+	SendMessage(hLogWnd, EM_SETSEL, EC_LAST, EC_LAST);
+	SendMessage(hLogWnd, EM_GETSEL, (WPARAM)&wP, (LPARAM)&lP);
+	if ( !NoCr && ((DWORD)SendMessage(hLogWnd, EM_LINEINDEX, (WPARAM)lines - 1, 0) < lP) ){
+		SendMessage(hLogWnd, EM_REPLACESEL, 0, (LPARAM)T("\r\n"));
+	}
+
+	SendMessage(hLogWnd, EM_REPLACESEL, 0, (LPARAM)text);
+	SendMessage(hLogWnd, EM_SCROLL, SB_LINEDOWN, 0);
+	SendMessage(hLogWnd, EM_SETMODIFY, FALSE, 0);
+}
+
+void SetReportText(const TCHAR *text)
+{
+	if ( Combo.hWnd == NULL ){
+		if ( (hCommonLog == NULL) || (IsWindow(hCommonLog) == FALSE) ){
+			if ( (text == NULL) || (X_Logging == 0) ){
+				HWND hWnd;
+
+				hWnd = PPEui(PPcGetWindow(0, CGETW_GETFOCUS), MES_TPCL, NilStr);
+				hCommonLog = (HWND)SendMessage(hWnd, WM_PPXCOMMAND, KE_getHWND, 0);
+			}
+		}
+	}else{
+		if ( (X_Logging == 0) || (Combo.Report.hWnd != NULL) ){
+			SendMessage(Combo.hWnd, WM_PPXCOMMAND, TMAKEWPARAM(K_WINDDOWLOG, PPLOG_REPORT), (LPARAM)text);
+			return;
+		}
+	}
+	if ( text != NULL ) SetReportTextMain(hCommonLog, text, FALSE);
+}
+
+void SetReportTextf(const TCHAR *message, ...)
+{
+	TCHAR buf[VFPS * 2 + 200];
+	t_va_list arglist;
+
+	t_va_start(arglist, message);
+	thvprintf(buf, TSIZEOF(buf), message, arglist);
+	t_va_end(arglist);
+
+	if ( (Combo.hWnd != NULL) && (Combo.Report.hWnd == NULL) ){
+		SendMessage(Combo.hWnd, WM_PPXCOMMAND, TMAKEWPARAM(K_WINDDOWLOG, PPLOG_REPORT), (LPARAM)REPORTTEXT_OPEN);
+
+	}
+	SetReportText(buf);
+}
+
+// １行メッセージ表示の設定 ---------------------------------------------------
+void USEFASTCALL SetPopMsg(PPC_APPINFO *cinfo, ERRORCODE err, const TCHAR *msg)
+{
+	TCHAR msgbuf[CMDLINESIZE];
+
+	if ( (err > POPMSG_MSG) && (err <= POPMSG_GETLASTERROR) ){
+		TCHAR *msgptr;
+
+		if ( err == POPMSG_GETLASTERROR ) err = PPERROR_GETLASTERROR;
+		if ( msg != NULL ){
+			tstplimcpy(msgbuf, MessageText(msg), CMDLINESIZE);
+			msgptr = msgbuf + tstrlen(msgbuf);
+			*msgptr++ = ':';
+		}else{
+			msgptr = msgbuf;
+		}
+		PPErrorMsg(msgptr, err);
+		err = POPMSG_MSG;
+		msg = msgbuf;
+	}
+
+	if ( !(err & POPMSG_NOLOGFLAG) && (Combo.Report.hWnd != NULL) ){
+		if ( msg != NULL ){
+			msg = MessageText(msg);
+		}else{
+			PPErrorMsg(msgbuf, err);
+			msg = msgbuf;
+		}
+		SetReportText(msg);
+		return;
+	}
+
+	if ( msg != NULL ){
+		tstplimcpy(cinfo->PopMsgStr, MessageText(msg), CMDLINESIZE);
+	}else{
+		PPErrorMsg(cinfo->PopMsgStr, err);
+	}
+
+	if ( err < POPMSG_PROGRESSMSG ){
+		cinfo->PopMsgFlag = (cinfo->PopMsgFlag & ~(PMF_PROGRESS | PMF_BUSY)) | (PMF_WAITTIMER | PMF_WAITKEY);
+		cinfo->PopMsgTimer = 3;
+	}else{
+		#if DRAWMODE == DRAWMODE_D3D
+		if ( err == POPMSG_PROGRESSBUSYMSG ){
+			if ( cinfo->PopMsgFlag & PMF_BUSY ){
+				DxSetMotion(cinfo->DxDraw, DXMOTION_Busy);
+			}
+			cinfo->PopMsgFlag = (cinfo->PopMsgFlag & ~(PMF_WAITTIMER | PMF_WAITKEY)) | (PMF_PROGRESS | PMF_BUSY);
+		}else
+		#endif
+		if ( err == POPMSG_KEEPMSG ){
+			ThSetString(&cinfo->StringVariable, StrKeepMsg, msg);
+			if ( *msg != '\0' ){
+				cinfo->PopMsgFlag = (cinfo->PopMsgFlag & ~(PMF_WAITTIMER | PMF_WAITKEY | PMF_PROGRESS | PMF_BUSY)) | PMF_KEEP;
+				setflag(cinfo->PopMsgFlag, PMF_KEEP);
+			}else{
+				resetflag(cinfo->PopMsgFlag, PMF_KEEP);
+			}
+		}else{
+			cinfo->PopMsgFlag = (cinfo->PopMsgFlag & ~(PMF_WAITTIMER | PMF_WAITKEY | PMF_BUSY)) | PMF_PROGRESS;
+		}
+	}
+
+	RefleshStatusLine(cinfo);
+
+	if ( !(err & POPMSG_NOLOGFLAG) ){
+		if ( hCommonLog != NULL ){
+			if ( IsWindow(hCommonLog) == FALSE ){
+				hCommonLog = NULL;
+			}else{
+				SetReportText(cinfo->PopMsgStr);
+			}
+		}
+
+		if ( X_evoc == 1 ){
+			PPxCommonExtCommand(K_FLASHWINDOW, (WPARAM)cinfo->info.hWnd);
+			setflag(cinfo->PopMsgFlag, PMF_FLASH);
+		}
+		XMessage(NULL, NULL, XM_ETCl, T("%s"), cinfo->PopMsgStr);
+	}
+}
+// メッセージ表示の停止 -------------------------------------------------------
+void StopPopMsg(PPC_APPINFO *cinfo, int mask)
+{
+	if ( (cinfo->PopMsgFlag & mask) == 0 ) return; // 変更無し
+
+	if ( cinfo->PopMsgFlag & mask & PMF_FLASH ){ // タイトルバーフラッシュ解除
+		PPxCommonExtCommand(K_STOPFLASHWINDOW, (WPARAM)cinfo->info.hWnd);
+		resetflag(cinfo->PopMsgFlag, PMF_FLASH);
+	}
+
+	#if DRAWMODE == DRAWMODE_D3D
+	if ( cinfo->PopMsgFlag & mask & PMF_BUSY ){ // 優先順位考慮不要
+		DxSetMotion(cinfo->DxDraw, DXMOTION_StopBusy);
+	}
+	#endif
+
+	resetflag(cinfo->PopMsgFlag, mask);
+	// 表示が無くなるので描画する
+	if ( (cinfo->PopMsgFlag & (PMF_DISPLAYMASK & ~PMF_KEEP)) == 0 ){
+		if ( cinfo->PopMsgFlag & PMF_KEEP ){
+			ThGetString(&cinfo->StringVariable, StrKeepMsg, cinfo->PopMsgStr, TSIZEOF(cinfo->PopMsgStr));
+		}
+		setflag(cinfo->DrawTargetFlags, DRAWT_STATUSLINE);
+		RefleshStatusLine(cinfo);
+	}
+}
+
+BOOL WriteReport(const TCHAR *title, const TCHAR *name, ERRORCODE errcode)
+{
+	TCHAR buf[CMDLINESIZE], *p;
+
+	if ( (Combo.Report.hWnd == NULL) && (X_Logging == 0) ){
+		if ( hCommonLog == NULL ) return FALSE;
+		if ( IsWindow(hCommonLog) == FALSE ){
+			hCommonLog = NULL;
+			return FALSE;
+		}
+	}
+	p = buf;
+
+	if ( title != NULL ){
+		p = tstpcpy(p, title);
+	}
+	if ( name != NULL ){
+		p = tstpcpy(p, name);
+		if ( errcode != NO_ERROR ){
+			*p++ = ' ';
+			*p++ = ':';
+			*p++ = ' ';
+		}
+	}
+	*p = '\0';
+	if ( errcode != NO_ERROR ){
+		if ( errcode == REPORT_GETERROR ) errcode = GetLastError();
+		PPErrorMsg(p, errcode);
+	}
+	SetReportText(buf);
+	return TRUE;
+}
+
+// PIDL list をまとめて解放 ---------------------------------------------------
+#if !NODLL
+void FreePIDLS(LPITEMIDLIST *pidls, int cnt)
+{
+	LPMALLOC pMA;
+
+	if ( FAILED(SHGetMalloc(&pMA)) ) return;
+	while ( cnt != 0 ){
+		pMA->lpVtbl->Free(pMA, *pidls);
+		pidls++;
+		cnt--;
+	}
+	pMA->lpVtbl->Release(pMA);
+}
+#endif
+
+const TCHAR StrExtractCheck[] = MES_QETF;
+// Shell Context Menu を実行 --------------------------------------------------
+ERRORCODE SCmenu(PPC_APPINFO *cinfo, const TCHAR *action)
+{
+	PPXCMDENUMSTRUCT work;
+	LPITEMIDLIST *pidls;
+	LPSHELLFOLDER pSF;
+	TCHAR buf1[VFPS], buf2[VFPS];
+
+	if ( (cinfo->UnpackFix == FALSE) &&
+		((cinfo->e.Dtype.mode == VFSDT_UN) ||
+		 (cinfo->e.Dtype.mode == VFSDT_SUSIE) ||
+		 (cinfo->e.Dtype.mode == VFSDT_ARCFOLDER) ||
+		 (cinfo->e.Dtype.mode == VFSDT_CABFOLDER) ||
+		 (cinfo->e.Dtype.mode == VFSDT_ZIPFOLDER)) ){
+		if ( PMessageBox(cinfo->info.hWnd, StrExtractCheck, T("Menu"),
+					MB_APPLMODAL | MB_OKCANCEL | MB_DEFBUTTON1 |
+					MB_ICONQUESTION) != IDOK ){
+			return ERROR_CANCELLED;
+		}
+		OnArcPathMode(cinfo);
+	}
+
+	PPcEnumInfoFunc(PPXCMDID_STARTENUM, buf1, &work);
+	PPcEnumInfoFunc('C', buf2, &work);
+	PPcEnumInfoFunc(PPXCMDID_ENDENUM, buf1, &work);
+	if ( *buf2 == '\0' ){
+		OffArcPathMode(cinfo);
+		return ERROR_FILE_NOT_FOUND;
+	}
+					// ファイルが１個のみ or SHN でない
+	if ( (cinfo->e.markC <= 1) && (cinfo->e.Dtype.mode != VFSDT_SHN) ){
+		if ( PPcSHContextMenu(cinfo, buf2, action) == FALSE ){
+			SetPopMsg(cinfo, POPMSG_MSG, MES_ECME);
+			OffArcPathMode(cinfo);
+			return ERROR_ACCESS_DENIED;
+		}
+	}else{									// 2以上
+		int count;
+
+		count = MakePIDLTable(cinfo, &pidls, &pSF);
+		if ( count ){
+			POINT pos;
+
+			GetPopupPosition(cinfo, &pos);
+			SHContextMenu(cinfo->info.hWnd, &pos, pSF, pidls, count, action);
+			FreePIDLS(pidls, count);
+			pSF->lpVtbl->Release(pSF);
+			HeapFree( hProcessHeap, 0, pidls);
+		}else{
+			SetPopMsg(cinfo, POPMSG_MSG, MES_ECME);
+			OffArcPathMode(cinfo);
+			return ERROR_ACCESS_DENIED;
+		}
+	}
+	OffArcPathMode(cinfo);
+	return NO_ERROR;
+}
+#if NODLL
+extern DWORD GetIpdlSum(LPITEMIDLIST pidl);
+#else
+DWORD GetIpdlSum(LPITEMIDLIST pidl)
+{
+	DWORD sum = 0;
+	USHORT size = (USHORT)(pidl->mkid.cb - sizeof(USHORT));
+	BYTE *idlptr = (BYTE *)pidl->mkid.abID;
+
+	for(;;){
+		sum += *idlptr++;
+		if ( --size == 0 ) break;
+	}
+	// idlist が複数あるときは対象外にする
+	if ( *((USHORT*)idlptr) != 0 ) sum = 0;
+	return sum;
+}
+#endif
+// PIDL list を作成 -----------------------------------------------------------
+int MakePIDLTable(PPC_APPINFO *cinfo, LPITEMIDLIST **pidls, LPSHELLFOLDER *pSF)
+{
+	HANDLE heap;
+	LPSHELLFOLDER pParentFolder;
+	LPITEMIDLIST *PIDLs, *idls_cell = NULL;
+	LPITEMIDLIST *lps;
+	ENTRYCELL *cell;
+	int cnt = 0, marks;
+	int work;
+	TCHAR buf[VFPS];
+
+	heap = hProcessHeap;
+
+	marks = cinfo->e.markC ? cinfo->e.markC : 1;
+	PIDLs = HeapAlloc(heap, 0, marks * sizeof(LPITEMIDLIST *));
+	if ( PIDLs == NULL ) return 0;
+
+	pParentFolder = VFPtoIShell(cinfo->info.hWnd,
+		  (cinfo->e.Dtype.mode != VFSDT_LFILE) ? cinfo->path : T("#:\\"), NULL);
+	if ( pParentFolder == NULL ) goto fin;
+
+				// filesystem でないので、１回のenumで作成できるように処理する
+	if ( IsNodirShnPath(cinfo) ){
+		LPENUMIDLIST pEID;
+		DWORD enumflags;
+		LPITEMIDLIST idl;
+		int index = 0;
+
+		idls_cell = HeapAlloc(heap, 0, marks * sizeof(LPITEMIDLIST *));
+		if ( idls_cell == NULL ) goto fin;
+
+		cinfo->CellHashType = CELLHASH_NONE;
+		InitEnumMarkCell(cinfo, &work);
+		while ( (cell = EnumMarkCell(cinfo, &work)) != NULL ){
+			cell->cellhash = 0;
+		}
+
+		enumflags = (OSver.dwMajorVersion >= 6) ?
+				ENUMOBJECTSFORFOLDERFLAG_VISTA : ENUMOBJECTSFORFOLDERFLAG_XP;
+		if ( S_OK == pParentFolder->lpVtbl->EnumObjects(pParentFolder, cinfo->info.hWnd, enumflags, &pEID) ){ // S_FALSE のときは、pEID = NULL
+			LPMALLOC pMA;
+			TCHAR name[VFPS];
+
+			(void)SHGetMalloc(&pMA);
+			for ( ; ; ){
+				DWORD getsi;
+
+				if ( pEID->lpVtbl->Next(pEID, 1, &idl, &getsi) != S_OK ) break;
+				if ( getsi == 0 ) break;
+
+				if ( IsTrue(PIDL2DisplayNameOf(name, pParentFolder, idl)) ){
+					InitEnumMarkCell(cinfo, &work);
+					for (;;) {
+						if ( (cell = EnumMarkCell(cinfo, &work)) == NULL ){
+							if ( idl != NULL ) pMA->lpVtbl->Free(pMA, idl);
+							break;
+						}
+						if ( (cell->cellhash == 0) && (tstrcmp(name, cell->f.cFileName) == 0) && (GetIpdlSum(idl) == cell->f.dwReserved1) ){
+							idls_cell[index] = idl;
+							cell->cellhash = ++index;
+							break;
+						}
+					}
+				}
+			}
+			pMA->lpVtbl->Release(pMA);
+			pEID->lpVtbl->Release(pEID);
+		}
+	}
+	// cellに対応するidlを設定/取得
+	lps = PIDLs;
+	InitEnumMarkCell(cinfo, &work);
+	while ( (cell = EnumMarkCell(cinfo, &work)) != NULL ){
+		if ( cinfo->e.Dtype.mode == VFSDT_SHN ){
+			if ( idls_cell && (cell->cellhash != 0) ){
+				*lps = idls_cell[cell->cellhash - 1];
+			}else{
+				*lps = BindIShellAndFdata(pParentFolder, &cell->f);
+			}
+		}else{
+			*lps = BindIShellAndFname(pParentFolder, GetCellFileName(cinfo, cell, buf));
+		}
+
+		if ( *lps == NULL ){
+			XMessage(NULL, NULL, XM_NiERRld, T("%s(MakePIDLTable, %s)"), MessageText(MES_EFAL), cell->f.cFileName);
+			break;
+		}else{
+			lps++;
+			cnt++;
+		}
+	}
+	if ( idls_cell != NULL ) HeapFree(heap, 0, idls_cell);
+fin:
+	if ( cnt == 0 ){
+		if ( pParentFolder != NULL ){
+			pParentFolder->lpVtbl->Release(pParentFolder);
+		}
+		HeapFree(heap, 0, PIDLs);
+	}else{
+		*pidls = PIDLs;
+		*pSF = pParentFolder;
+	}
+	return cnt;
+}
+
+// XC_swin を保存／取得 -------------------------------------------------------
+void IOX_win(PPC_APPINFO *cinfo, BOOL save)
+{
+	TCHAR id[2] = T("A");
+
+	id[0] += (TCHAR)((cinfo->RegCID[1] - (TCHAR)'A') & (TCHAR)0x7e);
+	if ( IsTrue(save) ){
+		if ( !cinfo->combo ){
+			SetCustTable(T("XC_swin"), id, &cinfo->swin, sizeof(cinfo->swin));
+		}
+	}else{
+		GetCustTable(T("XC_swin"), id, &cinfo->swin, sizeof(cinfo->swin));
+	}
+}
+
+// XC_swin の更新を対窓に連絡／対窓を起動 -------------------------------------
+void SendX_win(PPC_APPINFO *cinfo)
+{
+	HWND hPairWnd;
+
+	if ( cinfo->combo ) return;
+	IOX_win(cinfo, TRUE);
+	if ( CheckReady(cinfo) == FALSE ) return;
+	hPairWnd = PPcGetWindow(cinfo->RegNo, CGETW_PAIR);
+	if ( hPairWnd == NULL ){
+		if ( cinfo->swin & SWIN_WBOOT ) BootPairPPc(cinfo);
+	}else if ( hPairWnd != BADHWND ){
+		SendMessage(hPairWnd, WM_PPXCOMMAND, KC_Join, 0);
+	}
+}
+
+// ダミー用エントリの値を設定する ---------------------------------------------
+void USEFASTCALL SetDummyCell(ENTRYCELL *cell, const TCHAR *lfn)
+{
+	cell->mark_fw = NO_MARK_ID;
+	cell->mark_bk = NO_MARK_ID;
+	cell->extC = C_AUTO;
+	cell->type   = ECT_SYSMSG;
+	cell->state  = ECS_MESSAGE;
+	cell->ext = (WORD)tstrlen(lfn);
+	cell->comment = EC_NOCOMMENT;
+//	cell->cellhash = 0;
+	cell->cellcolumn = CCI_NODATA;
+	cell->icon = ICONLIST_NOINDEX;
+	cell->attr = ECA_ETC;
+	cell->attrsortkey = 0;
+	cell->highlight = 0;
+	// dwFileAttributes, ftCreationTime, ftLastAccessTime, ftLastWriteTime, nFileSize
+	memset(&cell->f, 0, (sizeof(DWORD) * 3) + (sizeof(FILETIME) * 3));
+#if FREEPOSMODE
+	cell->pos.x = NOFREEPOS;
+#endif
+	tstrcpy(cell->f.cFileName, lfn);
+	cell->f.cAlternateFileName[0] = '\0';
+}
+
+// エントリ一覧を作成する -----------------------------------------------------
+
+TCHAR *GetFilesNextAlloc(TCHAR *nowptr, TCHAR **baseptr, TCHAR **nextptr)
+{
+	TCHAR *np, *lbaseptr = *baseptr;
+	size_t newsize;
+
+	newsize = *nextptr - lbaseptr + GFSIZE;
+	np = HeapReAlloc(hProcessHeap, 0, lbaseptr, TSTROFF(newsize) + VFPS);
+	if ( np != NULL ){
+		*nextptr = np + newsize;
+		*baseptr = np;
+		#pragma warning(suppress: 6001) // サイズ計算のみにlbaseptrを使用
+		return np + (nowptr - lbaseptr);
+	}
+	*baseptr = NULL;
+	XMessage(NULL, NULL, XM_FaERRd, T("ReAllocError"));
+	ProcHeapFree(lbaseptr);
+	return nowptr;
+}
+
+TCHAR *GetFilesSHN(PPC_APPINFO *cinfo, TCHAR *nameheap)
+{
+	LPITEMIDLIST *pidls;
+	LPSHELLFOLDER pSF;
+	LPDATAOBJECT  pDO;
+	int items;
+	TCHAR *names = nameheap, *p = nameheap;
+	TCHAR *next;
+
+	items = MakePIDLTable(cinfo, &pidls, &pSF);
+	if ( items == 0 ) return NULL;
+
+	next = names + GFSIZE - VFPS;
+									// IDataObject を取得 ----------------
+	if ( SUCCEEDED(pSF->lpVtbl->GetUIObjectOf(pSF, cinfo->info.hWnd, items,
+			(LPCITEMIDLIST *)pidls, &IID_IDataObject, NULL, (void **)&pDO)) ){
+		FORMATETC fmtetc;
+		STGMEDIUM medium;
+
+		fmtetc.cfFormat = CF_HDROP;
+		fmtetc.ptd      = NULL;
+		fmtetc.dwAspect = DVASPECT_CONTENT;
+		fmtetc.lindex   = -1;
+		fmtetc.tymed    = TYMED_HGLOBAL;
+
+		if ( SUCCEEDED(pDO->lpVtbl->GetData(pDO, &fmtetc, &medium)) ){
+			char *sDrop;
+			DROPFILES *pDrop;
+
+			pDrop = (DROPFILES *)GlobalLock(UNIONNAME0(medium, hGlobal));
+			if ( pDrop != NULL ){
+				sDrop = (char *)pDrop + pDrop->pFiles;
+
+				if ( *sDrop ){
+					if ( pDrop->fWide ){ // UNICODE ver
+						while( *(WCHAR *)sDrop ){
+							if ( p >= next ){				// メモリの追加
+								p = GetFilesNextAlloc(p, &names, &next);
+								if ( names == NULL ) break;
+							}
+							#ifdef UNICODE
+								tstrcpy(p, (WCHAR *)sDrop);
+								sDrop += TSTRSIZE((WCHAR *)sDrop);
+							#else
+								UnicodeToAnsi((WCHAR *)sDrop, p, VFPS);
+								while( *(WCHAR *)sDrop ) sDrop += 2;
+								sDrop += 2;
+							#endif
+							p += tstrlen(p) + 1;
+						}
+					}else{ // ANSI ver
+						while( *sDrop ){
+							if ( p >= next ){				// メモリの追加
+								p = GetFilesNextAlloc(p, &names, &next);
+								if ( names == NULL ) break;
+							}
+							#ifdef UNICODE
+								AnsiToUnicode(sDrop, p, VFPS);
+							#else
+								tstrcpy(p, sDrop);
+							#endif
+							sDrop += strlen(sDrop) + 1;
+							p += tstrlen(p) + 1;
+						}
+					}
+				}
+				GlobalUnlock(UNIONNAME0(medium, hGlobal));
+			}
+			ReleaseStgMedium(&medium);
+			pDO->lpVtbl->Release(pDO);
+		}
+	}
+	FreePIDLS(pidls, items);
+	pSF->lpVtbl->Release(pSF);
+	ProcHeapFree(pidls);
+	*p++ = 0;
+	*p = 0;
+	if ( (names != NULL) && (*names == '\0') ){
+		ProcHeapFree(names);
+		names = NULL;
+	}
+	return names;
+}
+
+TCHAR *GetFiles(PPC_APPINFO *cinfo, int flags)
+{
+	TCHAR *names, *namep, *next;
+	TCHAR buf[VFPS], dir[VFPS];
+	PPXCMDENUMSTRUCT work;
+										// 保存用のメモリを確保する
+	names = HeapAlloc(hProcessHeap, 0, TSTROFF(GFSIZE));
+	if ( names == NULL ) return NULL;
+	namep = names;
+	next = names + GFSIZE - VFPS;
+	if ( flags & GETFILES_DATAINDEX ) next -= sizeof(ENTRYDATAOFFSET);
+
+	if ( cinfo->e.Dtype.mode == VFSDT_SHN ){
+		return GetFilesSHN(cinfo, names);
+	}
+
+	PPcEnumInfoFunc(PPXCMDID_STARTENUM, buf, &work);
+	if ( flags & GETFILES_FULLPATH ) PPcEnumInfoFunc('1', dir, &work);
+	if ( flags & GETFILES_SETPATHITEM ){
+		PPcEnumInfoFunc('1', namep, &work);
+		namep += tstrlen(namep) + 1;
+	}
+	for( ; ; ){
+		PPcEnumInfoFunc('C', buf, &work);
+		if ( *buf == '\0' ) break;
+		if ( IsParentDir(buf) == FALSE ){
+			if ( namep >= next ){				// メモリの追加
+				namep = GetFilesNextAlloc(namep, &names, &next);
+				if ( names == NULL ) break;
+			}
+			if ( flags & GETFILES_FULLPATH ){
+				#pragma warning(suppress: 6054) // PPcEnumInfoFunc('1', dir, &work);
+				VFSFullPath(namep, buf, dir);
+				if ( flags & GETFILES_REALPATH ){
+					int mode;
+
+					if ( VFSGetDriveType(namep, &mode, NULL) != NULL ){
+						if ( (mode <= VFSPT_SHN_DESK) || (mode == VFSPT_SHELLSCHEME) ){
+							VFSGetRealPath(NULL, namep, namep);
+						}
+					}
+				}
+			}else{
+				tstrcpy(namep, buf);
+			}
+			namep += tstrlen(namep) + 1;
+			if ( flags & GETFILES_DATAINDEX ){
+				ENTRYDATAOFFSET *ep = (ENTRYDATAOFFSET *)namep;
+				*ep++ = (work.enumID == CELLENUMID_ONCURSOR) ?
+					CELt(cinfo->e.cellN) : (ENTRYDATAOFFSET)work.enumID;
+				namep = (TCHAR *)ep;
+			}
+		}
+		if ( PPcEnumInfoFunc(PPXCMDID_NEXTENUM, buf, &work) == 0 ) break;
+	}
+	PPcEnumInfoFunc(PPXCMDID_ENDENUM, buf, &work);
+	*namep = '\0';
+	*(namep + 1) = '\0';
+
+	if ( (names != NULL) && (*names == '\0') ){
+		HeapFree(hProcessHeap, 0, names);
+		names = NULL;
+	}
+	return names;
+}
+
+TCHAR *GetFilesForListfile(PPC_APPINFO *cinfo)
+{
+	TCHAR *names, *namep, *next, *top;
+	TCHAR buf[VFPS], dir[VFPS];
+	PPXCMDENUMSTRUCT work;
+	int baselen;
+	TCHAR dirsep = '\0';
+										// 保存用のメモリを確保する
+	names = HeapAlloc(hProcessHeap, 0, TSTROFF(GFSIZE));
+	if ( names == NULL ){
+		return NULL;
+	}
+	namep = names;
+	next = names + GFSIZE - VFPS;
+
+	PPcEnumInfoFunc(PPXCMDID_STARTENUM, buf, &work);
+	if ( cinfo->e.Dtype.BasePath[0] != '\0' ){
+		CatPath(dir, cinfo->e.Dtype.BasePath, NilStr);
+		baselen = tstrlen32(dir);
+	}else{
+		baselen = 0;
+	}
+	if ( cinfo->e.pathtype == VFSPT_AUXOP ){
+		dirsep = (TCHAR)((tstrchr(cinfo->path, '/') != NULL) ? '/' : '\\');
+	}
+	for( ; ; ){
+		PPcEnumInfoFunc('C', buf, &work);
+		if ( *buf == '\0' ){
+			break;
+		}
+		if ( IsParentDir(buf) == FALSE ){
+			top = buf;
+			if ( baselen && ( memcmp(buf, dir, baselen * sizeof(TCHAR)) == 0 ) ){
+				top += baselen;
+			}
+			if ( namep >= next ){				// メモリの追加
+				namep = GetFilesNextAlloc(namep, &names, &next);
+				if ( names == NULL ) break;
+			}
+			tstrcpy(namep, top);
+			namep += tstrlen(namep) + 1;
+			if ( dirsep != '\0' ){
+				PPcEnumInfoFunc(PPXCMDID_ENUMATTR, buf, &work);
+				if ( *(DWORD *)buf & FILE_ATTRIBUTE_DIRECTORY ){
+					*(namep - 1) = dirsep;
+					*namep = '\0';
+					namep++;
+				}
+			}
+		}
+		if ( PPcEnumInfoFunc(PPXCMDID_NEXTENUM, buf, &work) == 0 ) break;
+	}
+	PPcEnumInfoFunc(PPXCMDID_ENDENUM, buf, &work);
+	*namep = '\0';
+	*(namep + 1) = '\0';
+	return names;
+}
+
+LPVOID USEFASTCALL PPcHeapAlloc(DWORD dwBytes)
+{
+	return HeapAlloc(hProcessHeap, 0, dwBytes);
+}
+BOOL USEFASTCALL PPcHeapFree(LPVOID mem)
+{
+	return HeapFree(hProcessHeap, 0, mem);
+}
+TCHAR * USEFASTCALL PPcStrDup(const TCHAR *string)
+{
+	SIZE32_T size;
+	TCHAR *dupstring;
+
+	size = TSTRSIZE32(string);
+	dupstring = PPcHeapAlloc(size);
+	memcpy(dupstring, string, size);
+	return dupstring;
+}
+
+// 指定エントリ名のセルへ移動 -------------------------------------------------
+BOOL FindCell(PPC_APPINFO *cinfo, const TCHAR *name)
+{
+	int i, newN;
+
+	for ( i = 0 ; i < cinfo->e.cellIMax ; i++ ){
+		if ( tstricmp(CEL(i).f.cFileName, name) == 0 ){
+			MoveCellCsr(cinfo, i - cinfo->e.cellN, NULL);
+			return TRUE;
+		}
+	}
+	// 該当無し…「..」にカーソルが当たるように調整
+	newN = cinfo->e.cellN;
+	if ( (CEL(newN).attr & ECA_THIS) && ((newN + 1) < cinfo->e.cellIMax) ) newN++;
+	MoveCellCsr(cinfo, newN - cinfo->e.cellN, NULL);
+	return FALSE;
+}
+
+void USEFASTCALL HideOneEntry(PPC_APPINFO *cinfo, int index)
+{
+	if ( CEL(index).f.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ){
+		if ( CEL(index).attr & (ECA_PARENT | ECA_THIS) ){
+			cinfo->e.RelativeDirs--;
+		}else{
+			cinfo->e.Directories--;
+		}
+	}
+
+	if ( index < (cinfo->e.cellIMax - 1) ){
+		memmove(&CELt(index), &CELt(index + 1),
+				sizeof(ENTRYINDEX) * (cinfo->e.cellIMax + cinfo->e.cellStack - 1 - index));
+	}else{ // 一体化窓のとき、末尾が消えないことがあるので対処
+		RefleshCell(cinfo, index);
+	}
+	cinfo->e.cellIMax--;
+}
+
+void USEFASTCALL FixHideEntry(PPC_APPINFO *cinfo)
+{
+	if ( cinfo->e.cellIMax ) return;
+
+	if ( cinfo->e.cellDataMax >= ENTRYCELL_LIMIT ) return;
+		// ※TM_checkでcellアドレスが変わる場合有
+	TM_check(&cinfo->e.CELLDATA, sizeof(ENTRYCELL) * (cinfo->e.cellDataMax + 2) );
+	TM_check(&cinfo->e.INDEXDATA, sizeof(ENTRYINDEX) * (cinfo->e.cellDataMax + 2));
+
+	SetDummyCell(&CELdata(cinfo->e.cellDataMax), MessageText(StrNoEntries));
+	CELdata(cinfo->e.cellDataMax).f.nFileSizeLow = ERROR_FILE_NOT_FOUND;
+	CELt(cinfo->e.cellIMax) = cinfo->e.cellDataMax;
+	cinfo->e.cellDataMax++;
+	cinfo->e.cellIMax++;
+}
+
+// 変更情報の表示を消去する -------------------------------------------------
+void ClearChangeState(PPC_APPINFO *cinfo)
+{
+	ENTRYDATAOFFSET offset;
+	ENTRYINDEX index;
+
+	if ( StartCellEdit(cinfo) ) return;
+
+	if ( cinfo->CellModified == CELLMODIFY_MODIFIED ){
+		cinfo->CellModified = CELLMODIFY_FIXED;
+	}
+							// エントリの調節
+	for ( offset = 0; offset < cinfo->e.cellDataMax ; offset++ ){
+		BYTE state;
+
+		state = CELdata(offset).state;
+		if ( (state == ECS_GRAY) ||
+		   (state == ECS_CHANGED) ||
+		   (state == ECS_ADDED) ){
+			CELdata(offset).state = ECS_NORMAL;
+			continue;
+		}
+	}
+
+	for ( index = 0; index < cinfo->e.cellIMax ; ){ // インデックステーブルの調節
+		if ( CEL(index).state == ECS_DELETED ){
+			HideOneEntry(cinfo, index);
+			if ( index < cinfo->e.cellN ) cinfo->e.cellN--; // 非表示化によるずれを補正
+		}else{
+			index++;
+		}
+	}
+
+	FixHideEntry(cinfo);
+	EndCellEdit(cinfo);
+	cinfo->DrawTargetFlags = DRAWT_ALL;
+	MoveCellCsr(cinfo, 0, NULL);
+	Repaint(cinfo);
+}
+
+// 作業終了後の一覧更新処理 -------------------------------------------------
+void SetRefreshListAfterJob(PPC_APPINFO *cinfo, int actiontype, TCHAR drivename)
+{
+	// if ( actiontype > ALST_DELETE ) return; actiontype は ALST_RENAME / ALST_ACTIVATE 不可
+	if ( XC_alac ){ // 全PPcに通知
+		if ( drivename == '\0' ) drivename = cinfo->RealPath[0];
+		PPxPostMessage(WM_PPXCOMMAND, RefreshListModes[actiontype], drivename);
+	}else{
+		RefreshListAfterJob(cinfo, actiontype);
+	}
+}
+
+#define DEFADDFLAG (RENTRY_SAVEOFF | RENTRY_MODIFYUP)
+void RefreshListAfterJob(PPC_APPINFO *cinfo, int actiontype)
+{
+	int addflag, mode;
+
+	if ( TinyCheckCellEdit(cinfo) ) return;
+
+	mode = XC_alst[actiontype];
+	if ( mode < ALSTV_UPD ) return; // なにもしない
+	if ( actiontype == ALST_ACTIVATE ){ // アクティブ時更新
+		if ( cinfo->FDirWrite == FDW_NORMAL ){
+			if ( (mode == ALSTV_RELOAD) || ((mode >= ALSTV_UPD_AND_RELOAD) && !cinfo->e.markC) ){ // 再読込
+				if ( cinfo->CellModified == CELLMODIFY_NONE ) return; // 済み
+			}else{ // 更新
+				// 非表示が不要 || 非表示済み なら何もしなくてよい
+				if ( !(mode & 1) || (cinfo->CellModified <= CELLMODIFY_FIXED)){
+					return;
+				}
+				mode = ALSTV_NONE; // 更新しないで非表示処理をさせる
+			}
+			addflag = RENTRY_SAVEOFF; // RENTRY_MODIFYUP を付ける程、最新にしない
+		}else{
+			addflag = DEFADDFLAG;
+		}
+	}else if ( actiontype == ALST_RENAME ){ // 名前変更
+		addflag =
+			(CEL(cinfo->e.cellN).f.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ?
+			DEFADDFLAG | RETRY_FLAGS_NEWDIR :
+			DEFADDFLAG | RETRY_FLAGS_NEWFILE;
+		if ( !(mode & 1) ) setflag(addflag, RENTRY_JUMPNAME); // 非表示以外はjumpname
+	}else{ // 属性変更、コピー、移動、削除
+		addflag = DEFADDFLAG;
+	}
+
+	if ( XC_acsr[0] ){ // カーソル位置をエントリ名に維持する
+		if ( actiontype != ALST_RENAME ){ // 名前変更の時は場所指定済み
+			tstrcpy(cinfo->Jfname, CEL(cinfo->e.cellN).f.cFileName);
+		}
+		setflag(addflag, RENTRY_JUMPNAME);
+	}
+
+	if ( (mode == ALSTV_RELOAD) || ((mode >= ALSTV_UPD_AND_RELOAD) && !cinfo->e.markC) ){ // 読み込み処理
+		if ( (addflag & (RENTRY_JUMPNAME | RENTRY_SAVEOFF)) == RENTRY_SAVEOFF ){ // 削除に伴う位置ずれの補正
+			ENTRYINDEX index;
+
+			for ( index = 0; index < cinfo->e.cellN ; index++ ){
+				if ( CEL(index).state == ECS_DELETED ){
+					index = -1;
+					break;
+				}
+			}
+			if ( index < 0 ){
+				for ( index = cinfo->e.cellN; index < (cinfo->e.cellIMax - 1) ; index++ ){
+					if ( CEL(index).state != ECS_DELETED ) break;
+				}
+				tstrcpy(cinfo->Jfname, CEL(index).f.cFileName);
+				setflag(addflag, RENTRY_JUMPNAME);
+			}
+		}
+		read_entry(cinfo, addflag);
+		return;
+	}
+
+	// 更新処理
+	if ( mode >= ALSTV_UPD ){
+		// 単なる更新ではカーソル位置が変化しないので、RENTRY_JUMPNAMEを無効に
+		read_entry(cinfo, RENTRY_UPDATE |
+				((actiontype == ALST_RENAME) ?
+					addflag : (addflag & ~RENTRY_JUMPNAME)) );
+	}
+	// mode == ALSTV_NONE, ALSTV_UPD_HIDE, ALSTV_UPD_HIDE_AND_RELOAD  非表示処理
+	if ( mode & 1 ){
+		ClearChangeState(cinfo);
+	}
+	if ( (mode & 1) || (actiontype == ALST_RENAME) ){
+		// 非表示・名前変更によりエントリ数が変化し、カーソル位置がずれるので調整
+		if ( (addflag & RENTRY_JUMPNAME) &&
+			 (tstricmp(cinfo->Jfname, CEL(cinfo->e.cellN).f.cFileName) != 0) ){
+			FindCell(cinfo, cinfo->Jfname);
+		}
+	}
+}
+
+// GetCustTable/GetCustData のDWORD専用版+初期値有り --------------------------
+DWORD GetCustXDword(const TCHAR *kword, const TCHAR *subkword, DWORD defaultvalue)
+{
+	if ( subkword != NULL ){
+		GetCustTable(kword, subkword, &defaultvalue, sizeof(DWORD));
+	}else{
+		GetCustData(kword, &defaultvalue, sizeof(DWORD));
+	}
+	return defaultvalue;
+}
+
+// 指定番目のパス履歴を使ってディレクトリ表示する -----------------------------
+void JumpPathTrackingList(PPC_APPINFO *cinfo, int dest)
+{
+	DWORD top;
+	TCHAR *p;
+
+	if ( !cinfo->PathTrackingList.top ) return;	// 蓄積無し
+	dest--;
+
+	top = cinfo->PathTrackingList.top;
+	while( dest < 0 ){
+		if ( !top ) return;
+		top = BackPathTrackingList(cinfo, top);
+		dest++;
+	}
+	while( dest > 0 ){
+		p = (TCHAR *)(cinfo->PathTrackingList.bottom + top);
+		if ( *p == '\0' ) return;
+		top += TSTRSIZE32(p);
+		dest--;
+	}
+	p = (TCHAR *)(cinfo->PathTrackingList.bottom + top);
+	if ( *p == '\0' ) return;
+	cinfo->PathTrackingList.top = top + TSTRSIZE32(p);
+
+	SetPPcDirPos(cinfo);
+	ChangePath(cinfo, p, CHGPATH_SETABSPATH);
+	read_entry(cinfo, RENTRY_NOFIXDIR);
+}
+
+// パス履歴を一つ逆戻ったオフセットを求める -----------------------------
+DWORD BackPathTrackingList(PPC_APPINFO *cinfo, DWORD top)
+{
+	top -= TSTROFF(2);
+	for ( ; top ; top -= sizeof(TCHAR) ){	// 一つ前に移動
+		if ( *(TCHAR *)(cinfo->PathTrackingList.bottom + top) == '\0' ){
+			top += sizeof(TCHAR);
+			break;
+		}
+	}
+	return top;
+}
+
+int PPctInput(PPC_APPINFO *cinfo, const TCHAR *title, TCHAR *string, int maxlen, WORD readhist, WORD writehist)
+{
+	TINPUT tinput;
+
+	tinput.hOwnerWnd= cinfo->info.hWnd;
+	tinput.hRtype	= readhist;
+	tinput.hWtype	= writehist;
+	tinput.title	= title;
+	tinput.buff		= string;
+	tinput.size		= maxlen;
+	tinput.flag		= TIEX_USEINFO;
+	tinput.info		= &cinfo->info;
+	if ( writehist & (PPXH_NUMBER | PPXH_FILENAME | PPXH_PATH | PPXH_SEARCH | PPXH_MASK) ){
+		setflag(tinput.flag, TIEX_SINGLEREF);
+	}
+	if ( writehist == PPXH_DIR ){
+		setflag(tinput.flag, TIEX_USESELECT | TIEX_REFTREE | TIEX_SINGLEREF | TIEX_INSTRSEL);
+		tinput.firstC = EC_LAST;
+		tinput.lastC = EC_LAST;
+	}
+	return tInputEx(&tinput);
+}
+
+ERRORCODE InputTargetDir(PPC_APPINFO *cinfo, const TCHAR *title, TCHAR *string, int maxlen)
+{
+	if ( PPctInput(cinfo, title, string, maxlen, PPXH_DIR_R, PPXH_DIR) <= 0 ){
+		return ERROR_CANCELLED;
+	}
+	if ( VFSFixPath(NULL, string, cinfo->path, VFSFIX_PATH) == NULL ){
+		SetPopMsg(cinfo, POPMSG_MSG, MES_EPTH);
+		return ERROR_BAD_COMMAND;
+	}
+	return NO_ERROR;
+}
+
+ENTRYINDEX GetNextMarkCell(PPC_APPINFO *cinfo, ENTRYINDEX cellindex)
+{
+	ENTRYDATAOFFSET target;
+
+	target = GetCellData_HS(cinfo, cellindex)->mark_fw;
+	if ( target < 0 ) return -1;
+
+	return GetCellIndexFromCellData(cinfo, target);
+}
+
+ENTRYINDEX UpSearchMarkCell(PPC_APPINFO *cinfo, ENTRYINDEX cellindex)
+{
+	ENTRYINDEX celln;
+
+	celln = cellindex;
+	for (;;){
+		if ( celln <= 0 ) return -1;
+		celln--;
+		if ( IsCEL_Marked(celln) ) return celln;
+	}
+}
+
+ENTRYINDEX DownSearchMarkCell(PPC_APPINFO *cinfo, ENTRYINDEX cellindex)
+{
+	ENTRYINDEX celln, last;
+
+	celln = cellindex;
+	last = cinfo->e.cellIMax - 1;
+	for (;;){
+		if ( celln >= last ) return -1;
+		celln++;
+		if ( IsCEL_Marked(celln) ) return celln;
+	}
+}
+
+void WriteFF(HANDLE hFile, WIN32_FIND_DATA *ff, const TCHAR *name)
+{
+	TCHAR buf[VFPS + 900], *dest;
+	DWORD tmp;
+
+	buf[0] = T('\"');
+	dest = tstpcpy(buf + 1, name);
+
+	dest = thprintf(dest, 900, ListFileFormatStr,
+			ff->cAlternateFileName, ff->dwFileAttributes,
+			ff->ftCreationTime.dwHighDateTime,
+			ff->ftCreationTime.dwLowDateTime,
+			ff->ftLastAccessTime.dwHighDateTime,
+			ff->ftLastAccessTime.dwLowDateTime,
+			ff->ftLastWriteTime.dwHighDateTime,
+			ff->ftLastWriteTime.dwLowDateTime,
+			ff->nFileSizeHigh, ff->nFileSizeLow);
+	*dest ++ = '\r';
+	*dest ++ = '\n';
+	WriteFile(hFile, buf, TSTROFF32(dest - buf), &tmp, NULL);
+}
+
+TCHAR *WriteLFcomment(WriteTextStruct *sts, const TCHAR *comment, TCHAR *buf, TCHAR *dest)
+{
+	TCHAR *ptr;
+	int len;
+
+	sts->Write(sts, buf, dest - buf);
+	dest = buf;
+	len = tstrlen32(comment);
+	if ( sts->wlfc_flags & WLFC_JSON ){
+		dest = tstpcpy(dest, T(",\"T\":\""));
+	}else{
+		*dest++ = ',';
+		*dest++ = 'T';
+		*dest++ = ':';
+		*dest++ = '\"';
+	}
+	if ( len > (CMDLINESIZE - 100) ) len = CMDLINESIZE - 100;
+	memcpy(dest, comment, TSTROFF(len));
+	dest[len] = '\0';
+	while( (ptr = tstrchr(dest, '\"')) != NULL ) *ptr = '`';
+	while( (ptr = tstrchr(dest, '\r')) != NULL ) *ptr = '/';
+	while( (ptr = tstrchr(dest, '\n')) != NULL ) *ptr = ' ';
+	dest += len;
+	*dest++ = '\"';
+	return dest;
+}
+
+#if !NODLL
+BOOL WINAPI WriteTextNative(WriteTextStruct *sts, const TCHAR *text, size_t textlen)
+{
+	DWORD tmp;
+
+	return WriteFile(sts->hFile, text, TSTROFF(textlen), &tmp, NULL);
+}
+
+BOOL WINAPI WriteTextUTF8(WriteTextStruct *sts, const TCHAR *text, size_t textlen)
+{
+	DWORD tmp;
+	int len;
+	char utf8text[CMDLINESIZE * 5];
+
+#ifdef UNICODE
+	len = WideCharToMultiByte(CP_UTF8, 0, text, textlen, utf8text, sizeof(utf8text), NULL, NULL);
+#else
+	WCHAR utf16text[CMDLINESIZE * 2];
+
+	len = MultiByteToWideChar(CP_ACP, 0, text, textlen, utf16text, TSIZEOFW(utf16text));
+	len = WideCharToMultiByte(CP_UTF8, 0, utf16text, len, utf8text, sizeof(utf8text), NULL, NULL);
+#endif
+	if ( len <= 0 ) return (textlen > 0) ? FALSE : TRUE;
+	return WriteFile(sts->hFile, utf8text, len, &tmp, NULL);
+}
+#endif
+
+BOOL WINAPI WriteTextJSON(WriteTextStruct *sts, const TCHAR *text, size_t textlen)
+{
+	DWORD tmp;
+	int len;
+	char utf8text[CMDLINESIZE * 5];
+
+#ifdef UNICODE
+	len = WideCharToMultiByte(CP_UTF8, 0, text, textlen, utf8text, sizeof(utf8text), NULL, NULL);
+	if ( len <= 0 ) return (textlen > 0) ? FALSE : TRUE;
+	utf8text[len] = '\0';
+	strreplace(utf8text, "\\", "\\\\");
+#else
+	WCHAR utf16text[CMDLINESIZE * 2];
+
+	len = MultiByteToWideChar(CP_ACP, 0, text, textlen, utf16text, TSIZEOFW(utf16text));
+	len = WideCharToMultiByte(CP_UTF8, 0, utf16text, len, utf8text, sizeof(utf8text), NULL, NULL);
+	if ( len <= 0 ) return (textlen > 0) ? FALSE : TRUE;
+	utf8text[len] = '\0';
+	tstrreplace(utf8text, "\\", "\\\\");
+#endif
+	return WriteFile(sts->hFile, utf8text, strlen(utf8text), &tmp, NULL);
+}
+
+const char ListFileHeaderJSON[] = LHEADERJSONO ":1,\r\n";
+const char charset_utf8[] = ";charset=utf-8\r\n";
+const TCHAR listfile_option_directory[] = T(";Option=directory\r\n");
+const char listfile_option_directory_j[] = "\"Option\":\"directory\",\r\n";
+void WriteListFileHeader(WriteTextStruct *sts, int flags)
+{
+	DWORD tmp;
+
+	sts->wlfc_flags = flags;
+	sts->Write = (flags & WLFC_UTF8) ? WriteTextUTF8 : WriteTextNative;
+	if ( flags & WLFC_JSON ) sts->Write = WriteTextJSON;
+
+	if ( flags & WLFC_BOM ){ // ※ ListFileHeaderStr8 の BOM 部分だけ使用
+		WriteFile(sts->hFile, ListFileHeaderStr8, sizeof(UTF8HEADER) - 1, &tmp, NULL);
+		if ( flags & WLFC_DIRSHOW ){
+			WriteFile(sts->hFile, listfile_option_directory_j, sizeof(listfile_option_directory_j) - 1, &tmp, NULL);
+		}
+	}
+	if ( !(flags & WLFC_NOHEADER) ){
+		if ( flags & WLFC_JSON ){
+			WriteFile(sts->hFile, ListFileHeaderJSON, sizeof(ListFileHeaderJSON) - 1, &tmp, NULL);
+		}else{
+#ifdef UNICODE
+			if ( flags & WLFC_UTF8 ){
+				WriteFile(sts->hFile, ListFileHeaderStrA, ListFileHeaderSizeA, &tmp, NULL);
+				WriteFile(sts->hFile, charset_utf8, sizeof(charset_utf8) - 1, &tmp, NULL);
+			}else{
+				WriteFile(sts->hFile, ListFileHeaderStrW, ListFileHeaderSizeW, &tmp, NULL);
+			}
+#else
+			WriteFile(sts->hFile, ListFileHeaderStrA, ListFileHeaderSizeA, &tmp, NULL);
+			if ( flags & WLFC_UTF8 ){
+				WriteFile(sts->hFile, charset_utf8, sizeof(charset_utf8) - 1, &tmp, NULL);
+			}else{
+				char buf[32];
+				int len;
+
+				len = thprintf(buf, TSIZEOF(buf), ";charset=cp%d\r\n", GetACP()) - buf;
+				sts->Write(sts, buf, len);
+			}
+#endif
+			if ( flags & WLFC_DIRSHOW ){
+				sts->Write(sts, listfile_option_directory, TSIZEOFSTR(listfile_option_directory));
+			}
+		}
+	}
+}
+
+BOOL USEFASTCALL CreateHandleForListFile(PPC_APPINFO *cinfo, WriteTextStruct *sts, const TCHAR *filename, int flags)
+{
+	TCHAR buf[CMDLINESIZE + 32], *p;
+	int len;
+
+	p = tstrstr(filename, T("::") VFS_TYPEID_LISTFILE);
+	if ( p != NULL ){
+		tstrcpy(buf, filename);
+		buf[p - filename] = '\0';
+		filename = buf;
+	}
+	sts->hFile = CreateFileL(filename, GENERIC_WRITE,
+			FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
+			(flags & WLFC_APPEND) ? OPEN_ALWAYS : CREATE_ALWAYS,
+			FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	if ( sts->hFile == INVALID_HANDLE_VALUE ) return FALSE;
+
+	if ( flags & WLFC_APPEND ){
+		DWORD high = 0, low;
+
+		low = SetFilePointer(sts->hFile, 0, (PLONG)&high, FILE_END);
+		if ( (low != MAX32) && ((low | high) != 0) ){
+			setflag(flags, WLFC_NOHEADER);
+		}
+	}
+	WriteListFileHeader(sts, flags);
+	if ( !(flags & WLFC_NOHEADER) ){
+		// listfileでないか、listfileでBasePath指定有りのときは、BasePathを出力
+		if ( (cinfo->e.Dtype.mode != VFSDT_LFILE) ||
+			 (cinfo->e.Dtype.BasePath[0] != '\0') ){
+			len = thprintf(buf, TSIZEOF(buf),
+					flags & WLFC_JSON ? T("\"Base\":\"%s|%d\",\r\n") : T(";Base=%s|%d\r\n"),
+					( (cinfo->e.Dtype.mode == VFSDT_LFILE) &&
+					(cinfo->e.Dtype.BasePath[0] != '\0') ) ?
+					cinfo->e.Dtype.BasePath : cinfo->path,  cinfo->e.Dtype.mode) - buf;
+			sts->Write(sts, buf, len);
+		}
+		if ( cinfo->e.Dtype.mode == VFSDT_LFILE ){
+			TCHAR *dest;
+
+			dest = tstpcpy(buf, flags & WLFC_JSON ? T("\"lfvalue\":\"") : T(";lfvalue="));
+			ThGetString(&cinfo->StringVariable, T("lfvalue"), dest, CMDLINESIZE);
+			if ( *dest != '\0' ){
+				dest = tstpcpy(dest + tstrlen(dest),
+						flags & WLFC_JSON ? T("\",\r\n") : T("\r\n"));
+				sts->Write(sts, buf, dest - buf);
+			}
+		}
+	}
+
+	if ( (flags & (WLFC_JSON | WLFC_APPEND)) == WLFC_JSON ){
+		if ( flags & WLFC_NOHEADER ){
+			sts->Write(sts, T("[\r\n"), 3);
+		}else{
+			sts->Write(sts, T("\"entry\":[\r\n"), 11);
+		}
+	}
+
+	return TRUE;
+}
+
+TCHAR *CnvFiletimeJSON(TCHAR *dest, const FILETIME *ftime)
+{
+	FILETIME lTime;
+	SYSTEMTIME sTime;
+
+	FileTimeToLocalFileTime(ftime, &lTime);
+	FileTimeToSystemTime(&lTime, &sTime);
+	return thprintf(dest, 64, T("\"%04d-%02d-%02dT%02d:%02d:%02d.%03d\""),
+			sTime.wYear, sTime.wMonth, sTime.wDay,
+			sTime.wHour, sTime.wMinute, sTime.wSecond, sTime.wMilliseconds);
+}
+
+
+BOOL WriteLFcell(PPC_APPINFO *cinfo, WriteTextStruct *sts, ENTRYCELL *cell)
+{
+	TCHAR buf[VFPS + CMDLINESIZE], *dest;
+	const TCHAR *fileptr;
+	int len;
+
+	dest = buf;
+	if ( sts->wlfc_flags & WLFC_JSON ){
+		dest = tstpcpy(dest, T("{\"N\":\""));
+	}else{
+		*dest++ = T('\"');
+	}
+	fileptr = cell->f.cFileName;
+	if ( *fileptr == FINDOPTION_LONGNAME ){ // MAX_PATH 越えファイル名処理
+		const TCHAR *longname = (const TCHAR *)EntryExtData_GetDATAptr(cinfo, DFC_LONGNAME, cell);
+		if ( longname != NULL ) fileptr = longname;
+	}
+	len = TSTRLENGTH32(fileptr);
+	memcpy(dest, fileptr, len);
+	dest += len / sizeof(TCHAR);
+
+	if ( sts->wlfc_flags & WLFC_NAMEONLY ){
+		*dest++ = '\"';
+	}else{
+		if ( sts->wlfc_flags & WLFC_JSON ){
+			dest = thprintf(dest, VFPS, T("\",\"Y\":\"%s\",\"A\":%u,\"C\":"),
+				cell->f.cAlternateFileName, cell->f.dwFileAttributes);
+			dest = CnvFiletimeJSON(dest, &cell->f.ftCreationTime);
+			dest = tstpcpy(dest, T(",\"L\":"));
+			dest = CnvFiletimeJSON(dest, &cell->f.ftLastAccessTime);
+			dest = tstpcpy(dest, T(",\"W\":"));
+			dest = CnvFiletimeJSON(dest, &cell->f.ftLastWriteTime);
+			if ( cell->f.nFileSizeHigh < DOUBLEMAXH ){
+				dest = tstpcpy(dest, T(",\"S\":"));
+				dest = FormatNumber(dest, 0, XFNW_FULL_NOSEP, cell->f.nFileSizeLow, cell->f.nFileSizeHigh);
+			}else{
+				dest = thprintf(dest, 64, T(",\"S\":\"%u.%u\""), cell->f.nFileSizeHigh, cell->f.nFileSizeLow);
+			}
+		}else{
+			dest = thprintf(dest, 900, ListFileFormatStr,
+				cell->f.cAlternateFileName, cell->f.dwFileAttributes,
+				cell->f.ftCreationTime.dwHighDateTime,
+				cell->f.ftCreationTime.dwLowDateTime,
+				cell->f.ftLastAccessTime.dwHighDateTime,
+				cell->f.ftLastAccessTime.dwLowDateTime,
+				cell->f.ftLastWriteTime.dwHighDateTime,
+				cell->f.ftLastWriteTime.dwLowDateTime,
+				cell->f.nFileSizeHigh, cell->f.nFileSizeLow);
+		}
+	}
+
+	if ( sts->wlfc_flags & (WLFC_RESERVED | WLFC_COLOR | WLFC_HIGHLIGHT /*| WLFC_COLUMNS*/) ){
+		if ( sts->wlfc_flags & WLFC_RESERVED ){
+			dest = thprintf(dest, 64,
+					(sts->wlfc_flags & WLFC_JSON) ?
+						T(",\"R\":\"%d.%d\"") : T(",R:%d.%d"),
+						cell->f.dwReserved0, cell->f.dwReserved1);
+		}
+		if ( (sts->wlfc_flags & WLFC_COLOR) && (cell->extC != C_AUTO) ){
+			dest = thprintf(dest, 64,
+					(sts->wlfc_flags & WLFC_JSON) ?
+						T(",\"X\":%d") : T(",X:%d"),
+			 		cell->extC);
+		}
+		if ( (sts->wlfc_flags & WLFC_HIGHLIGHT) && (cell->highlight != 0) ){
+			dest = thprintf(dest, 64,
+					(sts->wlfc_flags & WLFC_JSON) ?
+						T(",\"H\":%d") : T(",H:%d"),
+					cell->highlight);
+		}
+	}
+
+	if ( (sts->wlfc_flags & WLFC_WITHMARK) && IsCellPtrMarked(cell) ){
+		if ( sts->wlfc_flags & WLFC_JSON ){
+			CopyAndSkipString(dest, LFMARK_STRJ);
+		}else{
+			CopyAndSkipString(dest, LFMARK_STR);
+		}
+	}
+
+	if ( (sts->wlfc_flags & WLFC_COLUMNS) && (cell->cellcolumn >= 0) ){
+		CELLEXTRASTRUCT *cdsptr;
+
+		cdsptr = CellExtraFirst(cinfo, cell);
+		for ( ; ; ){
+			if ( (cdsptr->textoffset > 0) && (cdsptr->itemindex <= DFC_COMMENTEX_MAX) ){
+				TCHAR *text;
+
+				text = GetCellExtraText(cinfo, cdsptr);
+				if ( *text != '\0' ){
+					if ( cdsptr->itemindex >= DFC_COMMENTEX ){
+						dest = thprintf(dest, CMDLINESIZE, (sts->wlfc_flags & WLFC_JSON) ?
+								T(",\"T%d\":\"%s") : T(",T%d:\"%s"),
+								 DFC_COMMENTEX_MAX + 1 - cdsptr->itemindex,
+								text);
+					}else{
+						dest = thprintf(dest, CMDLINESIZE, (sts->wlfc_flags & WLFC_JSON) ?
+								T(",\"O%d\":\"%s") : T(",O%d:\"%s"),
+								cdsptr->itemindex, text);
+					}
+					sts->Write(sts, buf, dest - buf);
+					dest = buf;
+					*dest++ = '\"';
+//					sts->Write(sts, text, cdsptr->size);
+				}
+			}
+			if ( cdsptr->nextoffset == 0 ) break;
+			cdsptr = CellExtraNext(cinfo, cdsptr);
+		}
+	}
+
+	if ( (sts->wlfc_flags & WLFC_COMMENT) && (cell->comment != EC_NOCOMMENT) ){
+		dest = WriteLFcomment(sts, ThPointerT(&cinfo->e.Comments, cell->comment), buf, dest);
+	}
+
+	if ( sts->wlfc_flags & WLFC_OPTIONSTR ){
+		CopyAndSkipString(dest, LFSIZE_STR);
+		FormatNumber(dest, 0, XFNW_FULL_NOSEP, cell->f.nFileSizeLow, cell->f.nFileSizeHigh);
+		dest += tstrlen(dest);
+		CopyAndSkipString(dest, LFCREATE_STR);
+		dest = CnvDateTime(dest, NULL, NULL, &cell->f.ftCreationTime);
+		CopyAndSkipString(dest, LFLASTWRITE_STR);
+		dest = CnvDateTime(dest, NULL, NULL, &cell->f.ftLastWriteTime);
+		CopyAndSkipString(dest, LFLASTACCESS_STR);
+		dest = CnvDateTime(dest, NULL, NULL, &cell->f.ftLastAccessTime);
+	}
+
+	if ( sts->wlfc_flags & WLFC_JSON ){
+		dest = tstpcpy(dest,
+				(sts->wlfc_flags & WLFC_LASTENTRY) ?
+					T("}\r\n") : T("},\r\n") );
+	}else{
+		*dest++ = '\r';
+		*dest++ = '\n';
+	}
+	return sts->Write(sts, buf, dest - buf);
+}
+
+// キャッシュ・内部向けListFileを出力…エントリ読み込み順で出力
+BOOL WriteListFileForRaw(PPC_APPINFO *cinfo, const TCHAR *filename)
+{
+	WriteTextStruct sts;
+	ENTRYDATAOFFSET offset;
+	int wlfc_flags = WLFC_DETAIL | WLFC_COMMENT;
+
+	if ( filename == NULL ){ // 現在パスである ListFile の更新
+		filename = cinfo->path;
+		if ( CELdata(0).f.dwReserved1 & WFD_R1_JSON ){
+			setflag(wlfc_flags, WLFC_JSON);
+		}
+	}
+
+	if ( FALSE == CreateHandleForListFile(cinfo, &sts, filename, wlfc_flags) ){
+		return FALSE;
+	}
+
+	for ( offset = 0 ; offset < cinfo->e.cellDataMax ; offset++ ){
+		ENTRYCELL *cell;
+
+		cell = &CELdata(offset);
+		if ( cell->attr & (ECA_PARENT | ECA_THIS) ) continue;
+		if ( cell->state == ECS_DELETED ) continue;
+		if ( offset == (cinfo->e.cellDataMax - 1) ){
+			setflag(sts.wlfc_flags, WLFC_LASTENTRY);
+		}
+		if ( WriteLFcell(cinfo, &sts, cell) == FALSE ) break;
+	}
+	CloseHandle(sts.hFile);
+	return TRUE;
+}
+
+// ユーザ向けListFileを出力…表示エントリ順で出力
+void WriteListFileForUser(PPC_APPINFO *cinfo, const TCHAR *filename, int wlfc_flags)
+{
+	WriteTextStruct sts;
+	ENTRYINDEX i;
+
+	if ( FALSE == CreateHandleForListFile(cinfo, &sts, filename, wlfc_flags) ){
+		SetPopMsg(cinfo, POPMSG_GETLASTERROR, NULL);
+		return;
+	}
+
+	for ( i = 0 ; i < cinfo->e.cellIMax ; i++ ){
+		ENTRYCELL *cell;
+
+		cell = &CEL(i);
+		if ( cell->type <= ECT_NOFILEDIRMAX ){
+			if ( !(wlfc_flags & WLFC_SYSMSG) || (cell->type != ECT_SYSMSG) ) continue;
+			cell->f.dwFileAttributes = FILE_ATTRIBUTEX_MESSAGE;
+		}
+		if ( (wlfc_flags & WLFC_MARKEDONLY) && !IsCellPtrMarked(cell) ){
+			continue;
+		}
+		if ( i == (cinfo->e.cellIMax - 1) ){
+			setflag(sts.wlfc_flags, WLFC_LASTENTRY);
+		}
+		if ( WriteLFcell(cinfo, &sts, cell) == FALSE ) break;
+	}
+
+	if ( wlfc_flags & WLFC_JSON ){
+		if ( wlfc_flags & WLFC_NOHEADER ){
+			sts.Write(&sts, T("]\r\n"), 3);
+		}else{
+			sts.Write(&sts, T("]\r\n}\r\n"), 6);
+		}
+	}
+	CloseHandle(sts.hFile);
+	return;
+}
+
+void USEFASTCALL InitJobinfo(JOBINFO *jinfo)
+{
+	jinfo->StartTime = jinfo->OldTime = GetTickCount();
+	jinfo->count = 0;
+}
+
+void USEFASTCALL FinishJobinfo(PPC_APPINFO *cinfo, JOBINFO *jinfo, ERRORCODE result)
+{
+	PPxCommonExtCommand(K_TBB_STOPPROGRESS, (WPARAM)cinfo->info.hWnd);
+	if ( result != NO_ERROR ){
+		if ( result != ERROR_CANCELLED ) SetPopMsg(cinfo, result, NULL);
+		return;
+	}
+	if ( (GetTickCount() - jinfo->StartTime) >= 1000 ){ // overflow対策兼用
+		SetPopMsg(cinfo, POPMSG_NOLOGMSG, StrComp);
+	}else{
+		StopPopMsg(cinfo, PMF_STOP);
+	}
+}
+
+BOOL BreakCheck(PPC_APPINFO *cinfo, JOBINFO *jinfo, const TCHAR *memo)
+{
+	MSG msg;
+	DWORD NewTime;
+	TASKBARBUTTONPROGRESSINFO tbbpi;
+	TCHAR buf[VFPS + 16];
+
+	NewTime = GetTickCount();
+	if ( (NewTime - jinfo->OldTime) >= dispNwait ){ // overflow対策兼用
+		jinfo->OldTime = NewTime;
+		thprintf(buf, TSIZEOF(buf), T("%d %s"), jinfo->count, memo);
+		SetPopMsg(cinfo, POPMSG_PROGRESSBUSYMSG, buf);
+		UpdateWindow_Part(cinfo->info.hWnd);
+
+		tbbpi.hWnd = cinfo->info.hWnd;
+		tbbpi.nowcount = 1; // TBPF_INDETERMINATE jinfo->count % 100;
+		tbbpi.maxcount = 0;
+		PPxCommonExtCommand(K_TBB_PROGRESS, (WPARAM)&tbbpi);
+	}
+
+	while ( PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) || cinfo->BreakFlag ){
+		if ( cinfo->BreakFlag ||
+			 (msg.message == WM_RBUTTONUP) ||
+			 ((msg.message == WM_KEYDOWN) &&
+			 (((int)msg.wParam == VK_ESCAPE)||((int)msg.wParam == VK_PAUSE)))){
+			cinfo->BreakFlag = FALSE;
+			if ( PMessageBox(cinfo->info.hWnd, MES_AbortCheck, T("Break check"),
+						MB_APPLMODAL | MB_OKCANCEL | MB_DEFBUTTON1 |
+						MB_ICONQUESTION) == IDOK ){
+				return TRUE;
+			}
+		}
+		if ( msg.message == WM_QUIT ) break;
+		if (((msg.message >= WM_MOUSEFIRST) && (msg.message <= WM_MOUSELAST))||
+			((msg.message >= WM_KEYFIRST) && (msg.message <= WM_KEYLAST)) ||
+			(msg.message == WM_COMMAND) || (msg.message == WM_PPXCOMMAND) ){
+			continue;
+		}
+		if ( DialogKeyProc(&msg) ) continue;
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	return FALSE;
+}
+
+void DelayedFileOperation(PPC_APPINFO *cinfo)
+{
+	int count = 0;
+	TCHAR operation[CUST_NAME_LENGTH];
+	TCHAR param[CMDLINESIZE];
+	int sel;
+
+	if ( CountCustTable(T("_Delayed")) <= 0 ) return;
+
+	sel = PMessageBox(cinfo->info.hWnd, MES_QDDO, DFO_title,
+			MB_APPLMODAL | MB_YESNOCANCEL | MB_DEFBUTTON1 | MB_ICONQUESTION);
+	if ( sel != IDYES ){
+		if ( sel == IDCANCEL ){
+			if ( IDYES == PMessageBox(cinfo->info.hWnd, MES_QDDL, DFO_title,
+					MB_APPLMODAL | MB_YESNO | MB_DEFBUTTON2 |MB_ICONQUESTION)){
+					DeleteCustData(T("_Delayed"));
+			}
+		}
+		return;
+	}
+
+	while( EnumCustTable(count, T("_Delayed"), operation, param, sizeof(param)) > 0 ){
+		if ( !tstrcmp(operation, T("delete")) ){
+			DWORD atr;
+			BOOL result;
+
+			atr = GetFileAttributesL(param);
+			if ( atr == BADATTR ){
+				DeleteCustTable(T("_Delayed"), NULL, count);
+				continue;
+			}
+			SetFileAttributesL(param, FILE_ATTRIBUTE_NORMAL);
+			if ( atr & FILE_ATTRIBUTE_DIRECTORY ){
+				result = RemoveDirectoryL(param);
+				if ( IsTrue(result) && (tstrlen(param) < MAX_PATH) ){
+					SHChangeNotify(SHCNE_RMDIR, SHCNF_PATH, param, NULL);
+				}
+			}else{
+				result = DeleteFileL(param);
+			}
+			if ( result == FALSE ){
+				XMessage(cinfo->info.hWnd, DFO_title, XM_FaERRl, MES_EDDL, param);
+				count++;
+			}else{
+				DeleteCustTable(T("_Delayed"), NULL, count);
+			}
+		}else if ( !tstrcmp(operation, T("execute")) ){
+			PP_ExtractMacro(cinfo->info.hWnd, &cinfo->info, NULL, param, NULL, 0);
+			DeleteCustTable(T("_Delayed"), NULL, count);
+		}else{
+			XMessage(cinfo->info.hWnd, DFO_title, XM_FaERRl, T("Delayed FO: Unknown command:%s"), operation);
+		}
+	}
+
+	if ( CountCustTable(T("_Delayed")) <= 0 ){
+		DeleteCustData(T("_Delayed"));
+	}
+}
+
+BOOL HdropdataToFiles(HGLOBAL hDrop, TMS_struct *files)
+{
+	DROPFILES *pDrop;
+	TCHAR *sDrop;
+
+	pDrop = (DROPFILES *)GlobalLock(hDrop);
+	if ( pDrop == NULL ) return FALSE;
+	sDrop = (TCHAR *)((char *)pDrop + pDrop->pFiles);
+
+	TMS_reset(files);
+	if ( pDrop->fWide ){
+		#ifdef UNICODE
+			while( *sDrop != '\0' ){
+				TMS_set(files, sDrop);
+				sDrop += tstrlen(sDrop) + 1;
+			}
+		#else
+			char temp[VFPS];
+
+			while( *(WCHAR *)sDrop != '\0' ){
+				UnicodeToAnsi((WCHAR *)sDrop, temp, sizeof temp);
+				while( *(WCHAR *)sDrop ) sDrop += sizeof(WCHAR);
+				sDrop += sizeof(WCHAR);
+				TMS_set(files, temp);
+			}
+		#endif
+	}else{
+		#ifdef UNICODE
+		WCHAR temp[VFPS];
+
+		while( *(char *)sDrop != '\0' ){
+			AnsiToUnicode((char *)sDrop, temp, TSIZEOF(temp));
+			TMS_set(files, temp);
+			sDrop =
+				(TCHAR *)(char *)((char *)sDrop + strlen((char *)sDrop) + 1);
+		}
+		#else
+		while( *sDrop != '\0' ){
+			TMS_set(files, sDrop);
+			sDrop += tstrlen(sDrop) + 1;
+		}
+		#endif
+	}
+	TMS_set(files, NilStr);
+	GlobalUnlock(hDrop);
+	return TRUE;
+}
+
+// 複数行表示の時の wF 等が有る行の桁数を計算する
+/*
+int CalcWideW(PPC_APPINFO *cinfo, BYTE *fmt)
+{
+	int width = 0;
+
+	for (;;){
+		BYTE fmtdata;
+		int attr;
+
+		fmtdata = *fmt;
+		if ( (fmtdata == DE_END) || (fmtdata == DE_NEWLINE) ) break;
+		attr = DispAttributeTable[fmtdata];
+		if ( attr & DE_ATTR_WIDTH_L ){
+			width += *(fmt + 1);
+		}else if ( attr & DE_ATTR_WIDTH ){
+			switch( fmtdata ){
+				case DE_IMAGE:	// 画像
+					if ( cinfo == NULL ) return -1; // 未対応
+					width += *(fmt + 1) / cinfo->fontX;
+					break;
+
+				case DE_ICON:	// アイコン
+				case DE_CHECK:		// チェック
+				case DE_CHECKBOX:	// チェックボックス
+					width += 2;
+					break;
+
+				case DE_MARK:	// マーク
+				case DE_sepline: // 区切り線
+					width += 1;
+					break;
+
+				case DE_LFN:
+				case DE_SFN:
+				case DE_LFN_MUL:
+				case DE_LFN_LMUL:
+				case DE_LFN_EXT:
+				case DE_SFN_EXT:
+				{
+					int filew, extw;
+
+					filew = *(fmt + 1);
+					extw = *(fmt + 2);
+					if ( extw >= 0xff ) extw = 0;
+					width += filew + extw;
+					break;
+				}
+
+				case DE_SIZE1:
+					width += 7;
+					break;
+
+				default:
+					return -1; // 未対応
+			}
+		}
+		fmt += GetDispFormatSkip(fmt);
+	}
+	return width;
+}
+*/
+int LoadCFMT(XC_CFMT *cfmt, const TCHAR *name, const TCHAR *sub, const XC_CFMT *defaultdata)
+{
+	DWORD size;
+	int attr = 0;
+	int lineNZS = -1;
+
+	if ( sub != NULL ){	// 各エントリの書式
+		// fc, bc, csr, mark を取得
+		if ( NO_ERROR != GetCustData(T("XC_celD"), cfmt, sizeof(XC_CFMT)) ){
+			*cfmt = *defaultdata;
+		}
+		// fmt を取得
+		size = GetCustTableSize(name, sub);
+		if ( (size == MAX32) || (size < 1) ){
+			cfmt->fmtbase = NULL;
+			cfmt->fmt = defaultdata->fmt;
+			cfmt->width = defaultdata->width;
+			size = 32;
+		}else{
+			cfmt->fmtbase = PPcHeapAlloc(size);
+			GetCustTable(name, sub, cfmt->fmtbase, size);
+			cfmt->fmt = cfmt->fmtbase + DE_HEAD_SIZE;
+			cfmt->width = *(DWORD *)cfmt->fmtbase;
+			size -= DE_HEAD_SIZE;
+		}
+	}else{	// 情報欄系の書式
+		size = GetCustDataSize(name);
+		if ( (size == MAX32) || (size <= CFMT_OLDHEADERSIZE) ){
+			*cfmt = *defaultdata;
+			size = 32;
+		}else{
+			cfmt->fmtbase = PPcHeapAlloc(size);
+			GetCustData(name, cfmt->fmtbase, size);
+			memcpy(cfmt, cfmt->fmtbase, CFMT_OLDHEADERSIZE);
+			cfmt->fmt = cfmt->fmtbase + CFMT_OLDHEADERSIZE;
+			size -= CFMT_OLDHEADERSIZE;
+		}
+	}
+
+	if ( cfmt->csr > 7 ) cfmt->csr = 4;
+
+	cfmt->nextline = HIWORD(cfmt->width);
+	cfmt->width = cfmt->org_width = LOWORD(cfmt->width);
+	cfmt->ext_width = 0;
+	cfmt->height = 1;
+	{	// 各行に DE_WIDEV / DE_WIDEW が無いか調べる
+		BYTE *fmt = cfmt->fmt;
+		int offset = cfmt->nextline;
+
+		for ( ; ; ){
+			if ( *fmt == DE_WIDEV ){
+				attr = DE_ATTR_WIDEV;
+			}else if ( *fmt == DE_WIDEW ){
+				attr = DE_ATTR_WIDEW;
+			}
+			if ( offset == 0 ) break;
+			fmt += offset;
+			offset = *(WORD *)(fmt - DE_HEAD_NEXTLINE_SIZE);
+			cfmt->height++;
+		}
+	}
+
+	{	// 情報欄系の書式／表示する項目を把握する & 破損チェック
+		BYTE *fmt, *maxfmt, id;
+
+		fmt = cfmt->fmt;
+		maxfmt = fmt + size;
+		while( (id = *fmt) != DE_END ){
+			if ( id == DE_lineNZS ) lineNZS = (int)(BYTE)fmt[1];
+			attr |= DispAttributeTable[id];
+			fmt += GetDispFormatSkip(fmt);
+			if ( fmt >= maxfmt ){
+				*cfmt = *defaultdata;
+				attr = cfmt->attr;
+				if ( fmt > maxfmt ){
+					XMessage(NULL, NULL, XM_GrERRld, T("ID:%s is broken %d"),
+						(sub != NULL) ? sub : name, fmt - maxfmt);
+				}
+				break;
+			}
+		}
+	}
+	cfmt->attr = attr;
+	return lineNZS;
+}
+
+void LoadCelFFMTfix(PPC_APPINFO *cinfo)
+{
+	HideScrollBar(cinfo);
+	cinfo->oldspos.nPage = (UINT)-1; // スクロールバー更新させる
+	if ( cinfo->hScrollBarWnd != NULL ){
+		DestroyWindow(cinfo->hScrollBarWnd);
+		CreateScrollBar(cinfo);
+	}
+	WmWindowPosChanged(cinfo);
+}
+
+BOOL LoadCelFFMT(PPC_APPINFO *cinfo, const TCHAR *name, const TCHAR *sub)
+{
+	int lineNZS;
+
+	lineNZS = LoadCFMT(&cinfo->celF, name, sub, &CFMT_celF);
+	if ( lineNZS < 0 ) lineNZS = XC_page;
+	if ( lineNZS == (cinfo->list.scroll | cinfo->list.orderZ) ) return FALSE; //変更無
+
+	cinfo->ScrollBarHV = (cinfo->X_win & XWIN_SWAPSCROLL) ? SB_VERT : SB_HORZ;
+	cinfo->list.orderZ = lineNZS & B1;
+	cinfo->list.scroll = lineNZS & B0;
+	if ( cinfo->list.scroll ){
+		cinfo->ScrollBarHV ^= (SB_HORZ | SB_VERT);
+		if ( XC_mvUD.outw_type <= OUTTYPE_PAGE ){
+			XC_mvUD.outw_type = OUTTYPE_LINESCROLL;
+		}
+		if ( XC_mvSC.outw_type <= OUTTYPE_PAGE ){
+			XC_mvSC.outw_type = OUTTYPE_LINESCROLL;
+		}
+		if ( XC_mvWH.outw_type <= OUTTYPE_PAGE ){
+			XC_mvWH.outw_type = OUTTYPE_LINESCROLL;
+		}
+	}else{
+		if ( XC_mvUD.outw_type == OUTTYPE_LINESCROLL ){
+			GetCustData(T("XC_mvUD"), &XC_mvUD, sizeof(XC_mvUD));
+		}
+		if ( XC_mvSC.outw_type == OUTTYPE_LINESCROLL ){
+			GetCustData(T("XC_mvSC"), &XC_mvSC, sizeof(XC_mvSC));
+		}
+		if ( XC_mvWH.outw_type == OUTTYPE_LINESCROLL ){
+			if ( NO_ERROR != GetCustData(T("XC_mvWH"), &XC_mvWH, sizeof(XC_mvWH)) ){
+				XC_mvWH = XC_mvSC;
+			}
+		}
+	}
+	cinfo->list.XC_mvFB = cinfo->list.orderZ ? &XC_mvLR : &XC_mvUD;
+	return TRUE;
+}
+
+void FreeCFMT(XC_CFMT *cfmt)
+{
+	if ( cfmt->fmtbase != NULL ){
+		PPcHeapFree(cfmt->fmtbase);
+		cfmt->fmtbase = NULL;
+	}
+}
+
+// ポップアップに使用する座標を得る -------------------------------------------
+void GetPopupPosition(PPC_APPINFO *cinfo, POINT *pos)
+{
+	switch ( cinfo->PopupPosType ){
+		case PPT_MOUSE:
+			GetCursorPos(pos);
+			pos->x++;
+			break;
+
+		case PPT_SAVED:
+			*pos = cinfo->PopupPos;
+			pos->x++;
+			break;
+
+//		case PPT_FOCUS: // default兼用
+		default: {
+			int deltaNo;
+
+			deltaNo = cinfo->e.cellN - cinfo->cellWMin;
+			pos->x = CalcCellX(cinfo, deltaNo);
+			pos->y = (deltaNo % cinfo->cel.Area.cy + 1) *
+								cinfo->cel.Size.cy + cinfo->BoxEntries.top;
+			ClientToScreen(cinfo->info.hWnd, pos);
+			break;
+		}
+	}
+}
+
+#if !NODLL
+void RemoveControlKeydown(HWND hWnd)
+{
+	MSG WndMsg;
+
+	if ( IsTrue(PeekMessage(&WndMsg, hWnd, WM_CHAR, WM_CHAR, PM_NOREMOVE)) ){
+		if ( WndMsg.wParam <= ' ' ){
+			PeekMessage(&WndMsg, hWnd, WM_CHAR, WM_CHAR, PM_REMOVE);
+		}
+	}
+}
+#endif
+
+// TrackPopupMenu の簡易版 ----------------------------------------------------
+int PPcTrackPopupMenu(PPC_APPINFO *cinfo, HMENU hMenu)
+{
+	POINT pos;
+
+	RemoveControlKeydown(cinfo->info.hWnd);
+	GetPopupPosition(cinfo, &pos);
+	return TrackPopupMenu(hMenu, TPM_TDEFAULT,
+			pos.x, pos.y, 0, cinfo->info.hWnd, NULL);
+}
+
+void ExistCheck(TCHAR *dst, const TCHAR *path, const TCHAR *name)
+{
+	VFSFullPath(dst, (TCHAR *)name, path);
+	GetUniqueEntryName(dst);
+}
+
+#if !NODLL
+const TCHAR SusiePath[] = T("Software\\Takechin\\Susie\\Plug-in");
+const TCHAR StrPath[] = T("PATH");
+#else
+extern const TCHAR SusiePath[];
+extern const TCHAR StrPath[];
+#endif
+BOOL LoadImageSaveAPI(void)
+{
+	TCHAR dir[VFPS], path[VFPS];
+
+	dir[0] = '\0';
+	GetCustData(T("P_susieP"), dir, sizeof(dir));
+	if ( dir[0] != '\0' ){
+		VFSFixPath(NULL, dir, PPcPath, VFSFIX_FULLPATH | VFSFIX_REALPATH);
+	}else if ( GetRegString(HKEY_CURRENT_USER,	// 2)susie が認識する dir
+			SusiePath, StrPath, dir, TSIZEOF(dir)) ){
+	}else{										// 3)ppx dir
+		tstrcpy(dir, PPcPath);
+	}
+	VFSFullPath(path, TWICNAME, dir);
+	hTSusiePlguin = LoadLibrary(path);
+	if ( hTSusiePlguin == NULL ){
+		VFSFullPath(path, TGDIPNAME, dir);
+		hTSusiePlguin = LoadLibrary(path);
+	}
+	if ( hTSusiePlguin == NULL ){
+		hTSusiePlguin = LoadLibrary(TWICNAME);
+		if ( hTSusiePlguin == NULL ) hTSusiePlguin = LoadLibrary(TGDIPNAME);
+	}
+
+	if ( hTSusiePlguin != NULL ){
+		DCreatePicture = (CREATEPICTURE)GetProcAddress(hTSusiePlguin, TGDIPCREATENAME);
+		if ( DCreatePicture != NULL ) return TRUE;
+		FreeLibrary(hTSusiePlguin);
+		hTSusiePlguin = NULL;
+	}
+	return FALSE;
+}
+
+int ImageSaveByAPI(BITMAPINFO *bfh, DWORD bfhsize, char *bmp, size_t bmpsize, const TCHAR *filename)
+{
+	HLOCAL hHeader, hBitmap;
+	int result;
+	DWORD ProfileData = 0;
+
+	if ( bfh->bmiHeader.biSize == 0x7c /*BITMAPV5HEADER*/ ){
+		ProfileData = *(DWORD *)((BYTE *)bfh + 0x70); //bV5ProfileData
+	}
+
+	if ( ProfileData > bfhsize ){
+		DWORD ProfileSize = *(DWORD *)((BYTE *)bfh + 0x74); //bV5ProfileSize
+
+		hHeader = LocalAlloc(0, bfhsize + ProfileSize);
+		if ( hHeader == NULL ) return SUSIEERROR_EMPTYMEMORY;
+		memcpy((char *)hHeader + bfhsize, (BYTE *)bfh + ProfileData, ProfileSize);
+		memcpy((char *)hHeader, bfh, bfhsize);
+		*(DWORD *)((BYTE *)hHeader + 0x70) /*bV5ProfileData */ = bfhsize;
+	}else{
+		hHeader = LocalAlloc(0, bfhsize);
+		if ( hHeader == NULL ) return SUSIEERROR_EMPTYMEMORY;
+		memcpy((char *)hHeader, bfh, bfhsize);
+	}
+
+	hBitmap = LocalAlloc(0, bmpsize);
+	if ( hBitmap == NULL ) return SUSIEERROR_EMPTYMEMORY;
+	memcpy((char *)hBitmap, bmp, bmpsize);
+
+	result = DCreatePicture(filename, 0, &hHeader, &hBitmap, NULL, NULL, 0);
+	LocalFree(hBitmap);
+	LocalFree(hHeader);
+
+	FreeLibrary(hTSusiePlguin);
+	hTSusiePlguin = NULL;
+	return result;
+}
+
+const TCHAR Ext_text[] = T(".txt");
+
+void MakeClipboardDataName(UINT orgtype, TCHAR *name, const char *data, int size)
+{
+	const TCHAR *ext = T(".bin");
+	GetClipboardTypeName(name, orgtype);
+
+	{	// text/html 等の名前対策
+		TCHAR *ptr = name;
+
+		while ( (ptr = tstrchr(ptr, '/')) != NULL ) *ptr = '-';
+	}
+
+	switch (orgtype){
+		case CF_TEXT: {
+			int left = MAXCLIPMEMO - 2;
+#ifdef UNICODE
+			char buf[MAXCLIPMEMO], *DEST = buf;
+#else
+			#define DEST name
+#endif
+			ext = Ext_text;
+
+			name += tstrlen(name);
+			// テキストの一部をファイル名に付与する
+			*name++ = '-';
+			while ( size && left ){
+				if ( IskanjiA(*data) && ((BYTE)(*(data + 1)) >= 0x40) ){
+					if ( (size < 2) || (left < 2) ) break;
+					*DEST++ = *data++;
+					*DEST++ = *data;
+					size--;
+					left -= 2;
+				}else if ( IsalnumA(*data) ){
+					*DEST++ = *data;
+					left--;
+				}else if ( *data == '\0' ){
+					break;
+				}
+				data++;
+				size--;
+			}
+			*DEST = '\0';
+#ifdef UNICODE
+			AnsiToUnicode(buf, name, MAXCLIPMEMO);
+#endif
+			break;
+		}
+
+		case CF_UNICODETEXT:
+#ifdef UNICODE
+		{
+			int left = MAXCLIPMEMO - 2;
+
+			ext = Ext_text;
+			name += tstrlen(name);
+			// テキストの一部をファイル名に付与する
+			*name++ = '-';
+			while ( size && left ){
+				UTCHAR chr;
+
+				chr = *(UTCHAR *)data;
+				if ( IsalnumW(chr) || (chr > 0x200) ){
+					*name++ = chr;
+					left--;
+				}else if ( chr == '\0' ){
+					break;
+				}
+				data += sizeof(TCHAR);
+				size -= sizeof(TCHAR);
+			}
+			*name = '\0';
+		}
+#else
+			ext = Ext_text;
+#endif
+			break;
+
+		case CF_DIB:
+		case CF_DIBV5:
+			ext = T(".bmp");
+			if ( LoadImageSaveAPI() != FALSE ){
+				TCHAR *nametail;
+
+				nametail = name + tstrlen(name);
+				nametail[0] = '.';
+				nametail[1] = '\0';
+				GetCustTable(Str_others, T("imgext"), nametail + 1, TSTROFF(20));
+				if ( nametail[1] != '\0' ) return;
+				ext = T("png");
+			}
+			break;
+
+		case CF_ENHMETAFILE:
+			ext = T(".emf");
+			break;
+	}
+	tstrcat(name, ext);
+}
+
+void SaveBmpData(HANDLE hFile, char *dumpdata, DWORD size)
+{
+	BITMAPFILEHEADER bfh;
+	DWORD offset, tmp;
+
+	offset = CalcBmpHeaderSize((BITMAPINFOHEADER *)dumpdata);
+	bfh.bfType = 'B' + ('M' << 8);
+	bfh.bfSize = size;
+	bfh.bfReserved1 = 0;
+	bfh.bfReserved2 = 0;
+	bfh.bfOffBits = offset + sizeof(BITMAPFILEHEADER);
+	WriteFile(hFile, &bfh, sizeof(bfh), &tmp, NULL);
+}
+
+void SaveClipboardData(HGLOBAL hGlobal, UINT cpdtype, PPC_APPINFO *cinfo)
+{
+	TCHAR name[VFPS], type[CMDLINESIZE], *entry;
+	char *dumpdata, *tempbufdata = NULL;
+	HANDLE hFile;
+	DWORD size;
+
+	dumpdata = (char *)GlobalLock(hGlobal);
+	if ( dumpdata == NULL ){
+		SetPopMsg(cinfo, POPMSG_MSG, T("Save error"));
+		return;
+	}
+	size = (DWORD)GlobalSize(hGlobal);
+
+	MakeClipboardDataName(cpdtype, type, dumpdata, size);
+	ExistCheck(name, cinfo->RealPath, type);
+
+	if ( (cpdtype == CF_DIB) || (cpdtype == CF_DIBV5) ){
+		if ( hTSusiePlguin != NULL ){
+			DWORD infosize;
+
+			infosize = CalcBmpHeaderSize((BITMAPINFOHEADER *)dumpdata);
+			if ( ImageSaveByAPI((BITMAPINFO *)dumpdata, infosize, dumpdata + infosize, size - infosize, name) != SUSIEERROR_NOERROR ){
+				SetPopMsg(cinfo, POPMSG_MSG, T("Save error"));
+			}else{
+				entry = FindLastEntryPoint(name);
+				tstrcpy(cinfo->Jfname, entry);
+			}
+			GlobalUnlock(hGlobal);
+			return;
+		}
+	}
+
+	hFile = CreateFileL(name, GENERIC_WRITE,
+			FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, CREATE_NEW,
+			FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	if ( hFile != INVALID_HANDLE_VALUE ){
+		entry = FindLastEntryPoint(name);
+		tstrcpy(cinfo->Jfname, entry);
+
+		if ( (cpdtype == CF_DIB) || (cpdtype == CF_DIBV5) ){
+			SaveBmpData(hFile, dumpdata, size);
+		}else if ( size ){
+			if ( cpdtype == CF_TEXT ){
+				size = strlen32(dumpdata);
+			}else if ( cpdtype == CF_UNICODETEXT ){
+				DWORD tempsize;
+
+				tempsize = UnicodeToUtf8((WCHAR *)dumpdata, NULL, 0);
+				tempbufdata = (char *)PPcHeapAlloc(tempsize);
+				if ( tempbufdata != NULL ){
+					size = UnicodeToUtf8((WCHAR *)dumpdata, tempbufdata, tempsize);
+					if ( size ) size--; // '\0' 除去
+					dumpdata = tempbufdata;
+				}
+			}
+		}
+		WriteFile(hFile, dumpdata, size, &size, NULL);
+		CloseHandle(hFile);
+		if ( tempbufdata != NULL ) PPcHeapFree(tempbufdata);
+	}else{
+		cinfo->Jfname[0] = '\0';
+		SetPopMsg(cinfo, POPMSG_GETLASTERROR, NULL);
+	}
+	GlobalUnlock(hGlobal);
+}
+
+void ToggleMenuBar(PPC_APPINFO *cinfo)
+{
+	if ( !cinfo->combo ){
+		cinfo->X_win ^= XWIN_MENUBAR;
+		SetCustTable(T("X_win"), cinfo->RegCID, &cinfo->X_win, sizeof(cinfo->X_win));
+		SetMenu(cinfo->info.hWnd, (cinfo->X_win & XWIN_MENUBAR) ? cinfo->DynamicMenu.hMenuBarMenu : NULL);
+	}else{
+		X_combos[0] ^= CMBS_NOMENU;
+		SaveX_Combos();
+		SendMessage(Combo.hWnd, WM_PPXCOMMAND, KCW_setmenu, (LPARAM)X_combos[0]);
+	}
+}
+
+void ChangeTitleBar(HWND hWnd)
+{
+	SetWindowLong(hWnd, GWL_STYLE, GetWindowLong(hWnd, GWL_STYLE) ^
+			(WS_OVERLAPPEDWINDOW ^ WS_NOTITLEOVERLAPPED));
+	SetWindowPos(hWnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER);
+}
+
+
+void AppendLauoutMenu(AppendMenuS *ams, int id, const TCHAR *name, int check)
+{
+	AppendMenuCheckString(ams->hMenu, *ams->index, name, check);
+	thprintf(ams->TH, THP_ADD, T("*layout %d"), id);
+	(*ams->index)++;
+}
+
+HMENU MakeLayoutMenu(PPC_APPINFO *cinfo, HMENU hPopupMenu, DWORD *index, ThSTRUCT *TH) // *layout メニュー
+{
+	AppendMenuS ams;
+
+	if ( hPopupMenu == NULL ) hPopupMenu = CreatePopupMenu();
+	ams.hMenu = hPopupMenu;
+	ams.index = index;
+	ams.TH = TH;
+
+	if ( cinfo->combo ){
+		AppendLauoutMenu(&ams, PPCLC_XCOMBOS + 11, lstr_title, !(X_combos[0] & CMBS_NOTITLE));
+	}else{
+		AppendLauoutMenu(&ams, PPCLC_XWIN + 8, lstr_title, !(cinfo->X_win & XWIN_NOTITLE));
+	}
+	AppendLauoutMenu(&ams, PPCLC_MENU, lstr_menu,
+			(!cinfo->combo ? (cinfo->X_win & XWIN_MENUBAR) :
+					!(X_combos[0] & CMBS_NOMENU)) );
+	AppendLauoutMenu(&ams, PPCLC_XWIN + 5, lstr_status,
+			!(cinfo->X_win & XWIN_NOSTATUS));
+	if ( cinfo->combo ){
+		AppendLauoutMenu(&ams, PPCLC_XCOMBOS + 0, lstr_commoninfo,
+			(X_combos[0] & CMBS_COMMONINFO) );
+	}
+	if ( !cinfo->combo || !(X_combos[0] & CMBS_COMMONINFO) ){
+		AppendLauoutMenu(&ams, PPCLC_XWIN + 6, lstr_info,
+				!(cinfo->X_win & XWIN_NOINFO));
+	}
+	if ( cinfo->combo ){
+		AppendLauoutMenu(&ams, PPCLC_XCOMBOS + 8, lstr_toolbar, X_combos[0] & CMBS_TOOLBAR);
+		AppendLauoutMenu(&ams, PPCLC_XCOMBOS + 1, lstr_address, X_combos[0] & CMBS_COMMONADDR);
+		AppendLauoutMenu(&ams, PPCLC_XCOMBOS + 10, lstr_caption, !(X_combos[0] & CMBS_NOCAPTION));
+		AppendLauoutMenu(&ams, PPCLC_XCOMBOS + 9, lstr_header, X_combos[0] & CMBS_HEADER);
+		AppendLauoutMenu(&ams, PPCLC_XCOMBOS + 4, lstr_horizontal, !(X_combos[0] & CMBS_VPANE) );
+	}else{
+		AppendLauoutMenu(&ams, PPCLC_XWIN + 4, lstr_toolbar
+			, 	cinfo->X_win & XWIN_TOOLBAR);
+		AppendLauoutMenu(&ams, PPCLC_XWIN + 7, lstr_header
+				, cinfo->X_win & XWIN_HEADER);
+	}
+	if ( cinfo->combo && (X_combos[0] & CMBS_COMMONTREE) ){
+		AppendLauoutMenu(&ams, PPCLC_TREE, lstr_tree
+				, Combo.hTreeWnd != NULL);
+	}else{
+		AppendLauoutMenu(&ams, PPCLC_TREE, lstr_tree
+				, cinfo->hTreeWnd != NULL);
+	}
+	AppendLauoutMenu(&ams, PPCLC_LOG, lstr_log,
+			( (Combo.hWnd != NULL) ? (Combo.Report.hWnd != NULL) :
+				((hCommonLog != NULL) && IsWindow(hCommonLog)) ) );
+
+	AppendLauoutMenu(&ams, PPCLC_JOBLIST, lstr_joblist,
+			PPxCommonCommand(NULL, 0, K_GETJOBWINDOW) );
+
+	AppendLauoutMenu(&ams, PPCLC_XWIN + 2, lstr_scroll
+			, !(cinfo->X_win & XWIN_HIDESCROLL));
+	if ( !(cinfo->X_win & XWIN_HIDESCROLL) ){
+		AppendLauoutMenu(&ams, PPCLC_XWIN + 3, lstr_swapscroll, FALSE);
+	}
+
+//	AppendLauoutMenu(&ams, cinfo->X_win & XWIN_HIDETASK, PPCLC_XWIN + 1, T("Simple t&ask bar(tiny)"));
+	AppendMenu(hPopupMenu, MF_SEPARATOR, 0, NULL);
+	{
+		PPXDOCKS *d;
+		d = ( cinfo->combo ) ? &Combo.Docks : &cinfo->docks;
+		AppendMenu(hPopupMenu, MF_EPOP,
+				(UINT_PTR)MakeDockMenu(&d->t, NULL, ams.index, ams.TH),
+				MessageText(lstr_docktop));
+		AppendMenu(hPopupMenu, MF_EPOP,
+				(UINT_PTR)MakeDockMenu(&d->b, NULL, ams.index, ams.TH),
+				MessageText(lstr_dockbottom));
+	}
+	AppendLauoutMenu(&ams, PPCLC_TOUCH, lstr_touch, TouchMode);
+	AppendLauoutMenu(&ams, PPCLC_WINDOW, lstr_windowmenu, FALSE);
+	if ( cinfo->combo && (ComboID[2] != 'A') ){
+		AppendLauoutMenu(&ams, PPCLC_UniqueX_Combos, lstr_UniqueX_Combos, Combo.UniqueX_Combos);
+	}
+	AppendLauoutMenu(&ams, PPCLC_RUNCUST, lstr_cust, FALSE);
+	return hPopupMenu;
+}
+
+void PPcChangeTabletMode(PPC_APPINFO *cinfo, int pmc)
+{
+	PPxCommonCommand(cinfo->info.hWnd, pmc, K_E_TABLET);
+	if ( cinfo->combo  ){
+		SendMessage(Combo.hWnd, WM_PPXCOMMAND, TMAKEWPARAM(K_E_TABLET, pmc), 0);
+	}else{
+		if ( cinfo->hTreeWnd != NULL ){
+			SendMessage(cinfo->hTreeWnd, VTM_CHANGEDDISPDPI, TMAKEWPARAM(0, cinfo->FontDPI), 0);
+		}
+	}
+}
+
+void PPcEnterTabletMode(PPC_APPINFO *cinfo)
+{
+	TouchMode = ~X_pmc[pmc_touch] | TOUCH_TABLET_MODE;
+	PPcChangeTabletMode(cinfo, pmc_touch);
+}
+
+void PPcLayoutCommand(PPC_APPINFO *cinfo, const TCHAR *param) // *layout コマンド
+{
+	int id;
+
+	if ( *param == '-' ) param++;
+	id = GetNumber(&param);
+	if ( (id <= 0) && (*param != '\0') ){
+		TCHAR name[64];
+
+		GetLineParamS(&param, name, TSIZEOF(name));
+		if ( tstrcmp(name, T("panehv")) == 0 ) id = PPCLC_XCOMBOS + 4;
+		if ( tstrcmp(name, T("detail")) == 0 ) id = PPCLC_RUNCUST;
+		if ( tstrcmp(name, T("option")) == 0 ) id = PPCLC_WINDOW;
+		if ( tstrcmp(name, T("title")) == 0 ) id = PPCLC_TITLEBAR;
+		if ( tstrcmp(name, T("menu")) == 0 ) id = PPCLC_MENU;
+		if ( tstrcmp(name, T("status")) == 0 ) id = PPCLC_STATUS;
+		if ( tstrcmp(name, T("columns")) == 0 ) id = PPCLC_XCOMBOS + 9;
+		if ( tstrcmp(name, T("toolbar")) == 0 ){
+			id = cinfo->combo ? PPCLC_XCOMBOS + 8 : PPCLC_XWIN + 4;
+		}
+		if ( tstrcmp(name, T("scrollbar")) == 0 ) id = PPCLC_XWIN + 2;
+	}
+	if ( (id <= 0) || (id >= PPCLC_MAX) ){
+		PP_ExtractMacro(cinfo->info.hWnd, &cinfo->info, NULL, T("%M?layoutmenu"), NULL, 0);
+		return;
+	}
+	switch ( id ){
+		case PPCLC_RUNCUST:		// detail
+			PP_ExtractMacro(cinfo->info.hWnd, &cinfo->info, NULL, T("%Obqs *ppcust /:X_combo="), NULL, 0);
+			break;
+
+		case PPCLC_WINDOW:		// Window Option
+			PPC_window(cinfo->info.hWnd);
+			break;
+
+		case PPCLC_TITLEBAR:
+			id = cinfo->combo ? PPCLC_XCOMBOS + 11 : PPCLC_XWIN + 8;
+			break;
+
+		case PPCLC_MENU:
+			ToggleMenuBar(cinfo);
+			break;
+
+		case PPCLC_STATUS:
+			id = PPCLC_XWIN + 5;
+			break;
+
+		case PPCLC_COMMONINFO:
+			id = PPCLC_XCOMBOS + 0;
+			break;
+
+		case PPCLC_INFO:
+			id = PPCLC_XWIN + 6;
+			break;
+
+		case PPCLC_CAPTION:
+			id = PPCLC_XCOMBOS + 10;
+			break;
+
+		case PPCLC_COLUMN:
+			id = cinfo->combo ? PPCLC_XCOMBOS + 9 : PPCLC_XWIN + 7;
+			break;
+
+		case PPCLC_TREE:
+			PPC_Tree(cinfo, PPCTREE_SYNC, FALSE);
+			break;
+
+		case PPCLC_LOG:
+			if ( Combo.hWnd != NULL ){
+				resetflag(X_combos[0], CMBS_COMMONREPORT);
+				if ( Combo.Report.hWnd == NULL ){
+					setflag(X_combos[0], CMBS_COMMONREPORT);
+				}
+				SaveX_Combos();
+				SendMessage(Combo.hWnd, WM_PPXCOMMAND, TMAKEWPARAM(K_WINDDOWLOG, PPLOG_REPORT), (LPARAM)REPORTTEXT_TOGGLE);
+			}else{
+				if ( (hCommonLog == NULL) || (IsWindow(hCommonLog) == FALSE) ){
+					DockAddBar(cinfo->info.hWnd, &cinfo->docks.b, RMENUSTR_LOG);
+				}else{
+					if ( DockCommands(cinfo->info.hWnd, &cinfo->docks.b, dock_delete, RMENUSTR_LOG) == FALSE ){
+						PostMessage(GetParent(hCommonLog), WM_CLOSE, 0, 0);
+					}
+					hCommonLog = NULL;
+				}
+			}
+			break;
+
+		case PPCLC_JOBLIST:
+			if ( cinfo->combo == 0 ){
+				if ( DockAddBar(cinfo->info.hWnd, &cinfo->docks.b, RMENUSTR_JOB) == FALSE ){
+					DockCommands(cinfo->info.hWnd, &cinfo->docks.b, dock_delete, RMENUSTR_JOB);
+				}
+			}else{
+				SendMessage(Combo.hWnd, WM_PPXCOMMAND, KCW_showjoblist, 0);
+			}
+			break;
+
+		case PPCLC_UniqueX_Combos:
+			Combo.UniqueX_Combos = Combo.UniqueX_Combos ? FALSE : TRUE;
+			if ( Combo.UniqueX_Combos == FALSE ){
+				DeleteCustTable(T("X_combou"), ComboID, 0);
+				LoadX_Combos();
+				SendMessage(cinfo->hComboWnd, WM_PPXCOMMAND, K_Lcust, (LPARAM)cinfo->info.hWnd);
+			}else{
+				SaveX_Combos();
+			}
+			break;
+
+		case PPCLC_TOUCH:
+			TouchMode = TouchMode ? 0 : 1;
+			if ( TouchMode == 0 ){
+				PPcChangeTabletMode(cinfo, pmc_mouse);
+			}else{
+				PPcEnterTabletMode(cinfo);
+			}
+			InitCli(cinfo);
+			Repaint(cinfo);
+			break;
+	}
+	if ( id >= PPCLC_XCOMBOS ){
+		X_combos[0] ^= 1 << (id - PPCLC_XCOMBOS);
+		SaveX_Combos();
+		// CMBS_HEADER, CMBS_NOCAPTION
+		if ( (id == PPCLC_XCOMBOS + 9) || (id == PPCLC_XCOMBOS + 10) ){
+			PPxPostMessage(WM_PPXCOMMAND, K_Lcust, GetTickCount());
+		}else{
+			SendMessage(cinfo->hComboWnd, WM_PPXCOMMAND, K_Lcust, (LPARAM)cinfo->info.hWnd);
+		}
+		// CMBS_NOTITLE
+		if ( id == PPCLC_XCOMBOS + 11 ) ChangeTitleBar(cinfo->hComboWnd);
+		PeekLoop(); // この中で K_Lcust が実行される
+		SendMessage(cinfo->hComboWnd, WM_PPXCOMMAND, KCW_layout, 0);
+		if ( id == PPCLC_XCOMBOS + 4 ){ // CMBS_VPANE
+			FixPaneSize(cinfo, 0, 0, FPS_ALLSAMERATE);
+		}
+	}else if ( id >= PPCLC_XWIN ){		// X_win ****************
+		cinfo->X_win ^= 1 << (id - PPCLC_XWIN);
+		SetCustTable(T("X_win"), cinfo->RegCID, &cinfo->X_win, sizeof cinfo->X_win);
+		if ( (id == PPCLC_XWIN + 2) || (id == PPCLC_XWIN + 3) ){ // scrollbar
+			// XWIN_HIDESCROLL || XWIN_SWAPSCROLL
+			cinfo->ScrollBarHV = cinfo->X_win & XWIN_SWAPSCROLL ? SB_VERT : SB_HORZ;
+			if ( cinfo->list.scroll ) cinfo->ScrollBarHV ^= (SB_HORZ | SB_VERT);
+			HideScrollBar(cinfo);
+			cinfo->oldspos.nPage = (UINT)-1; // スクロールバー更新させる
+			if ( cinfo->hScrollBarWnd != NULL ){
+				DestroyWindow(cinfo->hScrollBarWnd);
+				CreateScrollBar(cinfo);
+			}
+		}
+		if ( (id == PPCLC_XWIN + 4) || (id == PPCLC_XWIN + 7) ){ // toolbar/hdr
+			// XWIN_TOOLBAR || XWIN_HEADER
+			CloseGuiControl(cinfo, FALSE);
+			InitGuiControl(cinfo, FALSE);
+		}
+		// XWIN_NOTITLE
+		if ( id == PPCLC_XWIN + 8 ) ChangeTitleBar(cinfo->info.hWnd);
+	}
+	WmWindowPosChanged(cinfo);
+}
+
+void WriteStdoutChooseName(TCHAR *name)
+{
+	SIZE32_T len;
+	char *bufA = NULL, *src;
+	DWORD tmp;
+	#ifdef UNICODE
+		if ( (X_ChooseMode == CHOOSEMODE_CON_UTF16) ||
+			 (X_ChooseMode == CHOOSEMODE_MULTICON_UTF16) ){
+			src = (char *)name;
+			len = strlenW32(name) * (SIZE32_T)sizeof(WCHAR);
+		}else{
+			UINT codepage = CP_ACP;
+
+			if ( (X_ChooseMode == CHOOSEMODE_CON_UTF8) ||
+				 (X_ChooseMode == CHOOSEMODE_MULTICON_UTF8) ){
+				 codepage = CP_UTF8;
+			}
+			len = WideCharToMultiByte(codepage, 0, name, -1, NULL, 0, NULL, NULL) + 1;
+			bufA = (char *)PPcHeapAlloc( len );
+			if ( bufA == NULL ) return;
+			src = bufA;
+			len = WideCharToMultiByte(codepage, 0, name, -1, bufA, len, NULL, NULL);
+			if ( len > 0 ) len--;
+		}
+		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), src, len, &tmp, NULL);
+	#else
+		WCHAR *bufW = NULL;
+		DWORD lengthA, lengthW;
+
+		if ( (X_ChooseMode == CHOOSEMODE_CON) ||
+			 (X_ChooseMode == CHOOSEMODE_MULTICON) ){
+			src = (char *)name;
+			len = strlen(name);
+		}else{ // UTF16/UTF8
+			lengthW = AnsiToUnicode(name, NULL, 0) + 1;
+			bufW = (WCHAR *)PPcHeapAlloc( lengthW * sizeof(WCHAR) );
+			if ( bufW == NULL ) return;
+			lengthW = AnsiToUnicode(name, bufW, lengthW);
+			src = (char *)bufW;
+			len = (lengthW != 0) ? ((lengthW - 1) * sizeof(WCHAR)) : 0;
+			if ( (X_ChooseMode == CHOOSEMODE_CON_UTF8) ||
+				 (X_ChooseMode == CHOOSEMODE_MULTICON_UTF8) ){
+				lengthA = UnicodeToUtf8(bufW, NULL, 0) + 1;
+				bufA = (char *)PPcHeapAlloc( lengthA );
+				if ( bufA != NULL ){
+					src = bufA;
+					len = UnicodeToUtf8(bufW, bufA, lengthA);
+					if ( len != 0 ) len--;
+				}
+			}
+		}
+		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), src, len, &tmp, NULL);
+		if ( bufW != NULL ) PPcHeapFree(bufW);
+	#endif
+	if ( bufA != NULL ) PPcHeapFree(bufA);
+}
+
+void DoChooseResult(PPC_APPINFO *cinfo, TCHAR *Param)
+{
+	TCHAR buf[VFPS];
+	ERRORCODE result = NO_ERROR;
+
+	ThGetString(NULL, T("CHOOSE"), buf, VFPS);
+	if ( buf[0] == '\0' ) tstrcpy(buf, T("%#FCD"));
+	PP_InitLongParam(Param);
+
+	switch (X_ChooseMode){
+		case CHOOSEMODE_EDIT:
+			result = PP_ExtractMacro(cinfo->info.hWnd, &cinfo->info, NULL, buf, Param, XEO_DISPONLY | XEO_EXTRACTLONG);
+			if ( result == ERROR_PARTIAL_COPY ){
+				thprintf(buf, TSIZEOF(buf), T("Text length (%d) seems long, continue?"), tstrlen32(PP_GetLongParamRAW(Param)) );
+				if ( IDYES != PMessageBox(cinfo->info.hWnd, buf, NULL, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2) ){
+					break;
+				}
+			}
+			SendMessage(hChooseWnd, WM_SETTEXT, 0, (LPARAM)PP_GetLongParam(Param, result) );
+			break;
+
+		case CHOOSEMODE_DD:
+			StartAutoDD(cinfo, hChooseWnd, NULL, DROPTYPE_LEFT | DROPTYPE_HOOK);
+			break;
+
+		case CHOOSEMODE_CON_UTF8:
+		case CHOOSEMODE_CON_UTF16:
+		case CHOOSEMODE_CON: {
+			result = PP_ExtractMacro(cinfo->info.hWnd, &cinfo->info, NULL, buf, Param, XEO_DISPONLY | XEO_EXTRACTLONG);
+			WriteStdoutChooseName(PP_GetLongParam(Param, result));
+			break;
+		}
+
+		case CHOOSEMODE_MULTICON_UTF8:
+		case CHOOSEMODE_MULTICON_UTF16:
+		case CHOOSEMODE_MULTICON: {
+			ENTRYCELL *cell;
+			int work;
+
+			InitEnumMarkCell(cinfo, &work);
+			while ( (cell = EnumMarkCell(cinfo, &work)) != NULL ){
+				VFSFullPath(buf, (TCHAR *)GetCellFileName(cinfo, cell, buf), cinfo->RealPath);
+				if ( tstrchr(buf, ' ') ){
+					thprintf(Param, CMDLINESIZE, T("\"%s\"\r\n"), buf);
+				}else{
+					thprintf(Param, CMDLINESIZE, T("%s\r\n"), buf);
+				}
+				WriteStdoutChooseName(Param);
+			}
+			break;
+		}
+	}
+	PP_FreeLongParam(Param, result);
+	PostMessage(cinfo->info.hWnd, WM_CLOSE, 0, 0);
+}
+
+void GetDriveVolumeName(PPC_APPINFO *cinfo)
+{
+	TCHAR path[VFPS];
+
+	if ( cinfo->RequestVolumeLabel == FALSE ) return;
+	cinfo->RequestVolumeLabel = FALSE;
+	cinfo->VolumeLabel[0] = '\0';
+
+	GetDriveName(path, cinfo->RealPath);
+	GetVolumeInformation(path, cinfo->VolumeLabel, TSIZEOF(cinfo->VolumeLabel) - 1, NULL, NULL, NULL, NULL, 0);
+}
+
+#if !NODLL
+TCHAR * FindLastEntryPoint(const TCHAR *src)
+{
+	const TCHAR *rp, *tp;
+
+	rp = VFSGetDriveType(src, NULL, NULL);	// ドライブ指定をスキップ
+	if ( rp == NULL ) rp = src;	// ドライブ指定が無い
+	if ( *rp != '\0' ){				// root なら *rp == 0
+		tp = rp;
+		for ( ;; ){
+			TCHAR type;
+
+			type = *tp;
+			if ( type == '\\' ){
+				rp = tp + 1;
+			}else if ( type == '\0' ){
+				break;
+#ifndef UNICODE
+			}else{
+				if ( Iskanji(type) ) tp++;
+#endif
+			}
+			tp++;
+		}
+	}
+	return (TCHAR *)rp;
+}
+#endif
+
+// ルートエントリを探す ------------------------------------
+TCHAR *GetDriveRoot(TCHAR *path)
+{
+	TCHAR *p, *q;
+	int mode;
+
+	p = VFSGetDriveType(path, &mode, NULL);
+	if ( p == NULL ) return path;
+
+	if ( *p == '\\' ) p++;
+	if ( *p ){
+		if ( mode == VFSPT_UNC ){	// UNC は共有ルートを求める
+			q = FindPathSeparator(p); // PC名をスキップ
+			if ( q != NULL ){
+				TCHAR *r;
+
+				q++;
+				r = FindPathSeparator(q);	// 共有名をスキップ
+				if ( r != NULL ){
+					p = r + 1;
+				} else{
+					p = q + tstrlen(q);
+				}
+			}
+		}
+		return p;
+	}
+	return path;
+}
+
+TCHAR *GetPathExt(const TCHAR *path)
+{
+	const TCHAR *name;
+
+	name = FindLastEntryPoint(path);
+	return (TCHAR *)name + FindExtSeparator(name);
+}
+
+void USEFASTCALL PeekLoop(void)
+{
+	MSG msg;
+
+	while ( PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) ){
+		if ( msg.message == WM_QUIT ) break;
+		if ( DialogKeyProc(&msg) ) continue;
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+}
+
+// ,  区切りのパラメータを１つ取得する ※PPD_CMDL.Cにも
+#if !NODLL
+UTCHAR GetCommandParameter(LPCTSTR *commandline, TCHAR *param, size_t paramlen)
+{
+	const TCHAR *src;
+	TCHAR *dest, *destmax;
+	UTCHAR firstcode, code;
+
+	firstcode = SkipSpace(commandline);
+	if ( (firstcode == '\0') || (firstcode == ',') ){ // パラメータ無し
+		*param = '\0';
+		return firstcode;
+	}
+	dest = param;
+	destmax = dest + paramlen - 1;
+	if ( firstcode == '\"' ){
+		GetQuotedParameter(commandline, param, destmax);
+		return *param;
+	}
+	src = *commandline + 1;
+	code = firstcode;
+	for ( ;; ){
+		if ( dest < destmax ) *dest++ = code;
+		code = *src;
+		if ( (code == ',') || // (code == ' ') ||
+			 ((code < ' ') && ((code == '\0') || (code == '\t') ||
+							   (code == '\r') || (code == '\n'))) ){
+			break;
+		}
+		src++;
+	}
+	while ( (dest > param) && (*(dest - 1) == ' ') ) dest--; // choptail
+	*dest = '\0';
+	*commandline = src;
+	return firstcode;
+}
+
+UTCHAR GetCommandParameterDual(LPCTSTR *commandline, TCHAR *param, size_t paramlen)
+{
+	const TCHAR *src;
+	TCHAR *dest, *destmax;
+	UTCHAR firstcode, code;
+
+	firstcode = SkipSpace(commandline);
+	if ( (firstcode == '\0') || (firstcode == ',') ){ // パラメータ無し
+		*param = '\0';
+		return firstcode;
+	}
+	if ( firstcode == '\"' ) return GetLineParamS(commandline, param, paramlen);
+	src = *commandline + 1;
+	dest = param;
+	destmax = dest + paramlen - 1;
+	code = firstcode;
+	for ( ;; ){
+		*dest++ = code;
+		code = *src;
+		if ( code == ' ' ){
+			if ( tstrchr(src, ',') == NULL ) break;
+			src++;
+			continue;
+		}
+		if ( (dest >= destmax) || (code == ',') ||
+			 ((code < ' ') && ((code == '\0') || (code == '\t') ||
+							   (code == '\r') || (code == '\n'))) ){
+			break;
+		}
+		src++;
+	}
+	while ( (dest > param) && (*(dest - 1) == ' ') ) dest--;
+	*dest = '\0';
+	*commandline = src;
+	return firstcode;
+}
+#endif
+
+void PPcChangeDirectory(PPC_APPINFO *cinfo, const TCHAR *newpath, DWORD flags)
+{
+	if ( IsTrue(cinfo->ChdirLock) && !(flags & RENTRY_NOLOCK) ){
+		PPCuiWithPathForLock(cinfo, newpath);
+		return;
+	}
+	if ( IsTrue(cinfo->ModifyComment) ){
+		WriteComment(cinfo, cinfo->CommentFile);
+	}
+	SetPPcDirPos(cinfo);
+	ChangePath(cinfo, newpath, CHGPATH_SETABSPATH);
+	read_entry(cinfo, flags);
+}
+
+void JumpPathEntry(PPC_APPINFO *cinfo, const TCHAR *newpath, DWORD flags)
+{
+	TCHAR *p, path[VFPS];
+	TCHAR cmdline[CMDLINESIZE];
+
+	VFSFullPath(path, (TCHAR *)newpath,
+			( (cinfo->e.Dtype.mode == VFSDT_LFILE) &&
+			  (cinfo->e.Dtype.BasePath[0] != '\0') ) ?
+				cinfo->e.Dtype.BasePath : cinfo->path );
+	if ( IsTrue(cinfo->ChdirLock) ){
+		thprintf(cmdline, TSIZEOF(cmdline), T("/k *jumppath \"%s\" /entry /nolock"), path);
+		if ( cinfo->combo != 0 ){
+			CallPPcParam(Combo.hWnd, cmdline);
+		}else{
+			PPCui(cinfo->info.hWnd, cmdline);
+		}
+		return;
+	}
+	p = VFSFindLastEntry(path);
+	tstrcpy(cinfo->Jfname, (*p == '\\') ? p + 1 : p);
+	*p = '\0';
+	PPcChangeDirectory(cinfo, path, flags);
+}
+
+#pragma argsused
+void WINAPI DummyNotifyWinEvent(DWORD event, HWND hwnd, LONG idObject, LONG idChild)
+{
+	UnUsedParam(event);UnUsedParam(hwnd);UnUsedParam(idObject);UnUsedParam(idChild);
+}
+
+void USEFASTCALL CreateNewPane(const TCHAR *param)
+{
+	if ( (param == NULL) || (*param == '\0') ){
+		CallPPcParam(Combo.hWnd, T("-pane"));
+	}else{
+		TCHAR buf[CMDLINESIZE];
+
+		thprintf(buf, TSIZEOF(buf), T("-pane %s"), param);
+		CallPPcParam(Combo.hWnd, buf);
+	}
+}
+
+// 画面内にマークがなければ警告する
+int CheckOffScreenMark(PPC_APPINFO *cinfo, const TCHAR *title)
+{
+	ENTRYINDEX maxentries;
+	ENTRYINDEX n;
+
+	if ( cinfo->e.markC == 0 ) return IDYES; // マーク無し
+
+	maxentries = n = cinfo->cellWMin;
+	maxentries += cinfo->cel.Area.cx * cinfo->cel.Area.cy;
+	if ( maxentries > cinfo->e.cellIMax ) maxentries = cinfo->e.cellIMax;
+	for ( ; n < maxentries ; n++ ){
+		if ( IsCEL_Marked(n) ) return IDYES; // 画面内にマークあり
+	}
+	return PMessageBox(cinfo->info.hWnd, MES_QCOM, title, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2);
+}
+
+void BackupLog(void)
+{
+	DWORD length;
+
+	if ( hCommonLog == NULL ) return;
+
+	length = GetWindowTextLength(hCommonLog) + 1;
+	CommonLogBackup = PPcHeapAllocT(length);
+	if ( CommonLogBackup != NULL ){
+		GetWindowText(hCommonLog, CommonLogBackup, length);
+	}
+}
+void RestoreLog(void)
+{
+	if ( CommonLogBackup == NULL ) return;
+	if ( hCommonLog != NULL ){
+		SetWindowText(hCommonLog, CommonLogBackup);
+		SendMessage(hCommonLog, EM_SETSEL, EC_LAST, EC_LAST);
+		SendMessage(hCommonLog, EM_SCROLLCARET, 0, 0);
+	}
+	PPcHeapFree(CommonLogBackup);
+	CommonLogBackup = NULL;
+}
+
+// ●VFSFindLastEntry に再統合予定
+TCHAR *FindBothLastEntry(const TCHAR *path)
+{
+	TCHAR *sep, sepchar, *src;
+
+	sep = FindPathSeparator(path);
+	if ( sep == NULL ) return (TCHAR *)(path + tstrlen(path));
+	sepchar = *sep;
+	src = sep;
+	for ( ; ; ){
+		TCHAR type;
+
+		type = *src;
+		if ( type == sepchar ) sep = src;
+		if ( type == '\0' ) return (TCHAR *)sep;
+#ifndef UNICODE
+		if ( Iskanji(type) ) src++;
+#endif
+		src++;
+	}
+}
+
+void AppendPath(TCHAR *path, const TCHAR *appendpath, TCHAR sepchar)
+{
+	TCHAR *sep;	// 「\」の位置を覚えておく
+	TCHAR *readp;
+	TCHAR sepchr = sepchar;
+	int len;
+
+	sep = path;
+
+	readp = path;
+	while ( *readp ){
+		if ( *readp == sepchr ) sep = readp + 1;
+		#ifndef UNICODE
+			if ( IskanjiA(*readp++) ){
+				if ( *readp ) readp++;
+			}
+		#else
+			readp++;
+		#endif
+	}
+	if ( sep != readp ) *(readp++) = sepchr;
+
+	len = tstrlen32(appendpath) + 1;
+	if ( (readp - path + len) >= VFPS ){
+		tstrcpy(path, T(OVER_VFPS_MSG));
+		return;
+	}
+	memcpy(readp, appendpath, TSTROFF(len));
+}
+
+void TinyGetMenuPopPos(HWND hWnd, POINT *pos)
+{
+	RECT box;
+
+	GetMessagePosPoint(*pos);
+	if ( hWnd == NULL ) return;
+	GetWindowRect(hWnd, &box);
+	if ( (box.left > pos->x) || (box.top > pos->y) ||
+		 (box.right < pos->x) || (box.bottom < pos->y) ){
+		pos->x = (box.left + box.right) / 2;
+		pos->y = (box.top + box.bottom) / 2;
+	}
+}
+
+const TCHAR BlockKey[] = T("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Blocked");
+
+BOOL IsShellExBlocked(const TCHAR *ClsID)
+{
+	TCHAR buf[64];
+
+	if ( (GetRegString(HKEY_LOCAL_MACHINE, BlockKey, ClsID, buf, TSIZEOF(buf)) == FALSE) &&
+		 (GetRegString(HKEY_CURRENT_USER, BlockKey, ClsID, buf, TSIZEOF(buf)) == FALSE) ){
+		return FALSE;
+	}
+	return TRUE;
+}
+
+#if !NODLL
+int PopupButtonMenu(HMENU hPopup, HWND hWnd, HWND hButtonWnd)
+{
+	RECT box;
+	int index;
+
+	GetWindowRect(hButtonWnd, &box);
+	index = TrackPopupMenu(hPopup, TPM_TDEFAULT, box.left, box.bottom, 0, hWnd, NULL);
+	if ( index <= 0 ) PPxCommonExtCommand(K_EndButtonMenu, 0);
+	return index;
+}
+#endif
+
+const TCHAR *SearchVLINEwild(const TCHAR *str)
+{
+	TCHAR type;
+
+	for ( ;; ){
+		type = *str;
+		if ( (type == '\0') || (type == '/') ) return NULL;
+		if ( type == '|' ) return str;
+		str += Chrlen(type);
+	}
+}
+
+void LoadCCDrawBack(void)
+{
+	hControlBackBrush = (HBRUSH)PPxCommonExtCommand(K_DRAWCCBACK, 0);
+	UseCCDrawBack = (hControlBackBrush != NULL) ? 2 : 1;
+}
+
+void tstrtrimhead(TCHAR *str, size_t len)
+{
+	TCHAR *src, *dst;
+
+	src = str + len;
+	dst = str;
+	for (;;){
+		TCHAR c;
+
+		c = *src;
+		*dst = c;
+		if ( c == '\0' ) return;
+		src++;
+		dst++;
+	}
+}
+
+void tstrinsert(TCHAR *str, TCHAR *insertstr)
+{
+	size_t insertsize;
+
+	insertsize = tstrlen(insertstr) * sizeof(TCHAR);
+	memmove((char *)str + insertsize, (char *)str, (tstrlen(str) + 1) * sizeof(TCHAR));
+	memcpy(str, insertstr, insertsize);
+}
+
+int GetWildcardAttributes(const TCHAR *wildcard, const TCHAR **optiontail)
+{
+	int attr = 0;
+
+	if ( memcmp(wildcard, EnableDirOption, SIZEOFTSTR(EnableDirOption)) == 0 ){
+		setflag(attr, MASKEXTATTR_DIR);
+		wildcard += TSIZEOFSTR(EnableDirOption);
+	}
+
+	if ( (wildcard[0] == 'o') && (wildcard[1] == ':') ){
+		wildcard += 2;
+		for (;;){
+			TCHAR c;
+
+			c = *wildcard;
+			if ( c == 'd' ){
+				setflag(attr, MASKEXTATTR_DIR);
+				wildcard++;
+				continue;
+			}
+			if ( c == 'w' ){
+				setflag(attr, MASKEXTATTR_WORDMATCH);
+				wildcard++;
+				continue;
+			}
+			if ( c == 'e' ){
+				setflag(attr, MASKEXTATTR_GA_SILENTERROR);
+				wildcard++;
+				continue;
+			}
+			if ( Isalpha(c) ){
+				setflag(attr, MASKEXTATTR_GA_ETC);
+				wildcard++;
+				continue;
+			}
+			if ( c == ',' ) wildcard++;
+			break;
+		}
+	}
+	if ( optiontail != NULL ) *optiontail = wildcard;
+	return attr;
+}
+
+TCHAR *SplitAuxNameC(const TCHAR *AuxPath, TCHAR *dest)
+{
+	TCHAR *ptr = dest, sep = '\\';
+
+	AuxPath += 4;
+	if ( *AuxPath == '/' ){
+		sep = '/';
+		while ( *AuxPath == '/' ) AuxPath++;
+	}
+	tstrcpy(dest, AuxPath);
+
+	for (;;){
+		if ( *ptr == '\0' ) break;
+		if ( *ptr == sep ){
+			*ptr++ = '\0';
+			break;
+		}
+		ptr++;
+	}
+	return ptr;
+}
+
+void FixPathChange(PPC_APPINFO *cinfo)
+{
+	ThSetString(&cinfo->StringVariable, Val_RootPath, NilStr);
+}
+
+void LeavePathEvent(PPC_APPINFO *cinfo, const TCHAR *newpath, const TCHAR *type)
+{
+	TCHAR buf[VFPS], param[CMDLINESIZE], eventtype[32], *ptr;
+
+	param[0] = '\0';
+	if ( cinfo->e.pathtype == VFSPT_AUXOP ){
+		SplitAuxNameC(cinfo->path, buf);
+	}else{
+		tstrcpy(buf, T("KC_main"));
+		thprintf(eventtype, TSIZEOF(eventtype), T("%sevent"), type);
+		type = eventtype;
+	}
+	GetCustTable(buf, type, param, sizeof(param));
+
+	if ( (param[0] == '\0') && (type == LeaveType_OverUp) ){
+		GetCustTable(buf, LeaveType_Leave, param, sizeof(param));
+	}
+
+	ptr = param;
+	if ( (UTCHAR)*ptr == EXTCMD_CMD ) ptr++;
+
+	if ( ptr[0] == '\0' ){
+		tstrcpy(cinfo->path, newpath);
+		FixPathChange(cinfo);
+		return;
+	}
+	ThSetString(&cinfo->StringVariable, Val_NewPath, newpath);
+	PP_ExtractMacro(cinfo->info.hWnd, &cinfo->info, NULL, ptr, NULL, 0);
+	ThGetString(&cinfo->StringVariable, Val_NewPath, cinfo->path, TSIZEOF(cinfo->path));
+	ThSetString(&cinfo->StringVariable, Val_NewPath, NilStr);
+	FixPathChange(cinfo);
+}
+
+// shortpath が longpath と共通のパスであるかどうかを判断する
+// -1:不一致 0:同一（階層）1:longpath が shortpath の下位階層
+int CompareForwardPath(const TCHAR *shortpath, const TCHAR *longpath)
+{
+	TCHAR c;
+	size_t len;
+
+	len = tstrlen(shortpath);
+	// 共通部が不一致
+	if ( memcmp(shortpath, longpath, TSTROFF(len)) != 0 ) return -1;
+
+	c = longpath[len];
+	// パスが完全に一致（a:\bcd == a:\bcd, a:\bcd\efg 等で有り a:\bcdef でない）
+	if ( (c == '\0') || (c == '\\') || (c == '/') ) return 0;
+	return 1;
+}
+
+BOOL CheckPathOverUp(PPC_APPINFO *cinfo, const TCHAR *newpath)
+{
+	TCHAR buf[VFPS];
+
+	buf[0] = '\0';
+	ThGetString(&cinfo->StringVariable, Val_RootPath, buf, VFPS);
+	if ( buf[0] == '\0' ) return FALSE;
+
+	// newpath は、RootPath と同じか下層のパスなら FALSE
+	if ( CompareForwardPath(buf, newpath) >= 0 ) return FALSE;
+
+	// RootPathがnewpathより下層のパスならイベント発生
+	if ( CompareForwardPath(newpath, buf) < 0 ) return FALSE; // 全く異なる
+
+	// イベント発生
+	LeavePathEvent(cinfo, newpath, LeaveType_OverUp);
+	return TRUE;
+}
+
+BOOL ChangePath(PPC_APPINFO *cinfo, const TCHAR *newpath, int mode)
+{
+	TCHAR pathbuf[VFPS];
+	TCHAR *oldsep, *newsep;
+	int oldpt, newpt;
+
+	if ( mode == CHGPATH_SETRELPATH ){
+		if ( VFSFullPath(pathbuf, (TCHAR *)newpath, cinfo->path) == NULL ){
+			return FALSE;
+		}
+		newpath = pathbuf;
+	}
+	if ( IsTrue(CheckPathOverUp(cinfo, newpath)) ) return TRUE;
+
+	oldsep = VFSGetDriveType(cinfo->path, &oldpt, NULL);
+	if ( oldpt == VFSPT_AUXOP ){
+
+		newsep = VFSGetDriveType(newpath, &newpt, NULL);
+
+		if ( (oldpt != newpt) || ((oldsep - cinfo->path) != (newsep - newpath)) ){ // ドライブの種類が異なる / ドライブ名前の長さが異なる
+			LeavePathEvent(cinfo, newpath, LeaveType_Leave);
+			return TRUE;
+		}else if ( memcmp(cinfo->path, newpath, newsep - newpath) != 0 ){ // ドライブ名不一致
+			LeavePathEvent(cinfo, newpath, LeaveType_Leave);
+			return TRUE;
+		}
+	}
+	tstrcpy(cinfo->path, newpath);
+	FixPathChange(cinfo);
+	return TRUE;
+}

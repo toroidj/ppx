@@ -1,0 +1,146 @@
+//-----------------------------------------------------------------------------
+//	Paper Plane xUI		共通リソースヘッダ / Window ID 定義
+//-----------------------------------------------------------------------------
+//-------------------------------------------------------------- その他情報
+#define Copyright		"Copyright (c)1997-" ReleaseYear " TORO"
+#define TCopyright		T("Copyright (c)1997-") T(ReleaseYear) T(" TORO")
+#define P_ProductName	"PaperPlaneXUI"
+#define P_Description	"PaperPlaneXUI FileUtl"
+#define P_Comments		"toro.d.dooo.jp/"
+#define P_Company_NAME	"TOROid"
+#define P_Copyright		Copyright
+#ifndef _WIN64
+ #ifdef _M_ARM
+  #define P_Processor "ARM32"
+ #else
+  #define P_Processor "x86"
+ #endif
+#else
+ #ifdef _M_ARM64
+  #define P_Processor "ARM64"
+ #else
+  #define P_Processor "AMD64"
+ #endif
+#endif
+#define TOOLBARIMAGE	9
+
+										// PPx の FileName
+#ifndef WINEGCC
+#ifdef UNICODE // Windows UNICODE
+	#define PPBEXE		"PPBW.EXE"
+	#define PPCEXE		"PPCW.EXE"
+	#define PPVEXE		"PPVW.EXE"
+	#define PPCUSTEXE	"PPCUSTW.EXE"
+	#define PPTRAYEXE	"PPTRAYW.EXE"
+	#define PPFFIXEXE	"PPFFIXW.EXE"
+	#ifdef _WIN64
+		#define PPCOMMONDLL	"PPLIB64W.DLL"
+	#else
+		#define PPCOMMONDLL	"PPLIB32W.DLL"
+	#endif
+#else // Windows MultiByte
+	#define PPBEXE		"PPB.EXE"
+	#define PPCEXE		"PPC.EXE"
+	#define PPVEXE		"PPV.EXE"
+	#define PPCUSTEXE	"PPCUST.EXE"
+	#define PPTRAYEXE	"PPTRAY.EXE"
+	#define PPFFIXEXE	"PPFFIX.EXE"
+	#define PPCOMMONDLL	"PPLIB32.DLL"
+#endif
+#else
+#ifdef UNICODE // Wine UNICODE
+	#define PPBEXE		"ppbw"
+	#define PPCEXE		"ppcw"
+	#define PPVEXE		"ppvw"
+	#define PPCUSTEXE	"ppcustw"
+	#define PPTRAYEXE	"pptrayw"
+	#define PPFFIXEXE	"ppffixw"
+	#ifdef _WIN64
+		#define PPCOMMONDLL	"pplib64w.dll"
+	#else
+		#define PPCOMMONDLL	"pplib32w.dll"
+	#endif
+#else // Wine MultiByte
+	#define PPBEXE		"ppb"
+	#define PPCEXE		"ppc"
+	#define PPVEXE		"ppv"
+	#define PPCUSTEXE	"ppcust"
+	#define PPTRAYEXE	"pptray"
+	#define PPFFIXEXE	"ppffix"
+	#define PPCOMMONDLL	"pplib32"
+#endif
+#endif
+
+#define PPxLangRevItemID	"0000"	// 言語ファイルの版数を保存する項目
+//-------------------------------------------------------------- クラス名
+#define PPXSTATICCLASS	"PPX_static"
+#define PPXKEYCLASS		"PPX_key"
+//------------------------------------------------------------------ Window ID
+// 0x1000～0x3fff	ウィンドウハンドル用
+#define IDW_CONTROLMIN	0x1000
+#define IDW_CONTROLMAX	0x3f00
+#define IDW_GENTOOLBAR	0x3f01 // 一般ツールバー(B_xxx)
+// 0x4000～0x4fff	メニューコマンド用
+#define IDW_MENU		0x4000
+#define IDW_MENUMAX		0x4fff
+#define IDW_MENU_EX		0x4ffe
+#define IDW_MENU_POSFIX	0x4ffe
+#define IDW_MENU_REGPJUMP	0x4fff
+// 0x7000～0x7fff	ダイアログコントロール用
+#define ID_GENERAL1_MIN	0x7000
+#define ID_GENERAL1_MAX	0x70ff
+#define ID_CUST_MIN		0x7400
+#define ID_CUST_MAX		0x76ff
+
+// 0x8000～0xbfff KeyCommand(K_m)
+// 0xc000～0xefff 内部用
+#define IDW_INTERNALMIN	0xc000
+#define IDW_INTERNALMAX	0xefff
+
+// 0xf000～0xffff	WM_SYSCOMMAND のシステムメニューと重複
+//======================================================= COMMON 70xx,77xx,7fxx
+#define IDQ_GETDIALOGID	0x7fff	// ヘルプ表示に使用するDialogIDを返す
+#define IDM_CONTINUE	0x7ffe	// 待機jobを開始させる
+#define IDD_NULL		0x7ffd	// 空
+#define IDD_NULLMIN		0x7ffc	// 空
+
+//-------------------------------------- 汎用入力窓
+#define IDE_INPUT_LINE_STYLE (ES_LEFT | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | ES_AUTOHSCROLL | WS_VSCROLL | ES_NOHIDESEL) // 一行編集
+#define IDE_INPUT_LINE_MULTI_STYLE (ES_LEFT | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_VSCROLL | ES_MULTILINE | ES_NOHIDESEL) // 複数行表示一行編集
+
+//-------------------------------------- File Operation
+#define IDD_FOP_Y_SETT 123 // 初期表示, IDS_FOP_SRCNAME まで表示
+#define IDD_FOP_Y_STAT 135 // 処理中表示, IDS_FOP_PROGRESS まで表示
+#define IDD_FOP_Y_FULL 188 // 比較表示・ログ表示, 全て表示
+
+//============================================================== CUST
+#define IC_CUST 1
+#define BUTTONIMAGE 2
+#define DEFKEYLIST		0x740e	// CUSTKEY.CFG
+#define DEFCUSTLIST		0x740f	// CUSTLIST.CFG
+
+//-------------------------------------- color text 74a0-74af
+#define COLOR_THEME_1	0x74a0
+#define COLOR_THEME_2	0x74a1
+#define COLOR_THEME_3	0x74a2
+#define COLOR_THEME_4	0x74a3
+#define COLOR_THEME_5	0x74a4
+
+// controls
+#define IDL_BLIST_W	180
+#define IDL_BLIST_H	40
+
+//================================================================= HELP 80xx
+#define IDH_CUST_ABOUT	0x8001
+#define IDH_PPB			0x8002
+#define IDH_PPC			0x8003
+#define IDH_PPV			0x8004
+#define IDH_PPE			0x8005
+
+//====================================================================== SDK
+#ifndef IDHELP
+#define IDHELP 9
+#endif
+#ifndef RCDATA
+#define RCDATA 10
+#endif

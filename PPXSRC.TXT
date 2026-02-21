@@ -1,0 +1,149 @@
+ ------------------------------------------------------------------------------
+	Paper Plane xUI  Source archive		Copyright (c)1997-2026 TORO
+ ------------------------------------------------------------------------------
+
+	Paper Plane xUI を構築するために必要なファイル一式です。
+	make を実行することで実行ファイルを作成します。
+	配布用の実行形式ファイルには次のものを使用しています。
+
+	Borland C++	Version 5.0
+	Turbo Assembler	Version 5.3
+	Turbo Link	Version 1.6.72.0
+	Borland MAKE	Version 5.2
+	HcRtf		Version 4.01.0951
+	Turbo Resource Compiler	Version 5.01
+	Microsoft Visual Studio 2008 Version 9.0.30729.1 SP (x64版)
+	Microsoft Visual Studio 2022 (DirectWrite版、ARM64版)
+
+	help ファイルなどを生成するために Perl を使用しています。
+	Perl がなくても実行ファイルの作成が可能です。
+
+	Link 前に拙作 WINCLOSE を使っています。これは、Link 前に Link
+	対象を終わらせるために用いるものですので、無くても問題ありません。
+
+	Turbo Assembler は PPX_64.C で使用していますが、PPX_64.H で定義
+	している USETASM を 0 にすることで Turbo Assembler を使わずに
+	済むようになります。インラインアセンブラが使えない場合も 0 にし
+	て下さい。
+
+
+・Visual C++
+
+	VS2008\PPx.sln / VS2019\PPx.sln を使って Visual Studio 2008/2019 上で
+	ビルドが可能です。但し、配布用ファイルには使用しておらず、
+	ランタイムが必要など設定が異なります。
+
+	次のように msbuild を使用しても構築できます。
+	msbuild VS2019\PPx.sln -property:Platform=x64 -property:Configuration=Release -m -t:Rebuild
+	msbuild VS2019\PPx.sln -property:Platform=Win32 -property:Configuration=Release -m -t:Rebuild
+	msbuild VS2019\PPx.sln -property:Platform=x64 -property:Configuration="Release DirectWrite" -m -t:Rebuild
+	msbuild VS2019\PPx.sln -property:Platform=ARM64 -property:Configuration="Release DirectWrite" -m -t:Rebuild
+
+
+	また、MAKEFILE 内の UseBCC を 0 にすることで Borland make で
+	構築できます。配布用ファイルはこちらで作成しています。
+	以下の構成で使用しています。
+
+	Borland MAKE	Version 5.2
+	Microsoft 32-bit C/C++ Optimizing Compiler Version 15.00.30729.01
+	Microsoft Incremental Linker Version 9.00.30729.01
+
+
+・64bit
+
+	MAKEFILE内 X64 = 1 で x64 UNICODE版を構築できます。
+
+	・Visual Studio 2008 + Borland MAKE の場合は、
+	「vcvarsall.bat amd64」を実行した後、Borland MAKE を実行します。
+
+
+・32bit ARM (ARM 版 Windows 8)
+
+	試験的に添付 PPx.sln を使って ARM 版 PPx のビルドができるように
+	してあります。
+	gdi32.lib が見つからない旨のエラーが出る場合は、以下のファイルに
+	%LOCALAPPDATA%\Microsoft\MSBuild\v4.0\Microsoft.Cpp.ARM.user.props
+	次の例のように、ライブラリのパス指定を追加する必要があります。
+  <PropertyGroup Label="Configuration">
+    <LibraryPath>$(VC_LibraryPath_ARM);$(WindowsSDK_LibraryPath_ARM);$(NETFXKitsDir)Lib\um\arm;C:\Program Files (x86)\Windows Kits\10\Lib\10.0.10586.0\um\arm</LibraryPath>
+  </PropertyGroup>
+
+
+・Wine
+
+	Wine 9.0 on Ubuntu 24.04、Wine 6.0 on Ubuntu 22.04 の Winelib を
+	使って部分的に Linux にネイティブ対応する PPc, PPv, PPcust が
+	構築可能なのを確認しています。 make を実行すると構築します。
+
+	※ make や g++ が無いときは、 apt-get でインストールしてください。
+	  ( sudo apt-get install make g++ )
+	※ Wine のヘッダ・ライブラリが必要です。
+	  (Wine9.0: sudo apt-get install wine64 wine64-tools )
+	  (Winw6.0: sudo apt-get install wine wine-dev )
+	※ Wine 9.0 未満のときは、make 中にエラーが出ます。
+	  GNUmakefile 中の WineVer、uselibwine、X64 の値を変更してください。
+	※ 起動ができない、ダイアログが表示されない、漢字が表示されない、
+	  といった問題は、winetricks で対処してください。
+	  ( sudo apt-get install winetricks
+	    winetricks comctl32 cjkfonts )
+
+	尚、Wine 上での PPx の動作はまだ完全ではありません。
+	・一部記号（改行記号等）がフォントにないため、記号やボタンが
+	  化けることがあります。
+	  PPv の 改行記号は、設定(XV_bctl)を高速表示から表示するに
+	  変えてください。
+	・PPb はターミナルからのログの取得ができません。仕様です。
+	・ディレクトリの更新をすると属性がおかしくなることがあります。
+	・窓間のフォーカス制御をおこなうことができないときは、
+	  winecfg の「画面」タブ-「ウィンドウマネージャがウィンドウを
+	  制御するのを許可する」のチェックを解除する必要があります。
+	  しかし、ウィンドウマネージャのフォーカス制御がなくなるため
+	  使いにくいかもしれません。
+	・内部文字コードは UTF-8 専用です。EUC, S-JIS 等は対応していません。
+	・画像の表示は Windows 版と同様に Susie Plug-in が必要です。
+	・書庫操作は Windows 版と同様に 各種DLL / Susie Plug-in が必要です。
+
+	Wine版は次のネイティブ処理を加えています。
+	・Zドライブが / に割り当ててあることを前提としており、Zドライブを
+	　・ディレクトリ一覧をネイティブ読み込み(opendir, readdirを使用)
+	　・属性表示を rwx… で表示
+	・ファイルの実行で、EXEファイルでなければネイティブ実行(systemを使用)
+	　・ネイティブ実行時は、実行内容中の「z:\～」は「/～」に変換する
+
+
+・MinGW / MinGW-w64
+
+	GNUmakefile を使って MinGW / MinGW-w64 上で make(mingw32-make) が
+	できます。古いMinGW(2005年頃)の場合、BCC の BRC32.EXE を併用する
+	必要があります。
+
+
+・BCC 5.5
+
+	BCC 5.5 で構築できることを確認しています。
+	MAKEFILE 内の UseIlinkを 1 に変更してください。
+	初期に配布された BCC 5.5 では一部のヘッダファイルが
+	不足しているため、Win32 SDK を入れる必要があります。
+	また、UseDebug = 1 のときは大量の警告が出る場合があります。
+
+
+・その他
+
+	ソースは以下の処理系依存の部分があります。
+	・「'漢'」形式の定数定義を行っている。
+	・リトルエンディアンを前提に処理している部分がある。
+	・C ソースで「//」形式のコメントアウトを行っている
+	・コメントアウトのネストを有効にしている。
+	・アライメントは、BCC の初期設定に依存
+
+	配布している実行ファイルには拙作 tfilesign を用いた簡易署名が
+	されていますので、本ソースから一式を作成しても同一のバイナリに
+	なりません。
+
+	このソース一式の再配布は原則として禁止とします。
+
+-------------------------------------------------------------------------------
+●連絡先／一次配布先						TORO／高橋 良和
+
+E-mail	toroid.jp@gmail.com
+WWW	https://toro.d.dooo.jp/	https://toroidj.github.io/

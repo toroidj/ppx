@@ -1,0 +1,629 @@
+/*-----------------------------------------------------------------------------
+	Paper Plane vUI		クリップ処理
+-----------------------------------------------------------------------------*/
+#include "WINAPI.H"
+#include "PPX.H"
+#include "VFS.H"
+#include "PPV_STRU.H"
+#include "PPV_FUNC.H"
+#pragma hdrstop
+
+#define PASTETYPEPROP "PPxPTYPE"
+
+#if 0 // UNICODE版SelCol は、現在不要
+
+#ifdef UNICODE
+#define TSelCol SelColW
+WCHAR *SelColW(WCHAR *str, int col)
+{
+	SIZE szt;
+	int colx, x = 0, left = 0;
+	HDC hDC;
+	HGDIOBJ hOldFont;
+
+	hDC = GetDC(hMainWnd);
+	hOldFont = SelectObject(hDC, hBoxFont);
+
+	colx = col * fontX;
+	szt.cx = 0;
+	if ( *str ) for ( ;; ){
+		if ( *(str + x) == '\t' ){
+			int tabwidth;
+
+			tabwidth = VOi->tab * fontX;
+			left += ((szt.cx / tabwidth) + 1) * tabwidth;
+			if ( left > colx ) break;
+			str += x + 1;
+			x = 0;
+			szt.cx = 0;
+		}else{
+			x++;
+			GetTextExtentPoint32W(hDC, str, x, &szt);
+			if ( (left + szt.cx) > colx ){
+				x--;
+				break;
+			}
+		}
+		if ( *(str + x) == '\0' ) break;
+	}
+	SelectObject(hDC, hOldFont);
+	ReleaseDC(hMainWnd, hDC);
+	return str + x;
+}
+#else
+#define TSelCol SelColA
+#endif
+
+#endif
+
+char *SelColA(char *str, int col)
+{
+	int i;
+
+	i = col;
+	while ( i > 0 ){
+		if ( !*str ) break;
+		if ( IskanjiA(*str & 0xff) ){
+						// 0xff : どうしても signed に解釈されるため
+			str++;
+			i--;
+			if ( !*str ) break;
+		}
+		if ( *str == '\t' ){
+			i -= (((col - i) / (VOi->tab)) + 1) * VOi->tab - (col - i);
+		}else{
+			i--;
+		}
+		str++;
+	}
+	return str;
+}
+
+int CalcHexX(int off)
+{
+	if ( off >= (HEXNWIDTH * (HEXSTRWIDTH / 2)) ) off--;
+	off /= HEXNWIDTH;
+	if ( off > 16 ) off = 16;
+	return off;
+}
+
+BOOL ClipHexMem(TMS_struct *text, int StartLine, int EndLine)
+{
+	char *bottom;
+	int size, tsize;
+
+	if ( StartLine < 0 ){
+		bottom = (char *)vo_.file.image + VOsel.bottom.y.line * 16;
+		size = (VOsel.top.y.line - VOsel.bottom.y.line + 1) * 16;
+
+		if ( !VOsel.linemode ){
+			tsize = CalcHexX(VOsel.bottom.x.offset);
+			bottom += tsize;
+			size -= tsize + (16 - CalcHexX(VOsel.top.x.offset));
+		}
+	}else{
+		bottom = (char *)vo_.file.image + StartLine * 16;
+		size = (EndLine - StartLine + 1) * 16;
+	}
+
+	TMS_reset(text);
+	if ( (size == 0) || (TM_check(&text->tm, size + 2) == FALSE) ) return FALSE;
+	text->p = size;
+
+	memcpy(text->tm.p, bottom, size);
+
+	((BYTE *)text->tm.p)[size] = '\0';
+	((BYTE *)text->tm.p)[size + 1] = '\0';
+	return TRUE;
+}
+
+#ifndef UNICODE
+void TMS_setAA(TMS_struct *text, const char *src)
+{
+	WCHAR wbuf[MAXLINELENGTH];
+	char abuf[MAXLINELENGTH];
+
+	MultiByteToWideChar(vo_.OtherCP.codepage, 0, src, -1, wbuf, TSIZEOFW(wbuf));
+	WideCharToMultiByte(CP_ACP, 0, wbuf, -1, abuf, sizeof abuf, "・", NULL);
+	TMS_setA(text, abuf);
+}
+#endif
+
+BOOL ClipMem(TMS_struct *text, int StartLine, int EndLine)
+{
+	#ifdef UNICODE
+		WCHAR wbuf[MAXLINELENGTH];
+	#else
+		char abuf[MAXLINELENGTH];
+	#endif
+	BYTE *p;
+	int off;
+	int first, last;
+	int XV_bctl3bk;
+	MAKETEXTINFO mti;
+	BOOL linemode;
+
+	if ( vo_.DModeType == DISPT_HEX ){
+		return ClipHexMem(text, StartLine, EndLine);
+	}
+
+	XV_bctl3bk = XV_bctl[2];
+	XV_bctl[2] = 0;
+
+	linemode = VOsel.linemode;
+	if ( StartLine >= 0 ){
+		linemode = TRUE;
+		first = StartLine;
+		last = EndLine;
+	}else if ( VOsel.select != FALSE ){
+		first = VOsel.bottom.y.line;
+		last = VOsel.top.y.line;
+	}else{ // 選択無しのとき
+		linemode = TRUE;
+		if ( IsTrue(VOsel.cursor) ){ // カーソルあり
+			first = last = VOsel.now.y.line;
+		}else{ // カーソル無し
+			first = last = VOi->offY;
+			last = first + VO_sizeY - 1;
+		}
+	}
+	if ( last >= VOi->line ) last = VOi->line - 1;
+
+	InitMakeTextInfo(&mti);
+	mti.srcmax = mtinfo.img + mtinfo.MemSize;
+	mti.writetbl = FALSE;
+	mti.paintmode = FALSE;
+
+	TMS_reset(text);
+	for ( off = first ; off <= last ; off++ ){
+		int CharX;
+
+		VOi->MakeText(&mti, &VOi->ti[off]);
+		p = mti.destbuf;
+
+		CharX = 0;
+		while ( *p != VCODE_END ) switch ( *p ){ // VCODE_SWITCH
+			case VCODE_CONTROL:
+			case VCODE_ASCII: 	// ASCII Text ---------------------------------
+			{
+				int length, copylength;
+				char *src;
+
+				src = (char *)p + 1;
+				copylength = length = (int)strlen(src);
+				if ( linemode == FALSE ){
+					if ( off == last ){	// 末尾調節
+						if ( (CharX + copylength) > VOsel.top.x.offset ){
+							copylength = VOsel.top.x.offset - CharX;
+							if ( copylength <= 0 ){
+								copylength = 0;
+							}
+						}
+						*(src + copylength) = '\0';
+					}
+					if ( off == first ){	// 先頭調節
+						int len;
+
+						len = VOsel.bottom.x.offset - CharX;
+						if ( len < 0 ) len = 0;
+						if ( len > copylength ) len = copylength;
+						src += len;
+					}
+				}
+
+			#ifdef UNICODE
+				MultiByteToWideChar(
+						(vo_.OtherCP.codepage && vo_.OtherCP.valid) ? vo_.OtherCP.codepage : CP_ACP, 0,
+						src, -1, wbuf, TSIZEOFW(wbuf));
+				TMS_set(text, wbuf);
+				text->p -= 2;
+			#else
+				if ( vo_.OtherCP.codepage && vo_.OtherCP.valid ){
+					TMS_setAA(text, src);
+				}else{
+					TMS_setA(text, src);
+				}
+				text->p--;
+			#endif
+				p += length + 1 + 1; // VCODE_ASCII + 文字列 + \0
+				CharX += length;
+				break;
+			}
+
+			case VCODE_UNICODEF:
+				p++;
+			case VCODE_UNICODE:		// UNICODE Text ---------------------------
+			{
+				int length, copylength;
+				WCHAR *src;
+
+				src = (WCHAR *)(p + 1);
+				copylength = length = (int)strlenW(src);
+				if ( linemode == FALSE ){
+					if ( off == last ){	// 末尾調節
+						if ( (CharX + copylength) > VOsel.top.x.offset ){
+							copylength = VOsel.top.x.offset - CharX;
+							if ( copylength <= 0 ){
+								copylength = 0;
+							}
+						}
+						*(src + copylength) = '\0';
+					}
+					if ( off == first ){	// 先頭調節
+						int len;
+
+						len = VOsel.bottom.x.offset - CharX;
+						if ( len < 0 ) len = 0;
+						if ( len > copylength ) len = copylength;
+						src += len;
+					}
+				}
+
+			#ifdef UNICODE
+				TMS_set(text, src);
+				text->p -= 2;
+			#else
+				WideCharToMultiByte(CP_ACP, 0, src, -1, abuf, sizeof abuf, "・", NULL);
+				TMS_setA(text, abuf);
+				text->p--;
+			#endif
+				p += (length + 1) * sizeof(WCHAR) + 1; // VCODE_UNICODE + 文字列 + \0
+				CharX += length;
+				break;
+			}
+									// Color ... 処理不要
+			case VCODE_COLOR:
+				p += 3;
+				break;
+
+			case VCODE_B_COLOR:
+			case VCODE_F_COLOR:
+				p += 1 + sizeof(COLORREF);
+				break;
+
+			case VCODE_FONT:			// Font ... 処理不要
+				p += 2;
+				break;
+
+			case VCODE_TAB:				// Tab -------------------------------
+				p++;
+				if ( linemode == FALSE ){
+					if ( off == last ){	// 末尾調節
+						if ( CharX >= VOsel.top.x.offset ) break;
+					}
+					if ( off == first ){	// 先頭調節
+						if ( CharX < VOsel.bottom.x.offset ){
+							CharX++;
+							break;
+						}
+					}
+				}
+				TMS_set(text, T("\t"));
+				text->p -= sizeof(TCHAR);
+				CharX++;
+				break;
+
+			case VCODE_RETURN:
+				p++;
+			case VCODE_PAGE:
+			case VCODE_PARA:
+				TMS_set(text, T("\r\n"));
+				text->p -= sizeof(TCHAR);
+				p++;
+				break;
+
+						// ここでは処理不要
+			case VCODE_LINK:
+			case VCODE_DEFCOLOR:
+			case VCODE_F_DEFCOLOR:
+			case VCODE_B_DEFCOLOR:
+				p++;
+				break;
+
+			default:		// 未定義コード -----------------------------------
+				p = (BYTE *)"";
+				break;
+		}
+	}
+	ReleaseMakeTextInfo(&mti);
+
+	// 末尾の改行を削除
+	if ( text->tm.p == NULL ) return FALSE;
+	if ( *(TCHAR *)(char *)((char *)text->tm.p + text->p - sizeof(TCHAR)) == '\n' ){
+		text->p -= sizeof(TCHAR);
+		if ( text->p && (*(TCHAR *)(char *)((char *)text->tm.p + text->p - sizeof(TCHAR)) == '\r') ){
+			text->p -= sizeof(TCHAR);
+		}
+	}
+	*(TCHAR *)(char *)((char *)text->tm.p + text->p) = '\0';
+	XV_bctl[2] = XV_bctl3bk;
+	return TRUE;
+}
+
+BOOL OpenClipboardV(HWND hWnd)
+{
+	int trycount = 6;
+
+	for (;;){
+		if ( IsTrue(OpenClipboard(hWnd)) ) return TRUE;
+		if ( --trycount == 0 ) return FALSE;
+		Sleep(20);
+	}
+}
+
+void ClipText(HWND hWnd)
+{
+	TMS_struct text = {{NULL, 0, NULL}, 0};
+	HGLOBAL hTmp;
+
+	if ( ClipMem(&text, -1, -1) == FALSE ) return;
+	TM_off(&text.tm);
+	hTmp = GlobalReAlloc(text.tm.h, text.p + sizeof(TCHAR), GMEM_MOVEABLE);
+	if ( hTmp != NULL ) text.tm.h = hTmp;
+
+	OpenClipboardV(hWnd);
+	EmptyClipboard();
+	#ifdef UNICODE
+		if ( (vo_.DModeType == DISPT_HEX) || (OSver.dwPlatformId != VER_PLATFORM_WIN32_NT) ){
+			SetClipboardData(CF_TEXT, text.tm.h);
+		}else{
+			SetClipboardData(CF_UNICODETEXT, text.tm.h);
+		}
+	#else
+		SetClipboardData(CF_TEXT, text.tm.h);
+	#endif
+	CloseClipboard();
+}
+
+
+#define URI_NO 0
+#define URI_URL 1
+#define URI_MAIL 2
+#define URI_PATH 3
+#define URI_ANCHOR 0x10
+
+BOOL MakeURIs2(HMENU hMenu, int *index, const char *bottom, const char *start, const char *end, int use)
+{
+	char buf[0x400], tmp[0x400], *destp;
+	int i;
+	BOOL ahres = FALSE;
+
+	destp = buf;
+	if ( use == URI_URL ){
+		const char *sptr, *newstart = start;
+
+		if ( *start == ':' ) start++; // URLでない : と思われる
+		for ( sptr = start ; sptr < end ; sptr++ ){ // 記号を除去
+			if ( *sptr == ':') break;
+			if ( !IslowerA(*sptr) && (strchr(".-_%#?=&/\\", *sptr) == NULL) ){
+				newstart = sptr + 1;
+			}
+		}
+		if ( *sptr == ':' ){
+			start = newstart;
+			if ( (sptr >= (start + 3)) && !memcmp(sptr - 3, "ttp", 3) ){
+				start = sptr + 1;
+				sptr = NULL;
+			}
+			if ( (sptr >= (start + 4)) && !memcmp(sptr - 4, "ttps", 4) ){
+				start = sptr - 4;
+				*destp++ = 'h';
+			}
+		}else{
+			if ( vo_.file.source[0] == '\0' ) sptr = NULL;
+		}
+
+		if ( sptr == NULL ){
+			strcpy(destp, "http:");
+			destp += 5;
+
+			if ( (vo_.file.source[0] == '\0') && (*start != '/') ){
+				*destp++ = '/';
+				*destp++ = '/';
+			}
+		}
+	}
+	if ( start >= end ) return FALSE;
+
+	if ( use == URI_PATH ){
+		if ( *end != '\"' ) return FALSE;
+	}
+
+	{
+		const char *ptr;
+
+		ptr = start;
+		if ( (bottom < ptr) && (*(ptr - 1) == '\"') ) ptr--;
+		while ( (bottom < ptr) && (*(ptr - 1) == ' ') ) ptr--;
+		if ( (bottom < ptr) && (*(ptr - 1) == '=') ){
+			ptr--;
+			while ( (bottom < ptr) && (*(ptr - 1) == ' ') ) ptr--;
+			if ( ((bottom + 3) < ptr) && (memicmp(ptr - 4, "href", 4) == 0) ){
+				ahres = TRUE;
+			}
+		}
+	}
+												// URI 候補のきりだし
+	while ( (start < end) && ((size_t)(destp - buf) < (sizeof(buf) - 1)) ){
+		if ( (*start == '\r') || (*start == '\n') ){
+			start++;
+			continue;
+		}
+		*destp++ = *start++;
+	}
+	while ( (destp > buf) && (strchr(">)]", *(destp - 1)) != NULL) ) destp--;
+	*destp = '\0';
+
+	if ( use == URI_URL ){	// 「:」
+		destp = buf;
+		if ( *destp == ':' ) return FALSE;
+		if ( *destp == '#' ){
+			destp++;
+			for ( ; *destp ; destp++ ){
+				if ( *destp == ':' ) break;
+				if ( !IsdigitA(*destp) ) return FALSE;
+			}
+		}else if ( strchr(destp, ':') != NULL ){
+			for ( ; *destp ; destp++ ){
+				if ( *destp == ':' ) break;
+				if ( !IslowerA(*destp) ) return FALSE;
+			}
+		}
+		if ( (*destp == ':') && !*(destp + 1) ) return FALSE;
+	}else if ( use == URI_MAIL ){	// 「@」
+		if ( strchr(buf, '$') ) return FALSE;
+		if ( *(destp - 1) == '@' ) return FALSE;
+	}else if ( use == URI_PATH ){
+//		if ( buf[0] != '#' )
+		if ( strchr(buf, '/') && !strchr(buf, '\\') && !strchr(buf, '.') ){
+			return FALSE;
+		}
+	}
+	if ( ((strchr(buf, '/') != NULL) || (ahres && (buf[0] != '#'))) &&
+		 (vo_.file.source[0] != '\0') ){
+		#ifdef UNICODE
+			TCHAR name[VFPS];
+
+			AnsiToUnicode(buf, name, VFPS);
+			VFSFullPath(NULL, name, vo_.file.source);
+			UnicodeToAnsi(name, buf, VFPS);
+		#else
+			VFSFullPath(NULL, buf, vo_.file.source);
+		#endif
+	}
+
+	for ( i = MENUID_URI ; i <= *index ; i++ ){
+		GetMenuStringA(hMenu, i, tmp, TSIZEOF(tmp), MF_BYCOMMAND);
+		if ( strcmp(tmp, buf) == 0 ){
+			i = -1;
+			break;
+		}
+	}
+	if ( i >= 0 ) AppendMenuA(hMenu, MF_CHKES(ahres), (*index)++, buf);
+	return TRUE;
+}
+#if 0
+void URIDUMP(const char *bottom, const char *top/*, const TCHAR *title*/)
+{
+	TCHAR buf[0x800];
+
+	if ( (top - bottom) > 900 ) top = bottom + 900;
+	#ifdef UNICODE
+	{
+		int len;
+
+		len = (int)MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, bottom, top - bottom, buf, 0x800);
+		buf[len] = '\0';
+	}
+	#else
+		memcpy(buf, bottom, top - bottom);
+		buf[top - bottom] = '\0';
+	#endif
+	XMessage(NULL, NULL, XM_DbgLOG, T("%s %s"), title, buf);
+}
+#endif
+void MakeURIs(HMENU hMenu, int index)
+{
+	char *ptr, *start = NULL;
+	char *textbottom, *texttop, *maxptr;
+	int use = URI_NO, top;
+
+	if ( vo_.file.source[0] != '\0' ){
+		AppendMenu(hMenu, MF_ES, index++, vo_.file.source);
+	}
+
+	if ( VOsel.select != FALSE ){	// 選択中
+		top = VOsel.top.y.line + 1;
+		if ( top > VOi->line ) top = VOi->line;
+		texttop = (char *)VOi->ti[top].ptr; // 下端
+		textbottom = (char *)VOi->ti[VOsel.bottom.y.line].ptr; // 上端
+	}else{ // 非選択、カーソル使用中
+		if ( VOsel.cursor == FALSE ) return;
+		textbottom = (char *)VOi->ti[VOsel.now.y.line].ptr;
+		texttop = (char *)VOi->ti[VOsel.now.y.line + 1].ptr;
+	}
+	if ( textbottom == NULL ) return;
+	maxptr = (char *)VOi->ti[vo_.text.cline].ptr;
+#if 0
+	if ( GetAsyncKeyState(0xF0 /*VK_CAPITAL*/) & KEYSTATE_PUSH ){
+		XMessage(NULL, NULL, XM_DbgLOG, T("MakeURI bottom:%x top:%x cline:%d max:%x  Base:%s"), textbottom, texttop, vo_.text.cline, maxptr, vo_.file.source);
+		URIDUMP(textbottom, texttop, T("top"));
+		URIDUMP(textbottom, texttop, T("max"));
+	}
+#endif
+	for ( ptr = textbottom ; ptr < maxptr ; ){
+		UCHAR code;
+
+		code = *ptr;
+		if ( (code == 0xd) || (code == 0xa) ){ // 改行後も連結する
+			char *skipp;
+
+			ptr++;
+			if ( (code == 0xd) || (code == 0xa) ) ptr++;
+			skipp = ptr;
+			while ( skipp < maxptr ){
+				char c;
+
+				c = *skipp;
+				if ( Isalnum(c) || (strchr("\\/?%#.~", c) != NULL) ){
+					skipp++;
+					continue;
+				}
+				break;
+			}
+			if ( skipp != ptr ){ // 改行後も連結可能
+				if ( use != URI_NO ){
+					MakeURIs2(hMenu, &index, textbottom, start, ptr, use);
+					if ( index > MENUID_URIMAX ) break;
+					MakeURIs2(hMenu, &index, textbottom, start, skipp, use);
+					use = URI_NO;
+					if ( index > MENUID_URIMAX ) break;
+					start = NULL;
+				}
+			}else{ // 改行で終わり
+				if ( use != URI_NO ){
+					MakeURIs2(hMenu, &index, textbottom, start, ptr, use);
+					use = URI_NO;
+					if ( index > MENUID_URIMAX ) break;
+				}
+				if ( ptr >= texttop ) break;
+				start = NULL;
+				use = URI_NO;
+			}
+			continue;
+		}
+		if ( (code > (UCHAR)' ') && (code < (UCHAR)0x7f ) &&
+			 (strchr("\"<>|", *ptr) == NULL) ){ // 該当文字( ASCII 内で "<>| 除く)
+			if ( start == NULL ){
+				if ( strchr("([{", *ptr) == NULL ){ // 括弧でなければ検索開始地点
+					start = ptr;
+/*
+					if ( (ptr > textbottom) && (*(ptr - 1) == '\"') ){
+						use = URI_PATH;
+					}
+*/
+				}
+			}else{
+				if ( *ptr == '\\' ) use = URI_PATH;
+				if ( *ptr == ':' ) use = URI_URL;
+				if ( *ptr == '/' ) use = URI_URL;
+				if ( (*ptr == '.') && Isalpha(*(ptr + 1)) ) use = URI_URL;
+				if ( *ptr == '@' ) use = URI_MAIL;
+			}
+		}else{
+			if ( use != URI_NO ){
+				MakeURIs2(hMenu, &index, textbottom, start, ptr, use);
+				use = URI_NO;
+				if ( index > MENUID_URIMAX ) break;
+			}
+			if ( ptr >= texttop ) break;
+			start = NULL;
+			use = URI_NO;
+#ifndef UNICODE
+			if ( IskanjiA(*ptr) && (*(ptr + 1) != '\0') ) ptr++;
+#endif
+		}
+		ptr++;
+	}
+	if ( use != URI_NO ) MakeURIs2(hMenu, &index, textbottom, start, ptr, use);
+}
