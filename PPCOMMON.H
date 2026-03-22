@@ -588,6 +588,7 @@ extern PPXDLL BOOL PPXAPI ThSize(ThSTRUCT *TH, SIZE32_T size);
 #define ThPointer(TH, offset) ((char *)((TH)->bottom + (offset)))
 #define ThPointerT(TH, offset) ((TCHAR *)(char *)((TH)->bottom + (offset)))
 #define ThLast(TH) ((char *)((TH)->bottom + (TH)->top))
+#define ThLastT(TH) ((TCHAR *)(char *)((TH)->bottom + (TH)->top))
 #define ThStrT(TH) ((TCHAR *)(TH)->bottom)
 #define ThStrLastT(TH) ((TCHAR *)(char *)((TH)->bottom + (TH)->top))
 #define ThNextAllocSizeS(maxsize) ThSTEP
@@ -600,6 +601,21 @@ extern PPXDLL BOOL PPXAPI ThCatStringA(ThSTRUCT *TH, const char *data);
 #else
 #define ThCatStringA ThCatString
 #endif
+
+#define ThuSTRUCT_DEFLEN 0x100
+typedef struct {
+	ThSTRUCT th;
+	TCHAR buf[ThuSTRUCT_DEFLEN];
+} ThuSTRUCT;
+#define ThuInit(ThuS) {(ThuS)->th.bottom = (void *)((ThuS)->buf); (ThuS)->th.top = 0; (ThuS)->th.size = sizeof((ThuS)->buf);}
+#define ThuFree(ThuS) ThFree(&(ThuS)->th)
+#define ThuAppend(ThuS, data, size) ThAppend(&(ThuS)->th, (data), (size))
+#define ThuAddString(ThuS, data) ThAddString(&(ThuS)->th, (data))
+#define ThuCatString(ThuS, data) ThCatString(&(ThuS)->th, (data))
+#define ThuSize(ThuS, size) ThSize(&(ThuS)->th, (size))
+#define ThuStrT(ThuS) ((TCHAR *)((ThuS)->th.bottom))
+#define ThuStrLastT(ThuS) ((TCHAR *)(char *)((ThuS)->th.bottom + (ThuS)->th.top))
+
 extern PPXDLL BOOL PPXAPI ThSetString(ThSTRUCT *thStringValue, const TCHAR *name, const TCHAR *str);
 extern PPXDLL TCHAR * PPXAPI ThAllocString(ThSTRUCT *thStringValue, const TCHAR *name, SIZE32_T strsize);
 extern PPXDLL const TCHAR * PPXAPI ThGetString(ThSTRUCT *thStringValue, const TCHAR *name, TCHAR *str, SIZE32_T strlength);
@@ -1408,6 +1424,9 @@ typedef struct {
 #define REGEXPF_ERROR B31 // エラー有り
 /* ワイルドカードの解析を行う 戻り値:REGEXPF_ flags */
 extern PPXDLL DWORD PPXAPI MakeFN_REGEXP(FN_REGEXP *fn, const TCHAR *src);
+#define FRRESULT_NO	0
+#define FRRESULT_MATCH	1
+#define FRRESULT_NOWILDCARD	2
 extern PPXDLL int PPXAPI FilenameRegularExpression(const TCHAR *src, FN_REGEXP *fn);
 extern PPXDLL int PPXAPI FinddataRegularExpression(const WIN32_FIND_DATA *ff, FN_REGEXP *fn);
 extern PPXDLL void PPXAPI FreeFN_REGEXP(FN_REGEXP *fn);
@@ -1547,50 +1566,43 @@ extern PPXDLL void PPXAPI XBeep(UINT type);
 hWnd, title:	ダイアログを表示する時の親ウィンドウ, タイトル
 
 type:種別 ※ X_log & (1 << type) が true のとき、表示・ロギングする
-	0-7:ダイアログ表示+ログ  8-15:ログのみ
-		1,  9:一般エラー表示
-		2, 10:重要でないエラー表示
-		3, 11:重要な警告
-		4, 12:重要でない警告
-		5, 13:結果を表示する情報
-		6, 14:好意で出力する情報/作業完了
-		7, 15:その他
-	16-23:エラー関係(ログ無し)
-	24-31:デバック用(ログ有り)
 
 message:出力文字列, % 対応
 -------------------------------------*/
-// ダイアログ表示+ログ
-#define XM_FaERRld	0	// 致命的エラー
-#define XM_GrERRld	1	// 一般エラー
-#define XM_NiERRld	2	// 重要でないエラー
-#define XM_ImWRNld	3	// 重要な警告
-#define XM_NiWRNld	4	// 重要でない警告
-#define XM_RESULTld	5	// 結果を表示する情報
-#define XM_INFOld	6	// 好意で出力する情報/作業完了
+// 0-7 ダイアログ表示+ログ
+#define XM_FaERRld  0  // 致命的エラー
+#define XM_GrERRld  1  // 一般エラー
+#define XM_NiERRld  2  // 重要でないエラー
+#define XM_ImWRNld  3  // 重要な警告
+#define XM_NiWRNld  4  // 重要でない警告
+#define XM_RESULTld 5  // 結果を表示する情報
+#define XM_INFOld   6  // 好意で出力する情報/作業完了
 
-// ログ
-#define XM_FaERRl	8	// 致命的エラー
-#define XM_INFOLLog	13	// 好意で出力する情報/作業完了(ログのみ, 通常 off)
-#define XM_INFOlog	14	// 好意で出力する情報/作業完了(ログ窓＋ログ, 通常 off)
-#define XM_ETCl		15	// その他(SetPopMsg, 通常 off)
+// 8-15 ログ
+#define XM_FaERRl   8  // 致命的エラー
+#define XM_INFOLLog 13 // 好意で出力する情報/作業完了(ログのみ, 通常 off)
+#define XM_INFOlog  14 // 好意で出力する情報/作業完了(ログ窓＋ログ, 通常 off)
+#define XM_ETCl     15 // その他(SetPopMsgが使用, 通常 off)
 
-// ダイアログ表示
-#define XM_FaERRd	17	// 作業中止に至るエラー
-#define XM_NsERRd	18	// 中止に至らないエラー
+// 16-19 ダイアログ表示
+#define XM_FaERRd   17 // 作業中止に至るエラー
+#define XM_NsERRd   18 // 中止に至らないエラー
 
-// コンソール出力
-#define XM_MesCon	22	// StrErr に出力(現在使用例無し)
-#define XM_MesConWait	23	// StrErr に出力(待機あり,現在使用例無し)
+// 21, 22 コンソール出力
+#define XM_MesCon   21 // StrErr に出力(現在使用例無し)
+#define XM_MesConWait 22 // StrErr に出力(待機あり,現在使用例無し)
 
-// デバッグ用
-#define XM_DbgDIA	24	// ダイアログ表示
-#define XM_BEEP		25	// Beep(現在使用例無し)
-#define XM_DbgLOG	26	// ログのみ
-#define XM_DUMP		27	// Dumpダイアログ message:ダンプ先頭 1st:DWORD, dump size
-#define XM_DUMPLOG	28	// Dumpログのみ
-#define XM_DbgCon	29	// StrErr に出力
-#define XM_DbgConWait	30	// StrErr に出力(待機あり,現在使用例無し)
+// 23 ログ窓出力
+#define XM_MesLogWnd 23 // ログ窓に出力(K_WINDDOWLOG)
+
+// 24-31 デバッグ用
+#define XM_DbgDIA   24 // ダイアログ表示
+#define XM_BEEP     25 // Beep(現在使用例無し)
+#define XM_DbgLOG   26 // ログのみ
+#define XM_DUMP     27 // Mem Dumpダイアログ message:ダンプ先頭 1st:DWORD, dump size
+#define XM_DUMPLOG  28 // Mem Dump ログのみ
+#define XM_DbgCon   29 // StrErr に出力
+#define XM_DbgConWait 30 // StrErr に出力(待機あり,現在使用例無し)
 
 extern PPXDLL void USECDECL XMessage(HWND hWnd, const TCHAR *title, UINT type, const TCHAR *message, ...);
 #define xmessage(type, message) XMessage(NULL, NULL, type, message)
@@ -1599,15 +1611,21 @@ extern PPXDLL void USECDECL XMessage(HWND hWnd, const TCHAR *title, UINT type, c
 #define THP_ADD -1 // ThAddString で ThSTRUCT に登録
 
 // 多機能 sprintf
-// buflen == 0   buffer は ThSTRUCT、buflen > 0   buffer は TCHAR[size]
-// 対応書式
-// %% エスケープ			%[0-9+]s TCHAR 文字列	%c TCHAR 1文字
-// %['][0-9+]d int32		%['][0-9+]u UINT32
-// %['][0-9+]Ld int64		%['][0-9+]Lu UINT64
-// %['][0-9+]x/X uint64 hex	%['][0-9+]Lx/LX uint64 hex
-// %['][0-9+]Md UINT32		%['][0-9+]MLd UINT64 …これらは 123.45k 表示
-// %[0-9+]MF FILETIME *(UTC, ISO Tなし)
-// %[0-9+]Mm Win32エラーメッセージ
+// buflen == THP_CAT;  buffer は ThSTRUCT	buflen > 0;  buffer は TCHAR[size]
+// 対応書式 ( ':桁区切りあり )
+// %% エスケープ
+// 文字						%c TCHAR 1文字
+// 文字列					%[0-9+]s TCHAR *
+//							%[0-9+]hs char *		%[0-9+]Ls WCHAR *
+// 10進数値					%['][0-9+]d int32		%['][0-9+]u UINT32
+//							%['][0-9+]Ld int64		%['][0-9+]Lu UINT64
+// 16進数値					%['][0-9+]x/X UINT32	%['][0-9+]Lx/LX UINT64
+// ポインタ(16進数値)		%[0-9+]p void *
+// 123.45k 表示				%['][0-9+]Mu UINT32		%['][0-9+]MLu UINT64
+// 123.45k 表示(1024単位)	%['][0-9+]MU UINT32		%['][0-9+]MLU UINT64
+// 時刻(UTC, ISO Tなし)		%[0-9+]MF FILETIME *
+// PPx多言語テキスト		%[0-9+]Ms
+// Win32エラーメッセージ	%[0-9+]Mm
 extern PPXDLL TCHAR * USECDECL thprintf(_Out_writes_opt_z_(buflen) void *buffer, int buflen, _In_z_ const TCHAR *message, ...);
 extern PPXDLL TCHAR * PPXAPI thvprintf(_Out_writes_opt_z_(buflen) void *buffer, int buflen, _In_z_ const TCHAR *message, t_va_list arglist);
 
@@ -1617,6 +1635,8 @@ extern PPXDLL TCHAR * PPXAPI thvprintf(_Out_writes_opt_z_(buflen) void *buffer, 
 #define MB_PPX_PLAIN_TITLE B25 // title の言語対応をなしにする
 #define MB_PPX_BUTTON_TEXT B26 // title に続いてボタンのテキストが列挙
 extern PPXDLL int PPXAPI PMessageBox(HWND hWnd, const TCHAR *text, const TCHAR *title, UINT style);
+
+extern PPXDLL BOOL PPXAPI CmdFunctionLongResult(PPXMDLFUNCSTRUCT *funcparam, const TCHAR *result, int length); // PPXCMDID_FUNCTION で長い結果を返すとき。result が NULL のときはメモリの確保のみ行う
 //================================================================== エラー関係
 #define PPERROR_GETLASTERROR 0
 extern PPXDLL ERRORCODE PPXAPI PPErrorMsg(TCHAR *str, ERRORCODE code); //len:VFPS

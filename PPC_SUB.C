@@ -41,7 +41,7 @@ const TCHAR DFO_title[] = MES_TDFO;
 
 int RefreshListModes[] = {K_ENDATTR, K_ENDCOPY, K_ENDDEL};
 
-typedef int (__stdcall *CREATEPICTURE)(LPCTSTR filepath, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, void *lpInfo, void *progressCallback, LONG_PTR lData);
+typedef int (__stdcall *CREATEPICTURE)(LPCTSTR filepath, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, void *lpInfo, SUSIE_PROGRESS *lpProgressCallback, LONG_PTR lData);
 HMODULE hTSusiePlguin = NULL;
 CREATEPICTURE DCreatePicture;
 
@@ -493,7 +493,7 @@ int GetItemTypeFromPoint(PPC_APPINFO *cinfo, POINT *pos, ENTRYINDEX *ItemNo)
 		y = ( y - cinfo->BoxEntries.top ) / cinfo->cel.Size.cy;
 		if ( x < 0 ) {
 			rc = PPCR_UNKNOWN;
-		}else if ( y < cinfo->cel.Area.cy ){
+		}else if ( y < cinfo->cel.VArea.cy ){
 			CELLRIGHTRANGES ranges;
 			int xd;
 
@@ -502,7 +502,11 @@ int GetItemTypeFromPoint(PPC_APPINFO *cinfo, POINT *pos, ENTRYINDEX *ItemNo)
 			//==== ŒŸ’m‘ÎÛ cell ‚ðŒˆ’è
 			xd = x / cinfo->cel.Size.cx;
 			if ( cinfo->list.orderZ ){
-				cell = cinfo->cellWMin + (y * cinfo->cel.Area.cx) + xd;
+				if ( xd < cinfo->cel.Area.cx ){
+					cell = cinfo->cellWMin + (y * cinfo->cel.Area.cx) + xd;
+				}else{
+					rc = PPCR_CELLBLANK;
+				}
 			}else{
 				cell = cinfo->cellWMin + y + (xd * cinfo->cel.Area.cy);
 			}
@@ -1030,7 +1034,7 @@ int MakePIDLTable(PPC_APPINFO *cinfo, LPITEMIDLIST **pidls, LPSHELLFOLDER *pSF)
 		}
 
 		if ( *lps == NULL ){
-			XMessage(NULL, NULL, XM_NiERRld, T("%s(MakePIDLTable, %s)"), MessageText(MES_EFAL), cell->f.cFileName);
+			XMessage(NULL, NULL, XM_NiERRld, T("%Ms(MakePIDLTable, %s)"), MES_EFAL, cell->f.cFileName);
 			break;
 		}else{
 			lps++;
@@ -1716,7 +1720,6 @@ TCHAR *WriteLFcomment(WriteTextStruct *sts, const TCHAR *comment, TCHAR *buf, TC
 	return dest;
 }
 
-#if !NODLL
 BOOL WINAPI WriteTextNative(WriteTextStruct *sts, const TCHAR *text, size_t textlen)
 {
 	DWORD tmp;
@@ -1741,7 +1744,6 @@ BOOL WINAPI WriteTextUTF8(WriteTextStruct *sts, const TCHAR *text, size_t textle
 	if ( len <= 0 ) return (textlen > 0) ? FALSE : TRUE;
 	return WriteFile(sts->hFile, utf8text, len, &tmp, NULL);
 }
-#endif
 
 BOOL WINAPI WriteTextJSON(WriteTextStruct *sts, const TCHAR *text, size_t textlen)
 {
@@ -2185,7 +2187,7 @@ void DelayedFileOperation(PPC_APPINFO *cinfo)
 	}
 
 	while( EnumCustTable(count, T("_Delayed"), operation, param, sizeof(param)) > 0 ){
-		if ( !tstrcmp(operation, T("delete")) ){
+		if ( tstrcmp(operation, T("delete")) == 0 ){
 			DWORD atr;
 			BOOL result;
 
@@ -2209,7 +2211,7 @@ void DelayedFileOperation(PPC_APPINFO *cinfo)
 			}else{
 				DeleteCustTable(T("_Delayed"), NULL, count);
 			}
-		}else if ( !tstrcmp(operation, T("execute")) ){
+		}else if ( tstrcmp(operation, T("execute")) == 0 ){
 			PP_ExtractMacro(cinfo->info.hWnd, &cinfo->info, NULL, param, NULL, 0);
 			DeleteCustTable(T("_Delayed"), NULL, count);
 		}else{
@@ -2407,8 +2409,8 @@ int LoadCFMT(XC_CFMT *cfmt, const TCHAR *name, const TCHAR *sub, const XC_CFMT *
 				*cfmt = *defaultdata;
 				attr = cfmt->attr;
 				if ( fmt > maxfmt ){
-					XMessage(NULL, NULL, XM_GrERRld, T("ID:%s is broken %d"),
-						(sub != NULL) ? sub : name, fmt - maxfmt);
+					XMessage(NULL, NULL, XM_GrERRld, T("%s:%s is broken %d"),
+						name, sub, fmt - maxfmt);
 				}
 				break;
 			}
@@ -2438,10 +2440,18 @@ BOOL LoadCelFFMT(PPC_APPINFO *cinfo, const TCHAR *name, const TCHAR *sub)
 	if ( lineNZS == (cinfo->list.scroll | cinfo->list.orderZ) ) return FALSE; //•ÏX–³
 
 	cinfo->ScrollBarHV = (cinfo->X_win & XWIN_SWAPSCROLL) ? SB_VERT : SB_HORZ;
-	cinfo->list.orderZ = lineNZS & B1;
 	cinfo->list.scroll = lineNZS & B0;
-	if ( cinfo->list.scroll ){
+	if ( lineNZS & B1 ){
+		cinfo->list.orderZ = 1;
+		cinfo->list.XC_mvFB = &XC_mvLR;
 		cinfo->ScrollBarHV ^= (SB_HORZ | SB_VERT);
+	}else{
+		cinfo->list.orderZ = 0;
+		cinfo->list.XC_mvFB = &XC_mvUD;
+	}
+
+	if ( cinfo->list.scroll ){
+		if ( !cinfo->list.orderZ ) cinfo->ScrollBarHV ^= (SB_HORZ | SB_VERT);
 		if ( XC_mvUD.outw_type <= OUTTYPE_PAGE ){
 			XC_mvUD.outw_type = OUTTYPE_LINESCROLL;
 		}
@@ -2464,7 +2474,7 @@ BOOL LoadCelFFMT(PPC_APPINFO *cinfo, const TCHAR *name, const TCHAR *sub)
 			}
 		}
 	}
-	cinfo->list.XC_mvFB = cinfo->list.orderZ ? &XC_mvLR : &XC_mvUD;
+
 	return TRUE;
 }
 

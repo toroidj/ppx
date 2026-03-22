@@ -597,7 +597,8 @@ void InsertDispFormat(HWND hDlg)
 	index = (int)SendDlgItemMessage(hDlg, IDL_DFOMAT, LB_GETCURSEL, 0, 0);
 	if ( index < 0 ) index = 0;
 
-	thprintf(param, TSIZEOF(param), T("%s") LISTPARMSEP T("%s"), MessageText(dfitem[templeateitem].name), dfitem[templeateitem].defaultparam);
+	thprintf(param, TSIZEOF(param), T("%Ms") LISTPARMSEP T("%s"),
+			dfitem[templeateitem].name, dfitem[templeateitem].defaultparam);
 	SendDlgItemMessage(hDlg, IDL_DFOMAT, LB_INSERTSTRING, index, (LPARAM)param);
 	SendDlgItemMessage(hDlg, IDL_DFOMAT, LB_SETITEMDATA, index, templeateitem);
 	SendDlgItemMessage(hDlg, IDL_DFOMAT, LB_SETCURSEL, index, 0);

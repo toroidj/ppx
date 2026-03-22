@@ -164,7 +164,7 @@ DWORD_PTR USECDECL PPeInfoFunc(PPeditSTRUCT *PPES, DWORD cmdID, PPXAPPINFOUNION 
 		}
 		if ( !tstrcmp(addmenu->exname, T("charset")) ){
 			UINT cp;
-			PPXINMENU *pi;
+			const PPXINMENU *pi;
 			InitEditCharCode(PES);
 
 			cp = PES->CharCP;
@@ -241,7 +241,7 @@ void GetTextMetricsWidth(HDC hDC, TEXTMETRIC *tm)
 	}
 }
 
-LRESULT PPeWmCreate(HWND hWnd)
+PPeditSTRUCT *PPeWmCreate(HWND hWnd, int editmode)
 {
 	PPeditSTRUCT *PPES;
 	HDC hDC;
@@ -249,7 +249,7 @@ LRESULT PPeWmCreate(HWND hWnd)
 	TEXTMETRIC tm;
 										// 作業領域を確保 -------------
 	PPES = HeapAlloc(DLLheap, 0, sizeof(PPeditSTRUCT));
-	if ( PPES == NULL ) return -1;
+	if ( PPES == NULL ) return NULL;
 
 	PPES->info.Function = (PPXAPPINFOFUNCTION)PPeInfoFunc;
 	PPES->info.Name = PPeName;
@@ -260,8 +260,10 @@ LRESULT PPeWmCreate(HWND hWnd)
 	SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)PPES);
 
 										// EditBox を作成 -------------
+	editmode = IsUseRichEdit(editmode);
+
 	PPES->hEWnd = CreateWindowEx(WS_EX_ACCEPTFILES,
-		RichEditClassname(), NilStr,
+		RichEditClassname(editmode), NilStr,
 		WS_CHILD | /*WS_HSCROLL |*/ WS_VSCROLL |
 		/*ES_AUTOHSCROLL |*/ ES_AUTOVSCROLL | ES_NOHIDESEL |
 		ES_LEFT | ES_MULTILINE | ES_WANTRETURN,	// ウインドウの形式
@@ -285,15 +287,15 @@ LRESULT PPeWmCreate(HWND hWnd)
 	PPxRegistExEdit(NULL, PPES->hEWnd, 0x100000, NULL, 0, 0,
 			PPXEDIT_USEALT | PPXEDIT_NOWORDBREAK |
 			PPXEDIT_ENABLE_SIZE_CHANGE );
-	if ( IsUseRichEdit() ){
-		SendMessage(PPES->hEWnd, EM_SETEVENTMASK , 0,
+	if ( editmode != UXTRICH_NO ){
+		SendMessage(PPES->hEWnd, EM_SETEVENTMASK, 0,
 				SendMessage(PPES->hEWnd, EM_GETEVENTMASK , 0, 0) | ENM_CHANGE);
 		SendMessage(PPES->hEWnd, WM_SETFONT, (WPARAM)PPES->hBoxFont, TRUE);
 	}
 										// K_ppe を登録 ---
 	SendMessage(PPES->hEWnd, WM_PPXCOMMAND, KE_setkeya_firstevent, (LPARAM)StrK_ppe);
 	ShowWindow(PPES->hEWnd, SW_SHOWNORMAL);
-	return 0;
+	return PPES;
 }
 
 void PPeWMDpiChanged(HWND hWnd, PPeditSTRUCT *PPES, WPARAM wParam, RECT *newpos)
@@ -393,6 +395,8 @@ LRESULT CALLBACK PPeProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	PPeditSTRUCT *PPES;
 
 	PPES = (PPeditSTRUCT *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+	if ( PPES == NULL ) return DefWindowProc(hWnd, message, wParam, lParam);
+
 	switch (message){
 		case WM_CTLCOLOREDIT:
 			if ( !(ThemeColors.ExtraDrawFlags & (EDF_WINDOW_TEXT | EDF_WINDOW_BACK)) ){
@@ -403,8 +407,6 @@ LRESULT CALLBACK PPeProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case WM_MENUCHAR:
 			return PPxMenuProc(hWnd, message, wParam, lParam);
 
-		case WM_CREATE:
-			return PPeWmCreate(hWnd);
 /*
 		case WM_NCCREATE:
 			if ( (X_dss & DSS_COMCTRL) && (WinType >= WINTYPE_10) ){
@@ -511,7 +513,7 @@ LRESULT CALLBACK PPeProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						return ERROR_INVALID_FUNCTION;
 				}
 			}
-			if ( X_uxt[0] == UXT_DARK ){
+			if ( X_uxt_color == UXT_DARK ){
 				if ( ((message <= 0x94) && (message >= 0x91)) ||
 //					 (message == WM_THEMECHANGED) ||
 					 (message == WM_NCPAINT) || (message == WM_NCACTIVATE) ){
@@ -528,13 +530,46 @@ LRESULT CALLBACK PPeProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 PPXDLL HWND PPXAPI PPEui(HWND hPWnd, const TCHAR *title, const TCHAR *text)
 {
 	PPeditSTRUCT *PES;
-	HWND hPPeWnd, hFWnd;
-	int modify = 0;
+	HWND hPPeWnd, hFgWnd;
+	int modify = 0, editmode = -1;
+	DWORD textsize = 0;
 	WINPOS WinPos;
 
-	hFWnd = hPWnd;
-	if ( hFWnd == BADHWND ) hFWnd = GetFocus();
+	hFgWnd = hPWnd;
+	if ( hFgWnd == BADHWND ) hFgWnd = GetFocus();
 	InitSysColors();
+
+	if ( text == PPE_TEXT_CMDMODE ){ // *edit, *ppe
+		const TCHAR *param;
+		TCHAR buf[CMDLINESIZE], code, *more;
+
+		param = ((PPE_CMDMODEDATA *)title)->param;
+		code = GetOptionParameter(&param, buf, &more);
+		if ( (code == '-') && (tstrcmp(buf + 1, T("RICH")) == 0) ){
+			editmode = 2;
+		}
+		if ( (code == '-') && (tstrcmp(buf + 1, T("NORICH")) == 0) ){
+			editmode = 0;
+		}
+	}else if ( text != NULL ){
+		if ( hPWnd != BADHWND ) textsize = TSTRSIZE(text);
+	}else{
+		FILE_STAT_DATA nowstat;
+		if ( IsTrue(GetFileSTAT(title, &nowstat)) ){
+			textsize = nowstat.nFileSizeLow;
+		}
+	}
+	// ファイルサイズに応じて richedit を使用する
+	if ( editmode < 0 ){
+		if ( (X_uxt_ppe_rich == 1) ||
+			 ((X_uxt_ppe_rich > 0) && (textsize >= (DWORD)X_uxt_ppe_rich))
+	#ifndef _WIN64
+			|| ((OSver.dwMajorVersion < 5) && (textsize >= 30000))
+	#endif
+		){
+			editmode = 2;
+		}
+	}
 
 	if ( DLLWndClass.item.PPe == 0 ){
 		WNDCLASS wcClass;
@@ -555,12 +590,13 @@ PPXDLL HWND PPXAPI PPEui(HWND hPWnd, const TCHAR *title, const TCHAR *text)
 	hPPeWnd = CreateWindowEx(PPESTYLEEX, (LPCTSTR)DLLWndClass.item.PPe,
 			MessageText(title), PPESTYLE,
 			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-			NULL, NULL, DLLhInst, hFWnd);
+			NULL, NULL, DLLhInst, NULL);
+	if ( hPPeWnd == NULL ) return NULL;
 
+	PES = PPeWmCreate(hPPeWnd, editmode);
 	FixUxTheme(hPPeWnd, NULL);
-	PES = (PPeditSTRUCT *)GetWindowLongPtr(hPPeWnd, GWLP_USERDATA);
 
-	if ( hFWnd != NULL ){ // 位置調整
+	if ( hFgWnd != NULL ){ // 位置調整
 		RECT deskbox;
 		const TCHAR *deftext;
 
@@ -575,7 +611,7 @@ PPXDLL HWND PPXAPI PPEui(HWND hPWnd, const TCHAR *title, const TCHAR *text)
 				modify = 2;
 			}
 		}
-		GetDesktopRect(hFWnd, &deskbox);
+		GetDesktopRect(hFgWnd, &deskbox);
 		if ( (WinPos.pos.left < deskbox.left) ||
 			 (WinPos.pos.left >= deskbox.right) ){
 			WinPos.pos.left = deskbox.left;
@@ -638,6 +674,6 @@ PPXDLL HWND PPXAPI PPEui(HWND hPWnd, const TCHAR *title, const TCHAR *text)
 
 	DragAcceptFiles(hPPeWnd, TRUE);
 	ShowWindow(hPPeWnd, SW_SHOWNORMAL);
-	if ( hFWnd != NULL ) SetParent(hPPeWnd, NULL);
+	if ( hFgWnd != NULL ) SetParent(hPPeWnd, NULL);
 	return hPPeWnd;
 }

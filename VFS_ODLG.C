@@ -701,7 +701,7 @@ DefineWinAPI(BOOL, GetVolumeNameForVolumeMountPointW, (LPCWSTR, LPWSTR, DWORD) )
 int GetDiskTemperature(HANDLE hDF)
 {
 	#if ThermalThrotTest == 0
-		STORAGE_PROPERTY_QUERY query;
+		xSTORAGE_PROPERTY_QUERY query;
 		xSTORAGE_TEMPERATURE_DATA_DESCRIPTOR *tdd;
 		DWORD size;
 		BYTE tmp[0x100];
@@ -748,7 +748,7 @@ void FopUiEnable(FOPSTRUCT *FS, int setting)
 			if ( setting != FUE_ENABLE_ALL ) setting = 0;
 			continue;
 		}
-		if ( X_uxt[0] == UXT_DARK ){
+		if ( X_uxt_color == UXT_DARK ){
 			if ( (id == IDE_FOP_DESTDIR) ||
 				 (id == IDE_FOP_RENAME) ||
 				 (id == IDE_FOP_RENUM) ){
@@ -776,7 +776,7 @@ void FopUiEnable(FOPSTRUCT *FS, int setting)
 		}
 	}
 	// EnableDlgWindow の直後は、WM_PAINT のオーバライトが効かないため
-	if ( X_uxt[0] >= UXT_MINMODIFY ) InvalidateRect(hDlg, NULL, TRUE);
+	if ( X_uxt_color >= UXT_MINMODIFY ) InvalidateRect(hDlg, NULL, TRUE);
 }
 
 void USEFASTCALL FopPeekMessageLoop(void)
@@ -1155,9 +1155,9 @@ BOOL LoadOption(FOPSTRUCT *FS, const TCHAR *action, const TCHAR *option)
 		if ( *title ) SetWindowText(hDlg, title);
 	}
 
-	thprintf(buf, TSIZEOF(buf), T("%s %s"), MessageText(MES_FBAC), FS->opt.action);
+	thprintf(buf, TSIZEOF(buf), T("%Ms %s"), MES_FBAC, FS->opt.action);
 	SetDlgItemText(hDlg, IDC_FOP_ACTION, buf);
-	thprintf(buf, TSIZEOF(buf), T("%s(&M)"), MessageText(JobTypeNames[FS->opt.fop.mode + JOBSTATE_FOP_MOVE]));
+	thprintf(buf, TSIZEOF(buf), T("%Ms(&M)"), JobTypeNames[FS->opt.fop.mode + JOBSTATE_FOP_MOVE]);
 	SetDlgItemText(hDlg, IDC_FOP_MODE, buf);
 										// Dest -----------------------------
 	p = FOP->str;
@@ -1566,7 +1566,7 @@ void SelectAction(FOPSTRUCT *FS, HWND hCtrlWnd)
 	hMenu = CreatePopupMenu();
 	for ( index = 0 ; ; index++ ){
 		if ( EnumCustTable(index, T("X_fopt"), buf, NULL, 0) < 0 ) break;
-		AppendMenuCheckString(hMenu, index + 1, buf,!tstricmp(buf, FS->opt.action));
+		AppendMenuCheckString(hMenu, index + 1, buf, !tstricmp(buf, FS->opt.action));
 	}
 	AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
 	AppendMenuString(hMenu, ID_SAVEACTION, MES_MSAV);
@@ -1617,7 +1617,7 @@ void SelectFopMode(FOPSTRUCT *FS, HWND hCtrlWnd)
 	if ( (index >= (FOPMODE_MOVE + 1)) && (index <= (FOPMODE_SYMLINK + 1)) ){
 		FS->opt.fop.mode = index - 1;
 
-		thprintf(buf, TSIZEOF(buf), T("%s(&M)"), MessageText(JobTypeNames[index + JOBSTATE_FOP_MOVE - 1]));
+		thprintf(buf, TSIZEOF(buf), T("%Ms(&M)"), JobTypeNames[index + JOBSTATE_FOP_MOVE - 1]);
 		SetWindowText(hCtrlWnd, buf);
 		FopUiEnable(FS, FS->UiEnableSetting);
 	}
@@ -1723,7 +1723,7 @@ void FopConsoleStart(FILEOPERATIONDLGBOXINITPARAMS *fopip)
 	TCHAR buf[CMDLINESIZE];
 
 	thprintf(buf, TSIZEOF(buf), T("%s operation: %s"),
-		fopip->fileop->action, fopip->FS->DestDir);
+			fopip->fileop->action, fopip->FS->DestDir);
 	if ( fopip->FS->opt.fopflags & VFSFOP_AUTOSTART ){
 		tstrcat(buf, T("\r\n"));
 		PrintToConsole(buf);
@@ -1913,10 +1913,10 @@ void EndTest(FOPSTRUCT *FS)
 		buf[1] = '\0';
 	}else{
 		if ( FS->errorcount ){
-			thprintf(buf, TSIZEOF(buf), T("Total: %d / %s: %d\r\n"),
-				FS->progs.info.donefiles, MessageText(MES_FLTE), FS->errorcount);
+			thprintf(buf, TSIZEOF(buf), T("Total: %d / %Ms: %d\r\n"),
+					FS->progs.info.donefiles, MES_FLTE, FS->errorcount);
 		}else{
-			thprintf(buf, TSIZEOF(buf), T("Total: %d / %s\n"), FS->progs.info.donefiles, MessageText(MES_FLTC));
+			thprintf(buf, TSIZEOF(buf), T("Total: %d / %Ms\n"), FS->progs.info.donefiles, MES_FLTC);
 		}
 	}
 	FWriteLogMsg(FS, buf);
@@ -1977,21 +1977,21 @@ void OperationResult(FOPSTRUCT *FS, int result)
 						mes = MES_FLPC;
 					}
 				}
-				p = thprintf(p, 128, T("%s:%d"), MessageText(mes), FS->progs.info.donefiles);
+				p = thprintf(p, 128, T("%Ms:%d"), mes, FS->progs.info.donefiles);
 				if ( FS->progs.info.filesall ){
 					p = thprintf(p, 16, T("/%d"), FS->progs.info.filesall);
 				}
 				if ( FS->progs.info.LEskips ){
-					p = thprintf(p, 128, T(" %s:%d"), MessageText(MES_FLLS),
-							FS->progs.info.LEskips);
+					p = thprintf(p, 128, T(" %Ms:%d"),
+							MES_FLLS, FS->progs.info.LEskips);
 				}
 				if ( FS->progs.info.EXskips ){
-					p = thprintf(p, 128, T(" %s:%d"), MessageText(MES_FLEX),
-							FS->progs.info.EXskips);
+					p = thprintf(p, 128, T(" %Ms:%d"),
+							MES_FLEX, FS->progs.info.EXskips);
 				}
 				if ( FS->progs.info.errors ){
-					p = thprintf(p, 128, T(" %s:%d"), MessageText(MES_FLER),
-							FS->progs.info.errors);
+					p = thprintf(p, 128, T(" %Ms:%d"),
+							MES_FLER, FS->progs.info.errors);
 				}
 				tstrcpy(p, T("\r\n"));
 				FopLog(FS, buf, NULL, LOG_STRING);
@@ -2445,7 +2445,7 @@ void FopCommands(HWND hDlg, WPARAM wParam, LPARAM lParam)
 			SetNegFlagButton(lParam, &FS->opt.fop.flags, VFSFOP_OPTFLAG_NOCOUNT);
 			EnableDlgWindow(hDlg, IDX_FOP_CHECKEXISTFIRST, !(FS->opt.fop.flags & VFSFOP_OPTFLAG_NOCOUNT));
 			// EnableDlgWindow の直後は、WM_PAINT のオーバライトが効かないため
-			if ( X_uxt[0] >= UXT_MINMODIFY ) InvalidateRect(hDlg, NULL, TRUE);
+			if ( X_uxt_color >= UXT_MINMODIFY ) InvalidateRect(hDlg, NULL, TRUE);
 			break;
 
 		case IDX_FOP_CHECKEXISTFIRST:

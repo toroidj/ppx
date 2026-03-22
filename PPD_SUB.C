@@ -35,6 +35,20 @@ const TCHAR RegAppData[] =T("Software\\Microsoft\\Windows\\CurrentVersion\\Explo
 const TCHAR RegAppDataName[] =T("AppData");
 const TCHAR EnvAppDataName[] =T("%APPDATA%");
 
+#ifndef IMF_DUALFONT
+  #define IMF_DUALFONT  0x0080
+#endif
+#ifndef SPF_SETDEFAULT
+  #define SPF_SETDEFAULT  0x0004
+  #define EM_SETEDITSTYLE  (WM_USER + 204)
+#endif
+#ifndef SES_EXTENDBACKCOLOR
+  #define SES_EXTENDBACKCOLOR  4
+#endif
+
+const TCHAR RichEditClassHead[] = T("RICHEDIT");
+#define RichEditClassHeadSize (sizeof(TCHAR) * 8)
+
 IID XCLSID_RegExp = {0x3F4DACA4, 0x160D, 0x11D2, {0xA8, 0xE9, 0x00, 0x10, 0x4B, 0x36, 0x5C, 0x9F}};
 //IID XCLSID_Match = {0x3F4DACA5, 0x160D, 0x11D2, {0xA8, 0xE9, 0x00, 0x10, 0x4B, 0x36, 0x5C, 0x9F}};
 //IID XCLSID_MatchCollection = {0x3F4DACA6, 0x160D, 0x11D2, {0xA8, 0xE9, 0x00, 0x10, 0x4B, 0x36, 0x5C, 0x9F}};
@@ -433,30 +447,43 @@ PPXDLL void PPXAPI ThInit(ThSTRUCT *TH)
 
 PPXDLL BOOL PPXAPI ThFree(ThSTRUCT *TH)
 {
-	BOOL result = TRUE;
 	char *bottom;
 
 	bottom = TH->bottom;
-	if ( bottom != NULL ){
-		TH->bottom = NULL;
-		TH->top = 0;
-		TH->size = 0;
-		result = HeapFree(ProcHeap, 0, bottom);
+	if ( (bottom == NULL) || (bottom == (char *)((char *)TH + sizeof(ThSTRUCT))) ){
+		return TRUE;
 	}
-	return result;
+	TH->bottom = NULL;
+	TH->top = 0;
+	TH->size = 0;
+	return HeapFree(ProcHeap, 0, bottom);
+}
+
+BOOL ThSizeCheckMain(ThSTRUCT *TH, DWORD check_size)
+{
+	char *newptr;
+	DWORD nextsize;
+
+	nextsize = (TH->size + ((TH->size < (256 * KB)) ? (TH->size / 2) : TH->size) + check_size + ThSTEP) & ~(ThSTEP - 1);
+	if ( nextsize < TH->size ) return FALSE;
+
+	if ( TH->bottom == (char *)((char *)TH + sizeof(ThSTRUCT)) ){
+		newptr = HeapAlloc(ProcHeap, 0, nextsize);
+		if ( newptr == NULL ) return FALSE;
+		memcpy(newptr, (char *)TH->bottom, TH->top);
+	}else{
+		newptr = HeapReAlloc(ProcHeap, 0, TH->bottom, nextsize);
+		if ( newptr == NULL ) return FALSE;
+	}
+	TH->bottom = (void *)newptr;
+	TH->size = nextsize;
+	return TRUE;
 }
 
 #define ThSizecheck(TH, CHECKSIZE)						\
-	while ( (TH->top + (CHECKSIZE)) > TH->size ){	\
-		char *p;									\
-		DWORD nextsize;								\
-													\
-		nextsize = TH->size + ((((TH->size < (256 * KB)) ? (TH->size / 2) : TH->size) + CHECKSIZE + ThSTEP) & ~(ThSTEP - 1)); \
-		if ( nextsize < TH->size ) return FALSE; \
-		p = HeapReAlloc(ProcHeap, 0, TH->bottom, nextsize);\
-		if ( p == NULL ) return FALSE;				\
-		TH->bottom = (void *)p;						\
-		TH->size = nextsize;						\
+	while ( (TH->top + (CHECKSIZE)) > TH->size ){		\
+		if ( ThSizeCheckMain(TH, CHECKSIZE) ) continue;	\
+		return FALSE;			\
 	}
 
 PPXDLL BOOL PPXAPI ThSize(ThSTRUCT *TH, DWORD size)
@@ -1997,7 +2024,7 @@ PPXDLL HANDLE PPXAPI LoadCommonControls(DWORD usecontrol)
 void SetWindowRound(HWND hWnd)
 {
 	if ( OSver.dwBuildNumber < WINBUILD_11_21H1 ) return;
-	if ( X_uxt[1] > 0 ){
+	if ( X_uxt_window_corner > 0 ){
 		if ( hDwmapi == NULL ){
 			hDwmapi = LoadSystemDLL(SYSTEMDLL_DWMAPI);
 			if ( hDwmapi != NULL ) GETDLLPROC(hDwmapi, DwmSetWindowAttribute);
@@ -2005,13 +2032,13 @@ void SetWindowRound(HWND hWnd)
 		if ( DDwmSetWindowAttribute != NULL ){
 			#define DWMWA_WINDOW_CORNER_PREFERENCE 33
 			DDwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE,
-					&X_uxt[1], sizeof(X_uxt[1]));
+					&X_uxt_window_corner, sizeof(X_uxt_window_corner));
 		}
 	}
 }
 
 #pragma argsused
-BOOL CALLBACK EnumChildControlFixProc(HWND hWnd, LPARAM lParam)
+BOOL CALLBACK EnumChild_ControlFixProc(HWND hWnd, LPARAM lParam)
 {
 	TCHAR name[64];
 	UnUsedParam(lParam);
@@ -2025,7 +2052,7 @@ BOOL CALLBACK EnumChildControlFixProc(HWND hWnd, LPARAM lParam)
 }
 
 #pragma argsused
-BOOL CALLBACK EnumChildTextFixProc(HWND hWnd, LPARAM lParam)
+BOOL CALLBACK EnumChild_TextFixProc(HWND hWnd, LPARAM lParam)
 {
 	TCHAR name[64];
 	const TCHAR *findtext;
@@ -2046,6 +2073,22 @@ BOOL CALLBACK EnumChildTextFixProc(HWND hWnd, LPARAM lParam)
 	return TRUE;
 }
 
+#pragma argsused
+BOOL CALLBACK EnumChild_RichControlFixProc(HWND hWnd, LPARAM lParam)
+{
+	TCHAR name[64];
+
+	if ( 0 < GetClassName(hWnd, name, TSIZEOF(name)) ){
+		if ( memicmp(name, RichEditClassHead, RichEditClassHeadSize) == 0 ){
+		// ASCII フォントと日本語フォントを共通にする
+		// ※ FixRichEditTheme でも行っている
+			SendMessage(hWnd, EM_SETLANGOPTIONS, 0,
+				SendMessage(hWnd, EM_GETLANGOPTIONS, 0, 0) & ~IMF_DUALFONT );
+		}
+	}
+	return TRUE;
+}
+
 PPXDLL void PPXAPI LocalizeDialogText(HWND hDlg, DWORD titleID)
 {
 	if ( MessageTextTable == NULL ) LoadMessageTextTable();
@@ -2058,13 +2101,15 @@ PPXDLL void PPXAPI LocalizeDialogText(HWND hDlg, DWORD titleID)
 			findtext = SearchMessageText(name);
 			if ( findtext != NULL ) SetWindowText(hDlg, findtext);
 		}
-		if ( X_uxt[0] >= UXT_MINMODIFY ) FixUxTheme(hDlg, NULL);
-		EnumChildWindows(hDlg, EnumChildTextFixProc, 0);
+		if ( X_uxt_color >= UXT_MINMODIFY ) FixUxTheme(hDlg, NULL);
+		EnumChildWindows(hDlg, EnumChild_TextFixProc, 0);
 	}else{
-		if ( X_uxt[0] >= UXT_MINMODIFY ){
-			FixUxTheme(hDlg, NULL);
-			EnumChildWindows(hDlg, EnumChildControlFixProc, 0);
-		}
+		if ( X_uxt_color >= UXT_MINMODIFY ) FixUxTheme(hDlg, NULL);
+		EnumChildWindows(hDlg, EnumChild_ControlFixProc, 0);
+	}
+	if ( (hRichEdit != NULL) &&
+		 !(ThemeColors.ExtraDrawFlags & EDF_DIALOG_TEXT) ){
+		EnumChildWindows(hDlg, EnumChild_RichControlFixProc, 0);
 	}
 	SetWindowRound(hDlg);
 }
@@ -2189,12 +2234,6 @@ PPXDLL BOOL PPXAPI GetCalc(const TCHAR *param, TCHAR *resultstr, int *resultnum)
 	if ( resultnum != NULL ) *resultnum = num;
 	if ( resultstr != NULL ){
 		char str[6], *bptr;
-#ifdef UNICODE
-		WCHAR wstr[6];
-		#define usestr wstr
-#else
-		#define usestr str
-#endif
 
 		bptr = str;
 		j = num;
@@ -2206,11 +2245,8 @@ PPXDLL BOOL PPXAPI GetCalc(const TCHAR *param, TCHAR *resultstr, int *resultnum)
 		}
 		str[4] = '\0';
 		str[5] = '\0';
-#ifdef UNICODE
-		AnsiToUnicode(str, wstr, 6);
-#endif
 		// D:-1234567890 X:499602d2 U:1234567890(1.20G) xxxxxx ...53文字
-		thprintf(resultstr, GetCalc_ResultMaxLength, T("D:%d X:%x U:%u(%Md) %s"), num, num, num, num, usestr);
+		thprintf(resultstr, GetCalc_ResultMaxLength, T("D:%d X:%x U:%u(%Mu) %hs"), num, num, num, num, str);
 	}
 	return TRUE;
 }
@@ -2218,12 +2254,12 @@ PPXDLL BOOL PPXAPI GetCalc(const TCHAR *param, TCHAR *resultstr, int *resultnum)
 void InitUxThemeMain(void)
 {
 	if ( OSver.dwBuildNumber < WINBUILD_10_19H1 ){
-		X_uxt[0] = UXT_OFF;
+		X_uxt_color = UXT_OFF;
 		InitSysColors();
 		return;
 	}
-	if ( X_uxt[0] == UXT_AUTO ){
-		GetRegDword(HKEY_CURRENT_USER, ThemesPersonalize, ThemesAppsUseLightTheme, (DWORD *)&X_uxt[0]);
+	if ( X_uxt_color == UXT_AUTO ){
+		GetRegDword(HKEY_CURRENT_USER, ThemesPersonalize, ThemesAppsUseLightTheme, (DWORD *)&X_uxt_color);
 	}
 	InitSysColors();
 
@@ -2236,11 +2272,11 @@ void InitUxThemeMain(void)
 	GETDLLPROCN(hUxtheme, RefreshImmersiveColorPolicyState, 104);
 
 //	DShouldAppsUseDarkMode();
-	if ( X_uxt[0] == UXT_LIGHT ){ // Dark から切り替えようとすると失敗する対策
+	if ( X_uxt_color == UXT_LIGHT ){ // Dark から切り替えようとすると失敗する対策
 		DAllowDarkModeForApp(1);
 		DRefreshImmersiveColorPolicyState();
 	}
-	DAllowDarkModeForApp( (X_uxt[0] == UXT_DARK) ? 2 : 3);
+	DAllowDarkModeForApp( (X_uxt_color == UXT_DARK) ? 2 : 3);
 	DRefreshImmersiveColorPolicyState();
 }
 
@@ -2254,12 +2290,12 @@ BOOL InitUnthemeDLL(void)
 
 void InitUnthemeCmd(void)
 {
-	X_uxt[0] = UXT_OFF;
+	X_uxt_color = UXT_OFF;
 	if ( IsTrue(InitUnthemeDLL()) ){
 		GETDLLPROC(hUxtheme, SetWindowTheme);
 		if ( DSetWindowTheme != NULL ){
 			GetCustData(T("X_uxt"), &X_uxt, sizeof(X_uxt));
-			if ( X_uxt[0] >= UXT_MINMODIFY ) InitUxThemeMain();
+			if ( X_uxt_color >= UXT_MINMODIFY ) InitUxThemeMain();
 		}
 	}
 	InitSysColors();
@@ -2269,16 +2305,16 @@ void ReloadUnthemeCmd(void)
 {
 	int old_uxt;
 
-	if ( X_uxt[0] == UXT_NA ) return; // 未初期化…InitUnthemeCmdで初期化
-	old_uxt = X_uxt[0];
+	if ( X_uxt_color == UXT_NA ) return; // 未初期化…InitUnthemeCmdで初期化
+	old_uxt = X_uxt_color;
 
 	FreeSysColors();
 	memset(&ThemeColors, 0xff, sizeof(ThemeColors)); // ThemeColors を C_auto に戻す & ExtraDrawFlags に EDF_NOT_INIT をセット
 	C_SchemeColor1[0] = C_AUTO;
 	C_SchemeColor2[0] = C_AUTO;
-	X_uxt[0] = UXT_OFF;
+	X_uxt_color = UXT_OFF;
 	GetCustData(T("X_uxt"), &X_uxt, sizeof(X_uxt));
-	if ( X_uxt[0] >= UXT_MINMODIFY ){
+	if ( X_uxt_color >= UXT_MINMODIFY ){
 		InitUxThemeMain();
 	}else{
 		InitSysColors_main();
@@ -2286,7 +2322,7 @@ void ReloadUnthemeCmd(void)
 	if ( old_uxt >= UXT_MINMODIFY ){
 		ThemeColors.ExtraDrawFlags = EDF_WINDOW_TEXT | EDF_WINDOW_BACK | EDF_DIALOG_TEXT | EDF_DIALOG_BACK;
 	}
-	if ( (old_uxt >= UXT_MINMODIFY) && (X_uxt[0] == UXT_OFF) ){
+	if ( (old_uxt >= UXT_MINMODIFY) && (X_uxt_color == UXT_OFF) ){
 		DAllowDarkModeForApp(3);
 		DRefreshImmersiveColorPolicyState();
 	}
@@ -2306,9 +2342,6 @@ int GetUxtMode(void)
 #ifndef BS_TYPEMASK
 #define BS_TYPEMASK 0xf
 #endif
-
-const TCHAR RichEditClassHead[] = T("RICHEDIT");
-#define RichEditClassHeadSize (sizeof(TCHAR) * 8)
 
 const TCHAR Button_prop_name[] = T("xUxTx");
 
@@ -2620,17 +2653,14 @@ LRESULT CALLBACK DarkButtonProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	return CallWindowProc((WNDPROC)GetProp(hWnd, Button_prop_name), hWnd, uMsg, wParam, lParam);
 }
 
-#ifndef SPF_SETDEFAULT
-  #define SPF_SETDEFAULT  0x0004
-  #define EM_SETEDITSTYLE  (WM_USER + 204)
-#endif
-#ifndef SES_EXTENDBACKCOLOR
-  #define SES_EXTENDBACKCOLOR  4
-#endif
-
 void FixRichEditTheme(HWND hWnd /*, THEME_LIST *tl*/)
 {
 	CHARFORMAT2 chfmt;
+
+	// ASCII フォントと日本語フォントを共通にする
+	// ※ EnumChild_RichControlFixProc でも行っている
+	SendMessage(hWnd, EM_SETLANGOPTIONS, 0,
+			SendMessage(hWnd, EM_GETLANGOPTIONS, 0, 0) & ~IMF_DUALFONT );
 
 	// 背景色設定
 	SendMessage(hWnd, EM_SETBKGNDCOLOR, 0, (LPARAM)C_WindowBack);
@@ -2667,7 +2697,7 @@ void FixStaticTheme(HWND hWnd, THEME_LIST *tl)
 			SetProp(hWnd, Button_prop_name, (HANDLE)oldprop);
 		}
 	}else{
-		if ( X_uxt[0] >= UXT_MINMODIFY ){
+		if ( X_uxt_color >= UXT_MINMODIFY ){
 			DSetWindowTheme(hWnd, tl->general, NULL);
 		}
 	}
@@ -2695,7 +2725,7 @@ void FixButtonTheme(HWND hWnd, THEME_LIST *tl)
 			SetProp(hWnd, Button_prop_name, (HANDLE)oldprop);
 		}
 	}else{ // Push Button / Def Push Button
-		if ( X_uxt[0] >= UXT_MINMODIFY ){
+		if ( X_uxt_color >= UXT_MINMODIFY ){
 			DSetWindowTheme(hWnd, tl->general, NULL);
 		}
 	}
@@ -2711,7 +2741,7 @@ PPXDLL int PPXAPI FixUxTheme(HWND hWnd, const TCHAR *classname)
 #endif
 	if ( (classname == NULL) || (classname[0] == '\0') ) SetWindowRound(hWnd);
 
-	if ( X_uxt[0] < UXT_MINMODIFY ){
+	if ( X_uxt_color < UXT_MINMODIFY ){
 		if ( (ThemeColors.ExtraDrawFlags & EDF_DIALOG_TEXT) && (classname != NULL) && (DSetWindowTheme != NULL)){
 			if ( tstricmp(classname, ButtonClassName) == 0 ){
 				FixButtonTheme(hWnd, NULL);
@@ -2721,12 +2751,12 @@ PPXDLL int PPXAPI FixUxTheme(HWND hWnd, const TCHAR *classname)
 		}
 		return UXT_OFF;
 	}
-	mode = (X_uxt[0] == UXT_DARK);
+	mode = (X_uxt_color == UXT_DARK);
 	DAllowDarkModeForWindow(hWnd, mode);
-	if ( X_uxt[0] >= UXT_MINMODIFY ){
+	if ( X_uxt_color >= UXT_MINMODIFY ){
 		THEME_LIST *tl;
 
-		tl = (X_uxt[0] == UXT_DARK) ? &Theme_Dark : &Theme_Light;
+		tl = (X_uxt_color == UXT_DARK) ? &Theme_Dark : &Theme_Light;
 		if ( classname != NULL ){
 			if ( tstrcmp(classname, REBARCLASSNAME) == 0 ){
 				DSetWindowTheme(hWnd, tl->rebar, NULL);
@@ -2776,7 +2806,7 @@ PPXDLL int PPXAPI FixUxTheme(HWND hWnd, const TCHAR *classname)
 	DDwmSetWindowAttribute(hWnd,
 			(OSver.dwBuildNumber < WINBUILD_10_20H1) ? 19 : 20,
 			&mode, sizeof(mode));
-	return X_uxt[0];
+	return X_uxt_color;
 }
 
 PPXDLL void PPXAPI FixCharlengthTable(char *table)
@@ -2868,7 +2898,7 @@ PPXDLL const TCHAR * PPXAPI CheckRunAs(void)
 						user, &size, domain, &dsize, &snu) == FALSE ){
 					break;
 				}
-				if ( !tstricmp(user, UserName) ) RunAsMode = RUNAS_NORMAL;
+				if ( tstricmp(user, UserName) == 0 ) RunAsMode = RUNAS_NORMAL;
 				break;
 			}
 			if ( hToken != NULL ) CloseHandle(hToken);
@@ -2899,18 +2929,6 @@ PPXDLL const TCHAR * PPXAPI CheckRunAs(void)
 
 	if ( RunAsMode <= RUNAS_NORMAL ) return NULL;
 	return UserName;
-}
-
-void LoadErrorWinAPI(const char *DLLname)
-{
-	#ifdef UNICODE
-		WCHAR nameW[MAX_PATH];
-
-		AnsiToUnicode(DLLname, nameW, MAX_PATH);
-		XMessage(NULL, NULL, XM_GrERRld, T("%s loaderror"), nameW);
-	#else
-		XMessage(NULL, NULL, XM_GrERRld, T("%s loaderror"), DLLname);
-	#endif
 }
 
 HMODULE LoadLibraryTry(const TCHAR *filepath)
@@ -2962,7 +2980,9 @@ PPXDLL HMODULE PPXAPI LoadWinAPI(const char *DLLname, HMODULE hDLL, LOADWINAPIST
 	if ( mode & LOADWINAPI_LOAD ){
 		hDLL = LoadLibraryTryA(DLLname);
 		if ( hDLL == NULL ){
-			if ( mode == LOADWINAPI_LOAD_ERRMSG ) LoadErrorWinAPI(DLLname);
+			if ( mode == LOADWINAPI_LOAD_ERRMSG ){
+				XMessage(NULL, NULL, XM_GrERRld, T("%hs loaderror"), DLLname);
+			}
 			return NULL;
 		}
 	}else if ( mode == LOADWINAPI_GETMODULE ){

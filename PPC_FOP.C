@@ -1010,7 +1010,7 @@ int RenameMain(PPC_APPINFO *cinfo, ENTRYCELL *cell, BOOL continuous)
 						}
 					}
 					if ( errorresult != NO_ERROR ){
-						msgp = thprintf(titlebuf, TSIZEOF(titlebuf), T("%s") CAPTIONSEPARATOR, MessageText(MES_TREN));
+						msgp = thprintf(titlebuf, TSIZEOF(titlebuf), T("%Ms") CAPTIONSEPARATOR, MES_TREN);
 						if ( (errorresult == ERROR_ACCESS_DENIED) ||
 							(errorresult == ERROR_SHARING_VIOLATION) ){
 							GetAccessApplications(src, msgp);
@@ -1029,7 +1029,7 @@ int RenameMain(PPC_APPINFO *cinfo, ENTRYCELL *cell, BOOL continuous)
 				WriteReport(RRenedTitle, name, NO_ERROR);
 				dstlen = tstrlen(dst);
 				if ( dstlen >= MAX_PATH ){
-					thprintf(dst, MAX_PATH, T("%s(%d)"), MessageText(MES_WLLP), dstlen);
+					thprintf(dst, MAX_PATH, T("%Ms(%d)"), MES_WLLP, dstlen);
 					SetPopMsg(cinfo, POPMSG_MSG, dst);
 				}
 
@@ -1836,13 +1836,13 @@ ERRORCODE DeleteEntry(PPC_APPINFO *cinfo)
 			SetPopMsg(cinfo, POPMSG_MSG, MES_EDEL);
 			return ERROR_BAD_COMMAND;
 		}
-		thprintf(buf, TSIZEOF(buf), T("%s %s"), cinfo->e.markC ?
+		thprintf(buf, TSIZEOF(buf), T("%s %Ms"), cinfo->e.markC ?
 				CELdata(cinfo->e.markTop).f.cFileName :
-				CEL(cinfo->e.cellN).f.cFileName, MessageText(MES_QDL1));
+				CEL(cinfo->e.cellN).f.cFileName, MES_QDL1);
 	}else{
-		thprintf(buf, TSIZEOF(buf), T("%s %s%d %s"),
+		thprintf(buf, TSIZEOF(buf), T("%s %Ms%d %Ms"),
 				CELdata(cinfo->e.markTop).f.cFileName,
-				MessageText(MES_QDL2), cinfo->e.markC, MessageText(MES_QDL3));
+				MES_QDL2, cinfo->e.markC, MES_QDL3);
 	}
 	if ( StartCellEdit(cinfo) ) return ERROR_PATH_BUSY;
 

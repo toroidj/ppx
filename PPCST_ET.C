@@ -168,7 +168,7 @@ void InitEtcTree(HWND hDlg)
 	tvins.hInsertAfter = 0;
 									// ŠeŽíˆê——
 	for ( el = EtcLabels ; el->name != NULL ; el++ ){
-		thprintf(buf, TSIZEOF(buf), T("%s/%s"), MessageText(el->name), el->key);
+		thprintf(buf, TSIZEOF(buf), T("%Ms/%s"), el->name, el->key);
 		tvi.cchTextMax = tstrlen32(buf);
 		TreeInsertItemValue(tvins) = tvi;
 		hTempItem = (HTREEITEM)SendMessage(hEtcTreeWnd, TVM_INSERTITEM,

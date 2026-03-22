@@ -170,7 +170,7 @@ BOOL FindEntryCDImage(CDS *cds, const TCHAR *fname, WIN32_FIND_DATA *ff)
 					BEUnicodeToAnsi(pdir->name, name, pdir->len);
 				#endif
 				}
-				if ( !tstricmp(name, now) ){
+				if ( tstricmp(name, now) == 0 ){
 					parent = no;
 					now = next + 1;
 					if ( *now == '\0' ){

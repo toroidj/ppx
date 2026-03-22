@@ -329,10 +329,10 @@ int LocalGetCustTable(const TCHAR *str, const TCHAR *sub, void *bin, DWORD b_siz
 	}
 	for ( ;; ){
 		w = *(WORD *)p;
-		if ( !w ){
+		if ( w == 0 ){
 			return -1;
 		}
-		if ( !tstricmp( (TCHAR *)(p + 2), sub) ){
+		if ( tstricmp( (TCHAR *)(p + 2), sub) == 0 ){
 			w -= (WORD)(ssize + 2);
 			if ( !b_size ){
 				return w;

@@ -470,7 +470,7 @@ LRESULT CALLBACK DockStatusProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 void InitEditColor(void)
 {
 	GetCustData(T("CC_log"), &CC_log, sizeof(CC_log));
-	if ( (CC_log[0] == C_AUTO) && (CC_log[1] == C_AUTO) && (X_uxt[0] < UXT_MINPRESET) ){
+	if ( (CC_log[0] == C_AUTO) && (CC_log[1] == C_AUTO) && (X_uxt_color < UXT_MINPRESET) ){
 		Combo.Report.change_color = FALSE;
 	}else{
 		Combo.Report.change_color = TRUE;
@@ -2202,10 +2202,10 @@ BOOL DockNeedTextNotify(PPXDOCK *dock, NMHDR *nmh)
 
 BOOL DocksNeedTextNotify(PPXDOCKS *docks, NMHDR *nmh)
 {
-	if ( docks->t.hWnd != nmh->hwndFrom ){
+	{//if ( docks->t.hWnd == nmh->hwndFrom ){
 		if ( DockNeedTextNotify(&docks->t, nmh) ) return TRUE;
 	}
-	if ( docks->b.hWnd != nmh->hwndFrom ){
+	{//if ( docks->b.hWnd == nmh->hwndFrom ){
 		if ( DockNeedTextNotify(&docks->b, nmh) ) return TRUE;
 	}
 	return FALSE;

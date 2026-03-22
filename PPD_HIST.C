@@ -220,7 +220,7 @@ PPXDLL const TCHAR * PPXAPI SearchHistory(WORD type, const TCHAR *str)
 					const TCHAR *pw;
 
 					pw = tstrchr((TCHAR *)(ptr + 6 + sizeof(TCHAR) * 2), '>');
-					if ( (pw != NULL) && !tstrcmp(pw + 1, str) ){
+					if ( (pw != NULL) && (tstrcmp(pw + 1, str) == 0) ){
 						return (const TCHAR *)(ptr + 6);
 					}
 				}else if ( (*(WORD *)(ptr + 4) == l) &&
@@ -545,7 +545,9 @@ PPXDLL void PPXAPI InitCust(void)
 		int len;
 
 		// PPXDEF.CFG がないので初期セットアップしていないことを警告する
-		len = thprintf(buf1, TSIZEOF(buf1), T("%c*linemessage %s%%:*setcust KC_main:-|firstevent="), EXTCMD_CMD, MessageText(MES_NOIC)) - buf1;
+		len = thprintf(buf1, TSIZEOF(buf1),
+				T("%c*linemessage %Ms%%:*setcust KC_main:-|firstevent="),
+				EXTCMD_CMD, MES_NOIC) - buf1;
 		SetCustTable(T("KC_main"), T("firstevent"), buf1, TSTROFF(len + 1));
 	}
 }

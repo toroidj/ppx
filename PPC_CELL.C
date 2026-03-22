@@ -395,7 +395,8 @@ BOOL NewCellN(PPC_APPINFO *cinfo, int OcellN, BOOL fulldraw)
 		return TRUE;	// 表示できない
 	}
 															// 変化無し
-	if ( (cinfo->e.cellN == OcellN) && !tstrcmp(viewname, cinfo->OldIconsPath) ){
+	if ( (cinfo->e.cellN == OcellN) &&
+		 (tstrcmp(viewname, cinfo->OldIconsPath) == 0) ){
 		return FALSE;
 	}
 									// ドライブ一覧→タイトルバー修正
@@ -612,13 +613,11 @@ BOOL USEFASTCALL CheckPairJump(PPC_APPINFO *cinfo, int offset)
 	return TRUE;
 }
 
-#define ENABLE_SMAR 3 // XC_smar による先取りを始める行数
-
 // カーソル位置を範囲内に補正する
 void FixCellRange(PPC_APPINFO *cinfo, int scroll, int *NcellWMin, int cellN)
 {
-	int PageEntries;			// １ページ分のエントリ数
-	int MaxWMin;				// NcellWMinの最大値
+	int PageEntries; // １ページ分のエントリ数
+	int MaxWMin; // NcellWMinの最大値
 
 	scroll = scroll ? 0 : XC_fwin;
 	PageEntries = cinfo->cel.Area.cx * cinfo->cel.Area.cy;
@@ -628,11 +627,21 @@ void FixCellRange(PPC_APPINFO *cinfo, int scroll, int *NcellWMin, int cellN)
 		MaxWMin = cinfo->e.cellIMax - PageEntries;
 	}else if ( XC_mvUD.outw_type == OUTTYPE_LINESCROLL ){
 		MaxWMin = cinfo->e.cellIMax - 1;
-		if ( cinfo->cel.Area.cy > (XC_smar * 3) ) MaxWMin -= XC_smar;
-	}else if ( scroll == 1 ){		// 桁単位
-		*NcellWMin -= *NcellWMin % cinfo->cel.Area.cy;
-		if ( (cellN == -2) && (*NcellWMin == cinfo->cellWMin) ){
-			*NcellWMin += cinfo->cel.Area.cy;
+		if ( !cinfo->list.orderZ &&
+			 (cinfo->cel.Area.cy > (XC_smar * SMAR_MIN)) ){
+			 MaxWMin -= XC_smar;
+		}
+	}else if ( scroll == 1 ){		// 桁/行単位
+		if ( cinfo->list.orderZ ){
+			*NcellWMin -= *NcellWMin % cinfo->cel.Area.cx;
+			if ( (cellN == -2) && (*NcellWMin == cinfo->cellWMin) ){
+				*NcellWMin += cinfo->cel.Area.cx;
+			}
+		}else{
+			*NcellWMin -= *NcellWMin % cinfo->cel.Area.cy;
+			if ( (cellN == -2) && (*NcellWMin == cinfo->cellWMin) ){
+				*NcellWMin += cinfo->cel.Area.cy;
+			}
 		}
 		MaxWMin = (cinfo->e.cellIMax - PageEntries + cinfo->cel.Area.cy - 1) /
 				cinfo->cel.Area.cy * cinfo->cel.Area.cy;
@@ -681,15 +690,19 @@ BOOL MoveCellCsr(PPC_APPINFO *cinfo, int offset, const CURSORMOVER *cm)
 	PageEntries = cinfo->cel.Area.cx * cinfo->cel.Area.cy;
 	if ( PageEntries > cinfo->e.cellIMax ) PageEntries = cinfo->e.cellIMax;
 	if ( cm->outw_type == OUTTYPE_LINESCROLL ){
-		limit = 1;
-		if ( !PointMode && (cinfo->cel.Area.cy > (XC_smar + ENABLE_SMAR)) ){
-			limit += XC_smar;
-		}
-		if ( cinfo->list.orderZ ) limit *= cinfo->cel.Area.cx;
 		scroll = 1;
+		if ( cinfo->list.orderZ ){
+			limit = 0;
+		}else{
+			if ( !PointMode && (cinfo->cel.Area.cy > (XC_smar * SMAR_MIN)) ){
+				limit = XC_smar + 1;
+			}else{
+				limit = 0;
+			}
+		}
 	}else{
-		limit = 0;
 		scroll = 0;
+		limit = 0;
 	}
 										// 新しい移動先（希望）を算出 ---------
 	if ( cm->unit < CMOVEUNIT_EXTRA_MIN ){

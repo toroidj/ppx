@@ -516,7 +516,7 @@ _last
 			foreach ( $line =~ /([ABEFPSV]|HM|[CKMX][BCETV]?)\_[0-9A-Za-z]+/g ){
 				$cid = $&;
 				if ( ($cid eq '') | ($cid =~ /(V_H[0-9A-F]|[ACMP]_[A-Z])|XX|xxx|sample|test/) ) {next;}
-				if ( !$CustID{$cid} ){
+				if ( !$CustID{$cid} && ($cid =~ /[a-z]/) ){
 					print "$linenum : No custid = $cid\n";
 				}
 			}

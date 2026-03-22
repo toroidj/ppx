@@ -8,12 +8,12 @@
 
 #define VersionH		2
 #define VersionM		0
-#define VersionL		7
+#define VersionL		8
 #define VersionP		0
-#define FileProp_Version	"2.07"		// for Propaty sheet
-#define FileCfg_Version	"2.07"	// for CFGver
-#define X_Version		"2.0.7.0"	// for XML
-#define Q_Version		2,0,7,0	// for Quick view
+#define FileProp_Version	"2.08"		// for Propaty sheet
+#define FileCfg_Version	"2.08"	// for CFGver
+#define X_Version		"2.0.8.0"	// for XML
+#define Q_Version		2,0,8,0	// for Quick view
 #define COM_ver			Q_Version	// Common
 #define BUI_ver			Q_Version	// bUI
 #define CUI_ver			Q_Version	// cUI

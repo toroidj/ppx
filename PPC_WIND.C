@@ -993,9 +993,10 @@ void InitCli(PPC_APPINFO *cinfo)
 			FixEntryWideW(cinfo, fixX, clientPix);
 		}
 		if ( cinfo->cel.Size.cx <= 0 ) cinfo->cel.Size.cx = 1;
-		cinfo->cel.VArea.cx = (clientPix - 1) / cinfo->cel.Size.cx + 1;
 		cinfo->cel.Area.cx = (clientPix + tmpfontX) / cinfo->cel.Size.cx;
 		if ( cinfo->cel.Area.cx <= 0 ) cinfo->cel.Area.cx = 1;
+		cinfo->cel.VArea.cx = cinfo->list.orderZ ?
+				cinfo->cel.Area.cx : (clientPix - 1) / cinfo->cel.Size.cx + 1;
 	}
 										// ƒZƒ‹‚Ìs”‚ðŒˆ’è -------------------
 	{
@@ -1004,10 +1005,15 @@ void InitCli(PPC_APPINFO *cinfo)
 		y = (cinfo->BoxEntries.bottom - cinfo->BoxEntries.top) /
 				cinfo->cel.Size.cy;
 		if ( y <= 0 ) y = 1;
-		cinfo->BoxEntries.bottom =
-				cinfo->BoxEntries.top + cinfo->cel.Size.cy * y;
+		if ( cinfo->list.orderZ == 0 ){
+			cinfo->BoxEntries.bottom =
+					cinfo->BoxEntries.top + cinfo->cel.Size.cy * y;
+		}
 		if ( y != cinfo->cel.Area.cy ){
-			cinfo->cel.Area.cy = cinfo->cel.VArea.cy = y;
+			cinfo->cel.Area.cy = y;
+			cinfo->cel.VArea.cy = cinfo->list.orderZ ?
+					(cinfo->BoxEntries.bottom - cinfo->BoxEntries.top - 1) /
+					cinfo->cel.Size.cy + 1 : y;
 			InvalidateRect(cinfo->info.hWnd, NULL, FALSE);
 		}
 	}

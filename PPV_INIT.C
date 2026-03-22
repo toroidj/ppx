@@ -262,7 +262,7 @@ BOOL CheckParam(VIEWOPTIONS *viewopts, const TCHAR *param, TCHAR *filename)
 			label = OptionNames;
 			id = 0;
 			while ( *label ){
-				if ( !tstrcmp( buf + 1, *label ) ) break;
+				if ( tstrcmp( buf + 1, *label ) == 0 ) break;
 				label++;
 				id++;
 			}
@@ -902,7 +902,7 @@ void PPvLoadCust(void)
 		IsExistCustTable(T("KV_crt"), T("ACTIVEEVENT")) ||
 		IsExistCustTable(T("KV_page"), T("ACTIVEEVENT"));
 
-	X_uxt[0] = PPxCommonExtCommand(K_UxTheme, KUT_LOADCUST);
+	X_uxt_color = PPxCommonExtCommand(K_UxTheme, KUT_LOADCUST);
 	GetCustData(T("X_pmc"), &X_pmc, sizeof(X_pmc));
 	if ( X_pmc[pmc_mode] > 0 ) PPvEnterTabletMode(vinfo.info.hWnd);
 

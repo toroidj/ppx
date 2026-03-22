@@ -79,7 +79,7 @@ extern "C" {
 #define IDW_ADRBCL			(IDW_CONTROLMIN + 0x0e00) // パン屑アドレスバー
 #define IDW_DRIVES			(IDW_CONTROLMIN + 0x0f60) // ドライブバー内ドライブ
 // TipText(TTN_NEEDTEXT) / ToolBar / TAB 識別用ID
-#define IDW_TABCONTROL		(IDW_CONTROLMIN + 0x0f80) // Tab Window 識別用
+#define IDW_TABCONTROL		(0xf7fe) // Tab Window 識別用
 #define IDW_TOOLCOMMANDS	(IDW_CONTROLMIN + 0x1000) // ToolBar 等のコマンド
 
 // メニュー用の特殊な項目

@@ -410,6 +410,22 @@ BOOL ListView__SetItemData(HWND hListView, int index, LPARAM lParam)
 	return TRUE;
 }
 
+BOOL IsTableStart(TCHAR *text, const TCHAR *key)
+{
+	int keylen;
+
+	text--;
+	keylen = tstrlen(key);
+	if ( memcmp(text, key, TSTROFF(keylen)) != 0 ) return FALSE;
+	text += keylen;
+	if ( *key == 'M' ) while ( Isalnum(*text) ) text++; // MesXXXX
+	while ( (*text == ' ') || (*text == '\t') ) text++;
+	if ( *text++ != '=' ) return FALSE;
+	while ( (*text == ' ') || (*text == '\t') ) text++;
+	if ( *text++ != '{' ) return FALSE;
+	return TRUE;
+}
+
 TCHAR *GetUserTheme(HWND hDlg)
 {
 	PPXDBINFOSTRUCT dbinfo;
@@ -429,30 +445,50 @@ TCHAR *GetUserTheme(HWND hDlg)
 		ErrorPathBox(hDlg, NULL, path, err);
 		return NULL;
 	}
-	text = mem; // 色とフォント以外の設定があれば拒否する。（セキュリティ目的）
+	// 色とフォント以外の設定があれば拒否する。（セキュリティ目的）
 	for (;;){
 		TCHAR c, d;
 
 		c = *text++;
 		if ( c == '\0' ) break;
 		if ( (c == ' ') || (c == '\t') || (c == '\r') || (c == '\n') ) continue;
-
 		d = *text;
-		if ( d == '\0' ) break;
-		if ( ((d == '_') &&
-				((c == 'C') || (c == 'F') || // C_, F_
-				 ((c == 'X') && (text[1] == 'u') && (text[2] == 'x')) || // X_uxt
-				 ((c == 'A') && (text[1] == 'c') && (text[2] == 'o')))) || // A_color
-			  ((c == 'C') && Isalpha(d) && (text[1] == '_')) ){ // Cx_
-			// 許可する形式
-		}else if ( ((c == '_') && Isalpha(d)) || // _xxx
-			 ((d == '_') && Isalpha(c)) || // x_xxx
-			 (Isalpha(c) && Isalpha(d) && (text[1] == '_')) || // xx_xxx
-			 ((c == 'M') && (d == 'e') && (text[1] == 's')) ){ // Mesxxxx
-			XMessage(NULL, NULL, XM_GrERRld, T("%s"), MessageText(MES_ECCF));
+
+		// X_uxt, F_xxx, C_xxx, CX_xxx
+		// テーブル A_color, C_ext, CV_hkey, Mesxxx
+		if ( IsTableStart(text, T("A_color")) ||
+			 IsTableStart(text, T("C_ext")) ||
+			 IsTableStart(text, T("CV_hkey")) ||
+			 IsTableStart(text, T("Mes")) ){
+			for(;;){
+				for(;;){
+					if ( d == '\0' ) return mem;
+					text++;
+					if ( (d == '\r') || (d == '\n') ) break;
+					d = *text;
+				}
+				d = *text;
+				if ( *text == '}' ){
+					text++;
+					break;
+				}
+			}
+			continue;
+		}
+
+		if ( ((d == '_') && // 許可する形式
+				( (c == 'C') || // C_xxx
+				((c == 'X') && (text[1] == 'u') && (text[2] == 'x')) || // X_
+				 (c == 'F') )) || // F_xxx
+				 // X_uxt
+			  ((c == 'C') && Isalpha(d) && (text[1] == '_')) || // Cx_
+			  (c == ';') ){ // コメント
+		}else {
+			XMessage(NULL, NULL, XM_GrERRld, T("%Ms(%c%c)\n"), MES_ECCF, c, d);
 			HeapFree(GetProcessHeap(), 0, mem);
 			return NULL;
 		}
+		// 1行スキップ
 		for(;;){
 			if ( d == '\0' ) return mem;
 			text++;
@@ -614,8 +650,8 @@ void CSelectItem(HWND hDlg)
 
 		case GC_theme: {
 			TCHAR *mem;
-			int BeforeX_uxt[X_uxt_items];
-			int AfterX_uxt[X_uxt_items];
+			int BeforeX_uxt[X_uxt_items] = {X_uxt_defvalue};
+			int AfterX_uxt[X_uxt_items] = {X_uxt_defvalue};
 			HWND hPropWnd;
 
 			GetCustData(T("X_uxt"), &BeforeX_uxt, sizeof(BeforeX_uxt));
@@ -653,14 +689,14 @@ void CSelectItem(HWND hDlg)
 				// AfterX_uxt で再反映させる
 			}
 			PPxCommonCommand(hDlg, 0, K_Lcust);
-			X_uxt[0] = PPxCommonExtCommand(K_UxTheme, KUT_LOADCUST);
+			X_uxt_color = PPxCommonExtCommand(K_UxTheme, KUT_LOADCUST);
 
 			Changed(hDlg); // 内部で GUILoadCust()
 			hPropWnd = GetParent(hDlg);
 			SetTabTitles(hPropWnd);
 			LocalizeDialogText(hPropWnd, 0);
 			InitPropSheetsUxtheme(hDlg);
-			if ( X_uxt[0] == UXT_OFF ){
+			if ( X_uxt_color == UXT_OFF ){
 				SendDlgItemMessage(hDlg, IDV_GCTYPE, LVM_SETBKCOLOR, 0, (LPARAM)WinColors.c.DialogBack);
 				SendDlgItemMessage(hDlg, IDV_GCTYPE, LVM_SETTEXTCOLOR, 0, (LPARAM)WinColors.c.DialogText);
 				SendDlgItemMessage(hDlg, IDV_GCITEM, LVM_SETBKCOLOR, 0, (LPARAM)WinColors.c.DialogBack);
@@ -906,7 +942,7 @@ void SelectColor(HWND hDlg, COLORREF selc)
 			ListView__SetItemData(hListView, edit_sitem, selc);
 
 			if ( GcType->item ==
-					((X_uxt[0] == UXT_DARK) ? StrC_schD : StrC_schN) ){
+					((X_uxt_color == UXT_DARK) ? StrC_schD : StrC_schN) ){
 				PPxCommonCommand(hDlg, 0, K_Lcust);
 				InvalidateRect(GetDlgItem(hDlg, IDL_GCOLOR) , NULL, FALSE);
 			}
@@ -1217,15 +1253,22 @@ INT_PTR CALLBACK ColorPage(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 						if ( !IsExistCustTable(GcType->item, buf) ){
 							COLORREF color;
 
-							lvi.mask = LVIF_TEXT;
-							lvi.iItem = INT32__MAX;
+							// 引用位置の選択解除
+							lvi.mask = LVIF_STATE;
+							lvi.state = 0;
+							lvi.stateMask = 0xf;
 							lvi.iSubItem = 0;
-							lvi.pszText = buf;
+							SendMessage(hListView, LVM_SETITEMSTATE, (WPARAM)edit_sitem, (LPARAM)&lvi);
 
 							color = GetGindexCOLOR(GetDlgItem(hDlg, IDL_GCOLOR));
 							if ( color == COLOR_NO ) color = G_Colors[CL_prev];
+							lvi.mask = LVIF_TEXT | LVIF_PARAM;
+							lvi.iItem = INT32__MAX;
+							lvi.iSubItem = 0;
+							lvi.pszText = buf;
+							lvi.lParam = color;
 							edit_sitem = ListView_InsertItem(hListView, &lvi);
-							SelectColor(hDlg, color);
+							SetCustTable(GcType->item, buf, &color, sizeof(color));
 							Changed(hDlg);
 						}
 						lvf.flags = LVFI_STRING;

@@ -243,6 +243,7 @@ GVAR HMODULE hComctl32 GPARAM(NULL);	// COMCTL32.DLL のハンドル
 GVAR HMODULE hShell32 GPARAM(NULL);
 GVAR HMODULE hKernel32 GPARAM(NULL);
 GVAR HMODULE hUxtheme GPARAM(NULL);
+GVAR HMODULE hRichEdit GPARAM(NULL);
 GVAR ValueWinAPI(OpenThread) GPARAM(INVALID_VALUE(impOpenThread));
 #ifdef _WIN64
 #define DAddVectoredExceptionHandler AddVectoredExceptionHandler
@@ -299,6 +300,7 @@ GVAR int X_jlst[2] GPARAM2(-1, 1);
 GVAR int X_prtg GPARAM(-1);
 GVAR int X_uxt[X_uxt_items] GPARAM({X_uxt_defvalue});
 GVAR int X_csyh GPARAM(-1); // コマンドラインシンタックスハイライト
+GVAR FN_REGEXP FR_igpn; // 例外時に無視するファイルを指定するために使用
 
 GVAR HWND hTipWnd GPARAM(NULL);
 GVAR HWND hProcessComboWnd GPARAM(NULL);
@@ -311,6 +313,8 @@ GVAR int X_combosD[2] GPARAM2(-1, -1);
 GVAR int X_nshf GPARAM(1);
 
 //-------- 色
+GVAR int X_vclr GPARAM(0);
+
 #define EDF_NOT_INIT B10
 GVAR THEME_COLORS ThemeColors
 #ifndef GLOBALEXTERN

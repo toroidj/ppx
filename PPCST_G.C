@@ -216,7 +216,7 @@ void CustDialog(int Template, DLGPROC dlgprc)
 
 	hForeWnd = GetForegroundWindow();
 	HideConsoleWindow();
-	X_uxt[0] = PPxCommonExtCommand(K_UxTheme, KUT_INIT);
+	X_uxt_color = PPxCommonExtCommand(K_UxTheme, KUT_INIT);
 	PPxDialogBoxParam(hInst, MAKEINTRESOURCE(Template), hForeWnd, dlgprc, 0);
 	ShowConsoleWindow(hForeWnd);
 }
@@ -385,7 +385,7 @@ LRESULT CALLBACK KeyProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 		case WM_ERASEBKGND: {
-			if ( X_uxt[0] < UXT_MINPRESET ){
+			if ( X_uxt_color < UXT_MINPRESET ){
 				return DefWindowProc(hWnd, message, wParam, lParam);
 			}else{
 				EraseBack(hWnd, wParam);
@@ -532,7 +532,7 @@ INT_PTR CALLBACK DlgSheetProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 			break;
 
 		case WM_ERASEBKGND: {
-			if ( X_uxt[0] < UXT_MINPRESET ){
+			if ( X_uxt_color < UXT_MINPRESET ){
 				return DefWindowProc(hDlg, message, wParam, lParam);
 			}else{
 				EraseBack(hDlg, wParam);
@@ -840,7 +840,7 @@ void GUIcustomizer(int startpage, const TCHAR *param)
 	LoadCommonControls(ICC_LISTVIEW_CLASSES | ICC_TREEVIEW_CLASSES);
 
 	hInst = GetModuleHandle(NULL);
-	X_uxt[0] = PPxCommonExtCommand(K_UxTheme, KUT_INIT);
+	X_uxt_color = PPxCommonExtCommand(K_UxTheme, KUT_INIT);
 	PPxCommonExtCommand(K_SETAPPID, 'c');
 
 	GUILoadCust();
@@ -1173,7 +1173,7 @@ void PaintTab(HWND hWnd)
 // Propperty sheet ‚Ì Tab control ‚ÌŠg’£—p (ƒ^ƒu‚Ì”wŒi•\Ž¦)
 LRESULT CALLBACK PropTabHookProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if ( (X_uxt[0] >= UXT_MINMODIFY) && (hControlBackBrush != NULL) ){
+	if ( (X_uxt_color >= UXT_MINMODIFY) && (hControlBackBrush != NULL) ){
 		if ( message == WM_ERASEBKGND ){
 			EraseBack(hWnd, wParam);
 			return 1;
@@ -1204,7 +1204,7 @@ void InitPropSheetsUxtheme(HWND hDlg)
 	HWND hWnd, hTabWnd;
 
 	hWnd = hDlg;
-	if ( X_uxt[0] >= UXT_MINMODIFY ){
+	if ( X_uxt_color >= UXT_MINMODIFY ){
 		if ( OldPropDarkDlgProc == NULL ){
 			hWnd = GetParent(hDlg);
 			hTabWnd = GetDlgItem(hWnd, IDT_PROP_TAB);

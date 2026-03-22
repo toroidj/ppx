@@ -3329,7 +3329,7 @@ PPXDLL int PPXAPI PP_GetExtCommand(const TCHAR *src, const TCHAR *ID, TCHAR *cmd
 			MakeFN_REGEXP(&fn, kword + 1);
 			fnresult = FilenameRegularExpression(namep, &fn);
 			FreeFN_REGEXP(&fn);
-			if ( fnresult ) goto enumhit;
+			if ( fnresult != FRRESULT_NO ) goto enumhit;
 		}
 		if ( tstrchr(kword, '.') ){			// –¼‘O‚Å”»•Ê
 			if ( !tstricmp(kword, namep) ) goto enumhit;

@@ -257,52 +257,35 @@ void PrintToConsole(const TCHAR *text)
 
 PPXDLL void USECDECL XMessage(HWND hWnd, const TCHAR *title, UINT type, const TCHAR *message, ...)
 {
-	TCHAR buf[0x400];
+	ThuSTRUCT thu;
 	DWORD flag;
 	t_va_list argptr;
 	UINT icon;
 
+	ThuInit(&thu);
 	flag = 1 << type;
 	//------------------------------------------------------ 表示内容を作成する
 	t_va_start(argptr, message);
 	if ( flag & 0x67ffffff ){
-		if ( (message[0] == '%') && (message[1] == 's') && (message[2] == '\0') ){ // %s の時は大きなデータが来ることがある
-			message = t_va_arg(argptr, TCHAR *);
-		}else{
-			message = MessageText(message);
-			if ( tstrlen(message) >= TSIZEOF(buf) ){
-				CriticalMessageBoxOk(T("Internal error : Message flow!"));
-				return;
-			}
-		#if 1
-			thvprintf(buf, TSIZEOF(buf), message, argptr);
-		#else
-			wvsprintf(buf, message, argptr);
-			buf[sizeof(buf) / sizeof(TCHAR) - 1] = '\0';
-		#endif
-			message = buf;
-		}
+		thvprintf(&thu.th, THP_CAT, MessageText(message), argptr);
+		message = ThuStrT(&thu);
 	}else if ( type <= XM_DUMPLOG ){
 		DWORD size;
-		TCHAR *destp;
 		const BYTE *srcp;
 		int i;
 
 		size = t_va_arg(argptr, DWORD);
 		srcp = (const BYTE *)message;
-		message = destp = buf;
-		if ( type == XM_DUMPLOG ) destp = thprintf(destp, 256, T("%s\r\n"), title);
+		if ( type == XM_DUMPLOG ) thprintf(&thu.th, THP_CAT, T("%s"), title);
 		while( size ){
-			if ( destp >= (buf + TSIZEOF(buf) - (PTRLEN + 1 + 6)) ) break;
-			destp = thprintf(destp, 20, T("%p :"), srcp);
+			thprintf(&thu.th, THP_CAT, T("\r\n%p :"), srcp);
 			for ( i = 0 ; i < 16 ; i++ ){
-				if ( destp >= (buf + TSIZEOF(buf) - 6) ) break;
-				destp = thprintf(destp, 8, T(" %02X"), *srcp++);
+				thprintf(&thu.th, THP_CAT, T(" %02X"), *srcp++);
 				size--;
 				if ( size == 0 ) break;
 			}
-			destp = tstpcpy(destp, T("\r\n"));
 		}
+		message = ThuStrT(&thu);
 	}else{
 		message = T("Unknown type");
 	}
@@ -362,10 +345,13 @@ PPXDLL void USECDECL XMessage(HWND hWnd, const TCHAR *title, UINT type, const TC
 			CloseHandle(hFile);
 		}
 	}
+	if ( B23 & flag ){
+		SendMessage(hWnd, WM_PPXCOMMAND, K_WINDDOWLOG, (LPARAM)message);
+	}
 	//----------------------------------------------------- ダイアログ表示/Beep
-	/* 0110 1001 1111 1111 0000 0000 1111 1111 */
-	if ( 0x69ff00ff & flag ){
-		if ( (ConsoleMode < ConsoleMode_ConsoleOnly) && !(flag & 0x60c00000) ){
+	/* 0110 1001 0110 1111 0000 0000 1111 1111 */
+	if ( 0x696f00ff & flag ){
+		if ( (ConsoleMode < ConsoleMode_ConsoleOnly) && !(flag & 0x60600000) ){
 			PMessageBox(hWnd, message, (title != NULL) ? title : PPxName,
 				MB_APPLMODAL | MB_OK | icon);
 		}else{
@@ -379,6 +365,7 @@ PPXDLL void USECDECL XMessage(HWND hWnd, const TCHAR *title, UINT type, const TC
 	}else if ( X_beep & flag & 0x1600ff00 ){
 		MessageBeep(icon);
 	}
+	ThuFree(&thu);
 	return;
 }
 
@@ -465,6 +452,9 @@ const TCHAR *PPxFontList[] = {
 	T("F_ctrl"),
 };
 
+const TCHAR StatusFontPath[] = T("Control Panel\\Desktop\\WindowMetrics");
+const TCHAR StatusFontName[] = T("StatusFont");
+
 PPXDLL void PPXAPI GetPPxFont(int type, DWORD dpi, LOGFONTWITHDPI *font)
 {
 	NONCLIENTMETRICS ncm;
@@ -483,6 +473,7 @@ PPXDLL void PPXAPI GetPPxFont(int type, DWORD dpi, LOGFONTWITHDPI *font)
 
 			case PPXFONT_F_ctrl:
 				ncm.cbSize = sizeof(ncm);
+				// SystemParametersInfoForDpi
 				SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
 				font->font = ncm.lfStatusFont;
 				// SPI_GETNONCLIENTMETRICS の dpi を取得
@@ -502,8 +493,19 @@ PPXDLL void PPXAPI GetPPxFont(int type, DWORD dpi, LOGFONTWITHDPI *font)
 
 	// 高さ指定がなければ適当に設定
 	if ( font->font.lfHeight == 0 ){
-		if ( type <= PPXFONT_F_fix ){ // F_mes, F_dlg, F_fix
+		// dialog は dpi に影響しないポイント指定なので、同じく変化しないレジストリの値を利用
+		if ( (type == PPXFONT_F_dlg) &&
+			GetRegString(HKEY_CURRENT_USER, StatusFontPath, StatusFontName,
+				(TCHAR *)&ncm.lfStatusFont,
+				sizeof(ncm.lfStatusFont) / sizeof(TCHAR)) ){ // F_dlg
+			font->font.lfHeight = ncm.lfStatusFont.lfHeight;
+			if ( font->font.lfHeight == 0 ){
+				font->font.lfHeight = T_DEFAULTFONTSIZE;
+			}
+		}else if ( type <= PPXFONT_F_fix ){ // F_mes, F_dlg, F_fix
+			// SPI_GETNONCLIENTMETRICS の値は、現在の DPI と違うタイミングで変化する
 			ncm.cbSize = sizeof(ncm);
+			// SystemParametersInfoForDpi
 			SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
 			font->font.lfHeight = ncm.lfStatusFont.lfHeight;
 			if ( font->font.lfHeight == 0 ){
@@ -534,8 +536,9 @@ PPXDLL void PPXAPI GetPPxFont(int type, DWORD dpi, LOGFONTWITHDPI *font)
 				font->font.lfWidth  = (font->font.lfWidth  * (int)dpi) / (int)font->dpi;
 			}
 		}else{ // PPXFONT_F_dlg
-			if ( OSver.dwBuildNumber < WINBUILD_10_RS2 ){
-				// Win10 RS2 以降は、マニフェストのPerMonitorV2で処理
+			if ( (WinType >= WINTYPE_10) && (OSver.dwBuildNumber < WINBUILD_10_RS2) ){
+				// Win7 以前は、フォント設定のptが変更される 8は未チェック
+				// Win10 RS2 以降は、マニフェストの PerMonitorV2 で処理
 				DWORD GDIdpi = GetGDIdpi(NULL);
 
 				if ( dpi != GDIdpi ){
@@ -1003,8 +1006,7 @@ int PMessageBoxConsole(const TCHAR *text, const TCHAR *title, UINT style)
 	DWORD old;
 	BOOL draw = TRUE;
 
-	thprintf(buf, TSIZEOF(buf), T("\r\n[%s]\r\n%s\r\n"),
-			MessageText(title), MessageText(text));
+	thprintf(buf, TSIZEOF(buf), T("\r\n[%Ms]\r\n%Ms\r\n"), title, text);
 	PrintToConsole(buf);
 
 	type = style & 0xf;
@@ -1028,8 +1030,8 @@ int PMessageBoxConsole(const TCHAR *text, const TCHAR *title, UINT style)
 					bk1 = bk2 = ' ';
 				}
 				thprintf(buf, TSIZEOF(buf),
-						((mi + 1)->text == NULL) ? T("%c%s%c") : T("%c%s%c/ "),
-						bk1, MessageText(mi->text), bk2);
+						((mi + 1)->text == NULL) ? T("%c%Ms%c") : T("%c%Ms%c/ "),
+						bk1, mi->text, bk2);
 				if ( mi->ID == IDCANCEL ) cancelbutton = bcount;
 				PrintToConsole(buf);
 				bcount++;
@@ -1522,7 +1524,7 @@ BOOL LoadResBMP(HTBMP *hTbmp, HINSTANCE hInst, LPCTSTR name, int bright)
 	hTbmp->dibfile = HeapAlloc(GetProcessHeap(), 0, size);
 	if ( hTbmp->dibfile == NULL ) return FALSE;
 	memcpy(hTbmp->dibfile, LockResource(LoadResource(hInst, hRsrc)), size);
-	if ( X_uxt[0] == UXT_DARK ){
+	if ( X_uxt_color == UXT_DARK ){
 		memcpy((BYTE *)((BYTE *)hTbmp->dibfile + 0x36), DarkPalette, sizeof(DarkPalette));
 	}
 	return InitBMP(hTbmp, NilStr, size, bright);
@@ -2171,7 +2173,7 @@ PPXDLL HWND PPXAPI CreateToolBar(ThSTRUCT *thCmd, HWND hParentWnd, UINT *ID, con
 		bsize = EnumCustTable(index++, custname, tiptext, tabledata, tablesize);
 		if ( bsize < 0 ) break;
 
-		if ( !tstrcmp(tiptext, T("@")) ){ // Bitmap
+		if ( tstrcmp(tiptext, T("@")) == 0 ){ // Bitmap
 			TCHAR *name;
 
 			name = (custname[0] == 'B') ? tbs.text + 1 : tbs.text;
@@ -2303,10 +2305,11 @@ PPXDLL BOOL PPXAPI SetToolBarTipText(HWND hToolbarWnd, ThSTRUCT *thCmd, NMHDR *n
 	TBBUTTON tb;
 	UINT ID;
 
+//	if ( nmh->hwndFrom != TabCtrl_GetToolTips(hToolbarWnd) ) return FALSE;
 	ID = (UINT)SendMessage(hToolbarWnd, TB_COMMANDTOINDEX, nmh->idFrom, 0);
 	if ( (int)ID < 0 ) return FALSE;
 	if ( !SendMessage(hToolbarWnd, TB_GETBUTTON, ID, (LPARAM)&tb) ) return FALSE;
-	if ( (thCmd->bottom == NULL) || (tb.dwData >= thCmd->top) ) return FALSE;
+	if ( (thCmd->bottom == NULL) || (tb.dwData == 0) || (tb.dwData >= thCmd->top) ) return FALSE;
 	p = (BYTE *)(thCmd->bottom + tb.dwData);
 	((LPTOOLTIPTEXT)nmh)->lpszText = (TCHAR *)(BYTE *)(p + *(WORD *)(p - 2));
 	((LPTOOLTIPTEXT)nmh)->hinst = NULL;
@@ -2318,6 +2321,7 @@ PPXDLL TCHAR * PPXAPI GetToolBarCmd(HWND hToolbarWnd, ThSTRUCT *thCmd, UINT ID)
 	TBBUTTON tb;
 
 	ID = (UINT)SendMessage(hToolbarWnd, TB_COMMANDTOINDEX, ID, 0);
+	if ( (int)ID < 0 ) return NULL;
 	if ( !SendMessage(hToolbarWnd, TB_GETBUTTON, ID, (LPARAM)&tb) ) return NULL;
 	SendMessage(hToolbarWnd, TB_GETBUTTON, ID, (LPARAM)&tb);
 	return (TCHAR *)(BYTE *)(thCmd->bottom + tb.dwData);
@@ -2455,6 +2459,7 @@ PPXDLL int PPXAPI GetAccessApplications(const TCHAR *checkpath, TCHAR *text)
 void InitSysColors_main(void)
 {
 	ThemeColors.ExtraDrawFlags = 0;
+	GetCustData(T("X_vclr"), &X_vclr, sizeof(X_vclr));
 	GetCustData(T("C_win"), &ThemeColors.c, sizeof(ThemeColors.c));
 /*
 	if ( C_WindowText == C_AUTO ){ // Ver1.76 カラーテーマの設定ミス対策
@@ -2462,10 +2467,10 @@ void InitSysColors_main(void)
 		if ( C_WindowBack == 0xffffff ) C_WindowText = C_BLACK;
 	}
 */
-	if ( X_uxt[0] >= UXT_MINPRESET ){
+	if ( X_uxt_color >= UXT_MINPRESET ){
 		const C_WIN_COLORS *cw;
 
-		cw = (X_uxt[0] == UXT_LIGHT) ? &C_Win_Light : &C_Win_Dark; // UXT_LIGHT / UXT_DARK 切り替え
+		cw = (X_uxt_color == UXT_LIGHT) ? &C_Win_Light : &C_Win_Dark; // UXT_LIGHT / UXT_DARK 切り替え
 		PRESETCOLOR(C_FrameHighlight, cw->FrameHighlight);
 		PRESETCOLOR(C_FrameFace, cw->FrameFace);
 		PRESETCOLOR(C_FrameShadow, cw->FrameShadow);
@@ -2500,7 +2505,7 @@ void InitSysColors_main(void)
 		DEFWINCOLOR(C_GrayText, COLOR_GRAYTEXT);
 		if ( C_DialogText == C_AUTO ){
 			C_DialogText = GetSysColor(COLOR_WINDOWTEXT);
-			if ( X_uxt[0] >= UXT_MINMODIFY ){
+			if ( X_uxt_color >= UXT_MINMODIFY ){
 				setflag(ThemeColors.ExtraDrawFlags, EDF_DIALOG_BACK);
 			}
 		}else{
@@ -2861,4 +2866,47 @@ PPXDLL LRESULT PPXAPI DarkMenuWndProc(HWND hWnd, HANDLE *hMenuTheme, UINT messag
 
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+// 明るさを 0-255000 で表現
+#define ColorBrightR 299
+#define ColorBrightG 587
+#define ColorBrightB 114
+#define ColorBright(color) (((int)GetRValue(color) * ColorBrightR) + ((int)GetGValue(color) * ColorBrightG) + ((int)GetBValue(color) * ColorBrightB))
+#define ColorVisibleBright 50000
+#define ColorVisibleBoost 20000
+void VisibledTextColor(COLORREF *text_color, COLORREF back_color)
+{
+	int text_bright, back_bright, diff_bright;
+	int r, g, b;
+
+	text_bright = ColorBright(*text_color);
+	back_bright = ColorBright(back_color);
+
+	diff_bright = text_bright - back_bright;
+	if ( (diff_bright >= ColorVisibleBright) ||
+		 (diff_bright <= -ColorVisibleBright) ){
+		return;
+	}
+//	XMessage(NULL, NULL, XM_DbgLOG, T("color visib %x %d"),*text_color,diff_bright);
+	if ( diff_bright > 0 ){ // 文字の明るさ不足
+		diff_bright = ColorVisibleBright - diff_bright;
+		if ( diff_bright < ColorVisibleBoost ) diff_bright = ColorVisibleBoost;
+		r = (int)GetRValue(*text_color) + (diff_bright / ColorBrightR);
+		if ( r > 255 ) r = 255;
+		g = (int)GetGValue(*text_color) + (diff_bright / ColorBrightG);
+		if ( g > 255 ) g = 255;
+		b = (int)GetBValue(*text_color) + (diff_bright / ColorBrightB);
+		if ( b > 255 ) b = 255;
+	}else{ // 文字の暗さ不足
+		diff_bright = -ColorVisibleBright - diff_bright;
+		if ( diff_bright > -ColorVisibleBoost ) diff_bright = -ColorVisibleBoost;
+		r = (int)GetRValue(*text_color) + (diff_bright / ColorBrightR);
+		if ( r < 0 ) r = 0;
+		g = (int)GetGValue(*text_color) + (diff_bright / ColorBrightG);
+		if ( g < 0 ) g = 0;
+		b = (int)GetBValue(*text_color) + (diff_bright / ColorBrightB);
+		if ( b < 0 ) b = 0;
+	}
+	*text_color = RGB(r, g, b);
 }

@@ -1650,9 +1650,8 @@ void TreeItemDelete(VFSTREESTRUCT *VTS, WORD key, HTREEITEM hTreeitem)
 	tvi.cchTextMax = TSIZEOF(tvibuf);
 	TreeView_GetItem(VTS->hTViewWnd, &tvi);
 
-	thprintf(buf, TSIZEOF(tvibuf), T("%s %s"), tvibuf,
-			MessageText((VTS->TreeType == TREETYPE_DIRECTORY) ?
-			MES_QDL1 : MES_QDL4));
+	thprintf(buf, TSIZEOF(tvibuf), T("%s %Ms"), tvibuf,
+			(VTS->TreeType == TREETYPE_DIRECTORY) ? MES_QDL1 : MES_QDL4);
 	result = PMessageBox(VTS->hTViewWnd, buf, MES_TDEL, treedeletemesboxstyle[X_wdel[2]]);
 	if ( (result != IDOK) && (result != IDYES) ) return;
 
@@ -1691,8 +1690,8 @@ void TreeItemDelete(VFSTREESTRUCT *VTS, WORD key, HTREEITEM hTreeitem)
 			}
 			DeleteCustTable(custname, NULL, index);
 			if ( (buf[0] == '%') && (buf[1] == 'M') ){
-				thprintf(tvibuf, TSIZEOF(tvibuf),
-						T("%s %s"), buf + 1, MessageText(MES_QDL1));
+				thprintf(tvibuf, TSIZEOF(tvibuf), T("%s %Ms"),
+						buf + 1, MES_QDL1);
 				result = PMessageBox(VTS->hTViewWnd, tvibuf, MES_TDEL, treedeletemesboxstyle[X_wdel[2]]);
 				if ( (result == IDOK) || (result == IDYES) ){
 					DeleteCustData(buf + 1);
@@ -2806,10 +2805,10 @@ void InitDirectroyTree(VFSTREESTRUCT *VTS, const TCHAR *selectpath)
 	TCHAR name[VFPS];
 	DWORD drive;
 										// #: ---------------------------------
-	thprintf(buf, TSIZEOF(buf), T("#:> %s"), MessageText(MES_FEXP));
+	thprintf(buf, TSIZEOF(buf), T("#:> %Ms"), MES_FEXP);
 	AddItemToTreePath(VTS, buf, TVI_ROOT, selectpath);
 										// : ----------------------------------
-	tvi.cchTextMax = thprintf(buf, TSIZEOF(buf), T(":> %s"), MessageText(MES_FMYF)) - buf;
+	tvi.cchTextMax = thprintf(buf, TSIZEOF(buf), T(":> %Ms"), MES_FMYF) - buf;
 	tvi.pszText = buf;
 	tvi.lParam = MAXLPARAM;
 	if ( VTS->X_tree & XTREE_SHOWICON ){
@@ -2824,7 +2823,7 @@ void InitDirectroyTree(VFSTREESTRUCT *VTS, const TCHAR *selectpath)
 	TreeInsertItemValue(tvins) = tvi;
 	SendMessage(VTS->hTViewWnd, TVM_INSERTITEM, 0, (LPARAM)(LPTV_INSERTSTRUCT)&tvins);
 										// \\ ---------------------------------
-	thprintf(buf, TSIZEOF(buf), T("\\\\> %s"), MessageText(MES_FNET));
+	thprintf(buf, TSIZEOF(buf), T("\\\\> %Ms"), MES_FNET);
 	AddItemToTreePath(VTS, buf, TVI_ROOT, selectpath);
 										// x: ---------------------------------
 	name[1] = ':';

@@ -34,11 +34,11 @@ void MakeDriveList(FF_MC *mc)
 	ThAddString(&mc->dirs, (X_dlf & XDLF_ROOTJUMP) ? T("#:\\") : T("#:"));
 	if ( X_dlf & XDLF_DISPDRIVETITLE ){
 		mc->dirs.top -= sizeof(TCHAR);
-		thprintf(&mc->dirs, THP_ADD, T("> %s"), MessageText(MES_FEXP));
+		thprintf(&mc->dirs, THP_ADD, T("> %Ms"), MES_FEXP);
 	}
 										// u\\v==============================
 	if ( X_dlf & XDLF_DISPDRIVETITLE ){
-		thprintf(&mc->dirs, THP_ADD, T("\\\\> %s"), MessageText(MES_FNET));
+		thprintf(&mc->dirs, THP_ADD, T("\\\\> %Ms"), MES_FNET);
 	}else{
 		ThAddString(&mc->dirs, T("\\\\"));
 	}

@@ -451,7 +451,7 @@ typedef struct { // 色エイリアス
 	COLORREF num;		//	値
 } COLORLABEL;
 
-#define ColorNameListTotal (21 + (C_Scheme1_MAX - C_Scheme1_MIN + 1) + (C_Scheme2_MAX - C_Scheme2_MIN + 1))
+#define ColorNameListTotal (21 + (C_S_LINE_MOD - C_S_BACK + 1) + (C_S_RESERVED - C_S_BLACK + 1))
 extern COLORLABEL ColorNameList[ColorNameListTotal];
 
 #ifdef _WIN64
@@ -483,8 +483,8 @@ extern void EnableDlgWindow(HWND hDlg, int id, BOOL state);
 extern void ShowDlgWindow(const HWND hDlg, const UINT id, BOOL show);
 extern void FixBeforeDialog(HWND hParentWnd);
 extern BOOL DialogKeyProc(MSG *msg);
-extern int IsUseRichEdit(void);
-extern const TCHAR *RichEditClassname(void);
+extern int IsUseRichEdit(int mode);
+extern const TCHAR *RichEditClassname(int mode);
 
 //------------------------------------------------------------------ ppd_edl.c
 extern void CleanUpEdit(void);
@@ -762,6 +762,7 @@ extern DWORD UseConsoleKey(void);
 extern void FreeConsoleKey(DWORD oldmode);
 extern int ReadConsoleKey(void);
 extern HANDLE hConsoleStdIn;
+extern void VisibledTextColor(COLORREF *text_color, COLORREF back_color);
 
 //------------------------------------------------------------------ ppd_wild.c
 extern void FreeRegexpDll(void);

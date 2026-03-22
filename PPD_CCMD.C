@@ -264,10 +264,10 @@ void KeymapMenuMain(const TCHAR *MenuName, const TCHAR *KeyName, int menunested)
 										// 列挙の開始 -------------------------
 	while( EnumCustTable(count, MenuName, keyword, param, sizeof(param)) > 0 ){
 		count++;
-		if ( !tstrcmp(keyword, T("||")) ){		// 改桁 ======================
+		if ( tstrcmp(keyword, T("||")) == 0 ){	// 改桁 ======================
 			continue;
 		}
-		if ( !tstrcmp(keyword, T("--")) ){		// セパレータ ================
+		if ( tstrcmp(keyword, T("--")) == 0 ){	// セパレータ ================
 			continue;
 		}
 		p = param;							// 階層メニュー ==============
@@ -476,7 +476,7 @@ void ConnectTOROsite(HWND hWnd)
 {
 	TCHAR buf[0x400];
 
-	thprintf(buf, TSIZEOF(buf), T("%s (url: %s )"), MessageText(MES_QTWP), webpage);
+	thprintf(buf, TSIZEOF(buf), T("%Ms (url: %s )"), MES_QTWP, webpage);
 	if ( PMessageBox(hWnd, buf, MES_TTWP,
 			MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION) == IDYES){
 		ComExecSelf(hWnd, webpage, DLLpath, 0, NULL);
@@ -880,7 +880,7 @@ PPXDLL LRESULT PPXAPI PPxCommonExtCommand(WORD key, WPARAM wParam)
 					return C_WindowBack;
 
 				case KUT_SETTINGCHANGE:
-					return (GetUxtMode() != X_uxt[0]);
+					return (GetUxtMode() != X_uxt_color);
 
 				case KUT_NEW_UXT:
 					return (LRESULT)GetUxtMode();
@@ -889,7 +889,7 @@ PPXDLL LRESULT PPXAPI PPxCommonExtCommand(WORD key, WPARAM wParam)
 					ReloadUnthemeCmd();
 
 				case KUT_INIT:
-					if ( X_uxt[0] == UXT_NA ) InitUnthemeCmd();
+					if ( X_uxt_color == UXT_NA ) InitUnthemeCmd();
 					// default:
 //				case KUT_NOW_UXT:
 					// default:
@@ -897,7 +897,7 @@ PPXDLL LRESULT PPXAPI PPxCommonExtCommand(WORD key, WPARAM wParam)
 					if ( (wParam > 0x10000) && (*(DWORD *)wParam == KUTS_COLORS) ){
 						memcpy((BYTE *)wParam, &ThemeColors, min(sizeof(ThemeColors), *(((DWORD *)wParam) + 1)));
 					}
-					return X_uxt[0];
+					return X_uxt_color;
 			}
 
 		case K_ConsoleMode:

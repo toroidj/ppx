@@ -372,7 +372,7 @@ BOOL ListWindowItem(HWND hWnd, SETLISTSTRUCT *parent, HTREEITEM hParentitem)
 				p = name + FindExtSeparator(name);
 
 				*p = '\0';
-				if ( FilenameRegularExpression(name, &parent->adl->mask_filename) == FALSE ){
+				if ( FilenameRegularExpression(name, &parent->adl->mask_filename) == FRRESULT_NO ){
 					return FALSE;
 				}
 
@@ -430,7 +430,7 @@ void SetListItem(HWND hWnd, AUTODDLIST *adl, SETLISTSTRUCT *parent)
 		tstrcpy(title, MessageText(MES_PJDE));
 	}
 	if ( parent == NULL ){
-		if ( FilenameRegularExpression(title, &adl->mask_title) == FALSE ){
+		if ( FilenameRegularExpression(title, &adl->mask_title) == FRRESULT_NO ){
 			return;
 		}
 	}

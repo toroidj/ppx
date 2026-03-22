@@ -646,7 +646,8 @@ DWORD ConvertToShortPathSplit(WCHAR *path) // 全体を短くできなかった→最終エント
 	WCHAR dir[(VFPS * 2) + 16], *sep;
 	DWORD len, newlen;
 
-	sep = strrchrW(path, '\\'); // 常に \ は見つかる
+	sep = strrchrW(path, '\\');
+	if ( sep == NULL ) sep = path + strlenW(sep);
 	*sep = '\0';
 	len = GetShortPathNameW(path, dir, sizeof(dir) / sizeof(WCHAR));
 	*sep = '\\';
@@ -1153,40 +1154,49 @@ lenerror:
 -----------------------------------------------------------------------------*/
 VFSDLL ERRORCODE PPXAPI MakeDirectories(const TCHAR *dst, const TCHAR *src)
 {
-	BOOL err;
-	ERRORCODE result = NO_ERROR;
+	BOOL result;
+	ERRORCODE errcode = NO_ERROR;
 	TCHAR *shortsrc = NULL, shortsrcbuf[VFPS], shortdst[VFPS], *wp;
 
 	#ifndef UNICODE
 		if ( WinType == WINTYPE_9x ) src = NULL;
 	#endif
 	if ( src != NULL ){
-		err = CreateDirectoryExL(src, dst, NULL);
+		result = CreateDirectoryExL(src, dst, NULL);
 	}else{
-		err = CreateDirectoryL(dst, NULL);
+		result = CreateDirectoryL(dst, NULL);
 	}
-	if ( err == FALSE ){
-		result = GetLastError();
+	if ( result == FALSE ){
+		errcode = GetLastError();
 
 		if ( !memcmp(dst, StrFtp, StrFtpSize) ){
-			result = CreateFtpDirectory(dst);
-			if ( result == NO_ERROR ) return NO_ERROR;
+			errcode = CreateFtpDirectory(dst);
+			if ( errcode == NO_ERROR ) return NO_ERROR;
 		}
 		if ( !memcmp(dst, StrAux, StrAuxSize) ){
-			result = AuxFileOperation(T("makedir"), dst, NilStr, NilStr);
-			if ( result == NO_ERROR ) return NO_ERROR;
+			errcode = AuxFileOperation(T("makedir"), dst, NilStr, NilStr);
+			if ( errcode == NO_ERROR ) return NO_ERROR;
 		}
 		// FILE_ATTRIBUTE_VIRTUAL のときは、ERROR_INVALID_PARAMETER がでる
 		// Samba で ERROR_INVALID_LEVEL がでる
 		if ( (src != NULL) &&
-			 ((result == ERROR_ACCESS_DENIED) || (result == ERROR_INVALID_PARAMETER) || (result == ERROR_INVALID_LEVEL)) ){
-			result = NO_ERROR;
-			if ( CreateDirectoryL(dst, NULL) == FALSE ) result = GetLastError();
+			 ((errcode == ERROR_ACCESS_DENIED) || (errcode == ERROR_INVALID_PARAMETER) || (errcode == ERROR_INVALID_LEVEL)) ){
+			errcode = NO_ERROR;
+			if ( CreateDirectoryL(dst, NULL) == FALSE ) errcode = GetLastError();
 		}
-		if ( result == ERROR_PATH_NOT_FOUND ){
+
+		if ( errcode == ERROR_ALREADY_EXISTS ) return NO_ERROR; // 別スレッドで作成された
+
+		// 既に存在しているが、アクセスできない場合は正常終了扱い
+		if ( (errcode == ERROR_ACCESS_DENIED) &&
+			 (GetFileAttributesL(dst) != BADATTR) ){
+			return NO_ERROR;
+		}
+
+		if ( errcode == ERROR_PATH_NOT_FOUND ){
 			tstrcpy(shortdst, dst);
 			wp = VFSFindLastEntry(shortdst);
-			if ( *wp ){
+			if ( *wp != '\0' ){
 				*wp = '\0';
 				if ( src != NULL ){
 					tstrcpy(shortsrcbuf, src);
@@ -1194,20 +1204,23 @@ VFSDLL ERRORCODE PPXAPI MakeDirectories(const TCHAR *dst, const TCHAR *src)
 					if ( *wp != '\0' ) *wp = '\0';
 					shortsrc = shortsrcbuf;
 				}
-				result = MakeDirectories(shortdst, shortsrc);
-				if ( result == NO_ERROR ){
+				errcode = MakeDirectories(shortdst, shortsrc);
+				if ( errcode == NO_ERROR ){
 					if ( src != NULL ){
-						err = CreateDirectoryExL(src, dst, NULL);
+						result = CreateDirectoryExL(src, dst, NULL);
 					}else{
-						err = CreateDirectoryL(dst, NULL);
+						result = CreateDirectoryL(dst, NULL);
 					}
-					if ( err == FALSE ) result = GetLastError();
+					if ( result == FALSE ){
+						errcode = GetLastError();
+						if ( errcode == ERROR_ALREADY_EXISTS ) errcode = NO_ERROR; // 別スレッドで作成された
+					}
 				}
 			}
 		}
 	}
 	// 時刻の複写
-	while ( (src != NULL) && (result == NO_ERROR) ){
+	while ( (src != NULL) && (errcode == NO_ERROR) ){
 		HANDLE hFile;
 		FILETIME fc, fa, fw;
 
@@ -1228,7 +1241,7 @@ VFSDLL ERRORCODE PPXAPI MakeDirectories(const TCHAR *dst, const TCHAR *src)
 		CloseHandle(hFile);
 		break;
 	}
-	return result;
+	return errcode;
 }
 
 typedef struct {

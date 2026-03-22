@@ -99,7 +99,7 @@ HPALETTE DIBtoPalette(HTBMP *hTbmp, int mode, int maxY)
 		if ( IsBadReadPtr(rgb, ClrUsed * sizeof(RGBQUAD)) ) return NULL;
 
 		if ( mode == BMPFIX_TOOLBAR ){ // ツールバーの背景色を決定
-			if ( X_uxt[0] < UXT_MINPRESET ){
+			if ( X_uxt_color < UXT_MINPRESET ){
 				t_clr = GetSysColor(COLOR_BTNFACE);
 
 				if ( DIsAppThemed == NULL ){

@@ -45,9 +45,13 @@ ERRORCODE CheckEntryMask(FOPSTRUCT *FS, const TCHAR *src, DWORD srcattr)
 		}else{
 			ff.dwFileAttributes = srcattr;
 		}
-		if ( FinddataRegularExpression(&ff, &FS->maskFn) ) return ERROR_ALREADY_EXISTS;
+		if ( FinddataRegularExpression(&ff, &FS->maskFn) != FRRESULT_NO ){
+			return ERROR_ALREADY_EXISTS;
+		}
 	}else{
-		if ( FilenameRegularExpression(name, &FS->maskFn) ) return ERROR_ALREADY_EXISTS;
+		if ( FilenameRegularExpression(name, &FS->maskFn) != FRRESULT_NO ){
+			return ERROR_ALREADY_EXISTS;
+		}
 	}
 	FopLog(FS, src, NULL, LOG_SKIP);
 	return NO_ERROR;

@@ -205,6 +205,7 @@ label s_ekey[EKEY_MAX + 1] = {
 
 COLORLABEL ColorNameList[ColorNameListTotal] =
 {
+// basic colors(20)
 	{T("_BLA"), C_BLACK},
 	{T("_BLU"), C_BLUE},
 	{T("_RED"), C_RED},
@@ -229,38 +230,38 @@ COLORLABEL ColorNameList[ColorNameListTotal] =
 	{T("_SBLU"), C_SBLUE},
 	{T("_CREM"), C_CREAM},
 	{T("_GRAY"), C_GRAY},
-
+// C_Scheme1 (C_S_BACK - C_S_LINE_MOD)
 	{T("_BACK"), C_S_BACK},
 	{T("_MES"), C_S_MES},
 	{T("_INFO"), C_S_INFO},
 	{T("_LINE"), C_S_LINE},
 	{T("_LINEMOD"), C_S_LINE_MOD},
-
+// C_Scheme2
 	{T("_SBLACK"), C_S_BLACK},
 	{T("_SRED"), C_S_RED},
 	{T("_SGREEN"), C_S_GREEN},
-	{T("_SBLUE"), C_S_BLUE},
 	{T("_SYELLOW"), C_S_YELLOW},
-	{T("_SCYAN"), C_S_CYAN},
+	{T("_SBLUE"), C_S_BLUE},
 	{T("_SPURPLE"), C_S_PURPLE},
+	{T("_SCYAN"), C_S_CYAN},
 	{T("_SWHITE"), C_S_WHITE},
 
 	{T("_SBRBLACK"), C_S_BR_BLACK},
 	{T("_SBRRED"), C_S_BR_RED},
 	{T("_SBRGREEN"), C_S_BR_GREEN},
-	{T("_SBRBLUE"), C_S_BR_BLUE},
 	{T("_SBRYELLOW"), C_S_BR_YELLOW},
-	{T("_SBRCYAN"), C_S_BR_CYAN},
+	{T("_SBRBLUE"), C_S_BR_BLUE},
 	{T("_SBRPURPLE"), C_S_BR_PURPLE},
+	{T("_SBRCYAN"), C_S_BR_CYAN},
 	{T("_SBRWHITE"), C_S_BR_WHITE},
 
 	{T("_SBKBLACK"), C_S_BK_BLACK},
 	{T("_SBKRED"), C_S_BK_RED},
 	{T("_SBKGREEN"), C_S_BK_GREEN},
-	{T("_SBKBLUE"), C_S_BK_BLUE},
 	{T("_SBKYELLOW"), C_S_BK_YELLOW},
-	{T("_SBKCYAN"), C_S_BK_CYAN},
+	{T("_SBKBLUE"), C_S_BK_BLUE},
 	{T("_SBKPURPLE"), C_S_BK_PURPLE},
+	{T("_SBKCYAN"), C_S_BK_CYAN},
 	{T("_SBKWHITE"), C_S_BK_WHITE},
 
 	{T("_SBACK"), C_S_BACKGROUND},
@@ -271,7 +272,7 @@ COLORLABEL ColorNameList[ColorNameListTotal] =
 	{T("_SCURSOR"), C_S_CURSOR},
 	{T("_SFRAME"), C_S_FRAME},
 	{T("_SRESERVED"), C_S_RESERVED},
-
+// auto
 	{T("_AUTO"), C_AUTO}
 };
 
@@ -1142,7 +1143,7 @@ PPXDLL TCHAR * PPXAPI FormatNumber(TCHAR *str, DWORD flags, int length, DWORD lo
 // 色設定 ---------------------------------------------------------------------
 PPXDLL COLORREF PPXAPI GetColor(LPCTSTR *linesrc, BOOL usealias)
 {
-	TCHAR buf[100], *dst, data;
+	TCHAR buf[64], *dst, data;
 	const TCHAR *pt;
 	int i;
 	COLORREF color;
@@ -1152,7 +1153,7 @@ PPXDLL COLORREF PPXAPI GetColor(LPCTSTR *linesrc, BOOL usealias)
 	dst = buf;
 	if ( (UTCHAR)(data = *pt++) >= (UTCHAR)'A' ){
 		for (;;){
-			*dst++ = data;
+			if ( dst < (buf + TSIZEOF(buf) - 1) ) *dst++ = data;
 			if ( ((UTCHAR)(data = *pt++) >= (UTCHAR)'A') || Isdigit(data) ){
 				continue;
 			}
@@ -1160,14 +1161,14 @@ PPXDLL COLORREF PPXAPI GetColor(LPCTSTR *linesrc, BOOL usealias)
 		}
 	}
 	*dst = '\0';
-										// 追加識別子を判別
+										// エイリアスを判別
 	if ( usealias ){	// A_color は自己参照させない
 		if ( NO_ERROR == GetCustTable(T("A_color"), buf, &color, sizeof(color)) ){
 			*linesrc = pt - 1;
 			return color;
 		}
 	}
-										// 定義済み識別子を判別
+										// 定義済みキーワードを判別
 	if ( buf[0] == '_' ) for ( i = 0 ; i < ColorNameListTotal ; i++ ){
 		if ( tstrcmp(buf + 1, ColorNameList[i].str + 1) == 0 ){
 			*linesrc = pt - 1;
@@ -1208,7 +1209,7 @@ PPXDLL COLORREF PPXAPI GetSchemeColor(COLORREF colorvalue, COLORREF defaultcolor
 {
 	if ( colorvalue <= 0xFFffFF ) return colorvalue;
 	if ( colorvalue >= C_S_AUTO ) colorvalue = defaultcolor;
-	if ( X_uxt[0] == UXT_NA ) InitUnthemeCmd();
+	if ( X_uxt_color == UXT_NA ) InitUnthemeCmd();
 	if ( (colorvalue >= C_Scheme1_MIN) && (colorvalue <= C_Scheme1_MAX) ){
 		if ( C_SchemeColor1[0] == C_AUTO ) LoadSchemeColor1();
 		colorvalue = C_SchemeColor1[colorvalue - C_Scheme1_MIN];
@@ -1217,7 +1218,7 @@ PPXDLL COLORREF PPXAPI GetSchemeColor(COLORREF colorvalue, COLORREF defaultcolor
 	if ( (colorvalue >= C_Scheme2_MIN) && (colorvalue <= C_Scheme2_MAX) ){
 		if ( C_SchemeColor2[0] == C_AUTO ){
 			C_SchemeColor2[0] = C_SchemeColor2_def0;
-			GetCustData( (X_uxt[0] == UXT_DARK) ? T("C_schD") : T("C_schN"),
+			GetCustData( (X_uxt_color == UXT_DARK) ? T("C_schD") : T("C_schN"),
 					&C_SchemeColor2, sizeof(C_SchemeColor2));
 		}
 		return C_SchemeColor2[colorvalue - C_Scheme2_MIN];

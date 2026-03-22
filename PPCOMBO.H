@@ -3,10 +3,12 @@
 
 	_Path の記憶情報
 		現在窓ID 反対窓ID 左端ペインの１番目タブID … 最終ペインの最終タブID
+		※現在窓ID/反対窓ID に該当がない場合は「?」
 		※ペイン毎にタブ一覧がある場合、境界に「-」を記載
 
-		窓ID	一文字目大文字、二文字目以降小文字 (A,Zabc)
-		タブID	窓ID [$:ロック中] [n:ペイン番号] [.n:タブグループ番号]
+		窓ID        一文字目大文字、二文字目以降小文字 (A,Zabc)
+		グループID  ?グループ名?   エスケープ %%→%, %&→?, %英小文字→英大文字
+		タブID      窓ID [$:ロック中] [n:ペイン番号] [.n:タブ内ペイン番号]
 
 -----------------------------------------------------------------------------*/
 #ifdef __cplusplus
@@ -26,7 +28,7 @@ extern "C" {
 #define AREAMINSAVESIZE 10 // 設定を記憶する最低限の大きさ（小さいと次回起動時に戻る）
 #define BOTTOM_AREAMINSIZE 100
 
-#define MTASKLEN 14 // _Pathに保存する情報量 [GRP:??(2)][ID:xxxx (4)][lock:$ (1)][num:0000 (4)][sep:-(1)]
+#define MTASKLEN 20 // _Pathに保存する情報量 [GRP:??(2)][ID:xxxx (4)][lock:$ (1)][num:0000 (4)][group:.0000 (5)][sep:-(1)]
 // ID: Aabc
 #define Panelistsize(count) ((count + 2) * MTASKLEN + 16)
 
@@ -188,6 +190,18 @@ typedef struct tagCOMBOSTRUCT {
 
 extern COMBOSTRUCT Combo;
 
+typedef struct {
+	HWND hWnd;		// 自分自身の hWnd
+	MOUSESTATE ms;
+	WNDPROC hOldProc;	// 親のウィンドウプロージャ
+	struct {
+#define THS_SHOW_NODRAG -2
+#define THS_SHOW_CANCELDRAG -1
+		int showindex;
+		int tabindex, width;
+	} DDinfo;
+} TABHOOKSTRUCT;
+
 //=============================================================================
 #ifndef CGLOBALDEFINE
 	#define GVAR extern
@@ -246,27 +260,6 @@ extern void SortComboWindows(int fixshowindex);
 
 extern void KCW_FocusFix(HWND hWnd, HWND hTargetWnd);
 
-// PPCOMBOS.C
-extern void ResetSubFocus(TCHAR *buf);
-extern void CheckComboTable(const TCHAR *p1);
-extern void WmComboDestroy(BOOL EndSession);
-extern ERRORCODE PaneCommand(const TCHAR *param, int targetbaseindex);
-extern void SetComboAddresBar(const TCHAR *path);
-extern void EnterAddressBar(void);
-extern void SetComboReportText(const TCHAR *text);
-extern void ComboCust(BOOL reload);
-extern void CloseLeftArea(void);
-extern void CreateLeftArea(DWORD mode, const TCHAR *initpath, BOOL sync);
-extern void CreateJobArea(void);
-extern void InitComboGUI(BOOL reload);
-extern HWND CreateComboTabBar(const TCHAR *groupname);
-#define NewTabGroup_First -1 // 新規ペイン+グループ作成のとき
-extern ERRORCODE NewTabGroup(int targetpane, const TCHAR *groupname);
-extern const TCHAR * NewTabGroupName(TCHAR *name);
-extern void CreateTabGroupSelector(COMBOTABINFO *tabs);
-extern void LoadX_Combos(void);
-extern void SaveX_Combos(void);
-
 // PPCOMBOB.C	ツールバー
 extern void ComboCreateToolBar(HWND hWnd);
 extern void ComboToolbarCommand(int id, int orcode);
@@ -322,22 +315,29 @@ extern void DrawTab(DRAWITEMSTRUCT *dis);
 extern void Tab_MovePosition(HWND hSrcTabWnd, int SrcTabIndex, int DestShowIndex, int DestTabIndex, int DestGroupIndex);
 extern ERRORCODE NewTabGroupMain(int targetpane, const TCHAR *groupname);
 extern void EraseTabBkgnd(HWND hWnd, WPARAM wParam);
-
-
-typedef struct {
-	HWND hWnd;		// 自分自身の hWnd
-	MOUSESTATE ms;
-	WNDPROC hOldProc;	// 親のウィンドウプロージャ
-	struct {
-#define THS_SHOW_NODRAG -2
-#define THS_SHOW_CANCELDRAG -1
-		int showindex;
-		int tabindex, width;
-	} DDinfo;
-} TABHOOKSTRUCT;
-
 extern int PPxDownMouseButtonX(TABHOOKSTRUCT *THS, WPARAM wParam, LPARAM lParam);
-extern VOID CALLBACK HideCloseButtonProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
+
+// PPCOMBOS.C
+extern void ResetSubFocus(TCHAR *buf);
+extern void CheckComboTable(const TCHAR *p1);
+extern void WmComboDestroy(BOOL EndSession);
+extern ERRORCODE PaneCommand(const TCHAR *param, int targetbaseindex);
+extern void SetComboAddresBar(const TCHAR *path);
+extern void EnterAddressBar(void);
+extern void SetComboReportText(const TCHAR *text);
+extern void ComboCust(BOOL reload);
+extern void CloseLeftArea(void);
+extern void CreateLeftArea(DWORD mode, const TCHAR *initpath, BOOL sync);
+extern void CreateJobArea(void);
+extern void InitComboGUI(BOOL reload);
+extern HWND CreateComboTabBar(const TCHAR *groupname);
+#define NewTabGroup_First -1 // 新規ペイン+グループ作成のとき
+extern ERRORCODE NewTabGroup(int targetpane, const TCHAR *groupname);
+extern const TCHAR * NewTabGroupName(TCHAR *name);
+extern void CreateTabGroupSelector(COMBOTABINFO *tabs);
+extern void LoadX_Combos(void);
+extern void SaveX_Combos(void);
+extern void NewTabGroupCare(int showindex);
 
 #define SIZEBAND 5 // 幅調整の認識幅
 

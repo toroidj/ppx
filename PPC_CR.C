@@ -467,7 +467,7 @@ void WINAPI CRmenuDelayLoad(DelayLoadMenuStruct *DelayMenus)
 	DelayMenus->hMenu = INVALID_HANDLE_VALUE; // Ä“xŒÄ‚Î‚ê‚È‚¢‚æ‚¤‚É‚·‚é
 }
 
-BOOL IsArcInArc(PPC_APPINFO *cinfo)
+int IsArcInArc(PPC_APPINFO *cinfo)
 {
 	TCHAR *fp, *ep;
 	BOOL arcmode = FALSE;
@@ -1077,7 +1077,7 @@ void RegisterAction(PPC_APPINFO *cinfo, HMENU hMenu, PPCMENUINFO *cminfo, BOOL a
 	}else{ // •s–¾ID‚Í‰½‚à‚µ‚È‚¢
 		return;
 	}
-	thprintf(param, TSIZEOF(param), T("%s(%s)"), MessageText(SaveSettingsStr), TypeName);
+	thprintf(param, TSIZEOF(param), T("%Ms(%s)"), SaveSettingsStr, TypeName);
 	SetPopMsg(cinfo, POPMSG_MSG, param);
 }
 
@@ -1479,9 +1479,11 @@ void PPcCRMenuOnMenu(PPC_APPINFO *cinfo, PPCMENUINFO *cminfo)
 			if ( (DWORD)cminfo->x.index < cminfo->comID ){
 				GetCcrID(cinfo, cminfo->cellindex, param + CMDLINESIZE / 2);
 				thprintf(dst, CMDLINESIZE / 2 - 5, T("%s:#%d"),
-					param + CMDLINESIZE / 2 + 5, cminfo->x.index - CRID_EXTMENU);
+						param + CMDLINESIZE / 2 + 5,
+						cminfo->x.index - CRID_EXTMENU);
 			}else{
-				thprintf(dst, CMDLINESIZE / 2 - 5, T(":#%d"), cminfo->x.index - cminfo->comID);
+				thprintf(dst, CMDLINESIZE / 2 - 5, T(":#%d"),
+						cminfo->x.index - cminfo->comID);
 			}
 			PP_ExtractMacro(cinfo->info.hWnd, &cinfo->info, NULL, param, NULL, 0);
 			break;

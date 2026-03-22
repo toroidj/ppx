@@ -775,7 +775,7 @@ void DrawTab(DRAWITEMSTRUCT *dis)
 		oldfc = SetTextColor(dis->hDC, Combo.base[baseindex].tabtextcolor);
 	}else if ( C_capt[select_index] != C_AUTO ) {
 		oldfc = SetTextColor(dis->hDC, C_capt[select_index]);
-	}else if ( X_uxt[0] >= UXT_MINPRESET ){
+	}else if ( X_uxt_color >= UXT_MINPRESET ){
 		oldfc = SetTextColor(dis->hDC, C_DialogText);
 	}
 
@@ -793,7 +793,7 @@ void DrawTab(DRAWITEMSTRUCT *dis)
 
 		if ( C_capt[select_index + CI_TabBackOffset] != C_AUTO ) {
 			col = C_capt[select_index + CI_TabBackOffset];
-		}else if ( X_uxt[0] >= UXT_MINPRESET ){
+		}else if ( X_uxt_color >= UXT_MINPRESET ){
 			col = ((HWND)tie.lParam == hComboFocusWnd) ? C_FocusBack : C_DialogBack;
 		}else if ( select_index == CI_TabFocus ){
 			col = GetSysColor(COLOR_3DHIGHLIGHT);
@@ -813,6 +813,7 @@ void DrawTab(DRAWITEMSTRUCT *dis)
 	box.top += 4;
 	#pragma warning(suppress: 6054) // TabCtrl_GetItem で取得
 	DrawText(dis->hDC, buf, tstrlen32(buf), &box, DT_LEFT | DT_NOPREFIX);
+	//DT_END_ELLIPSIS DT_PATH_ELLIPSIS
 
 	if ( type >= 0 ){ // フォーカスの印
 		HBRUSH hBack;
@@ -825,7 +826,6 @@ void DrawTab(DRAWITEMSTRUCT *dis)
 		DeleteObject(hBack);
 	}
 
-	//DT_END_ELLIPSIS DT_PATH_ELLIPSIS
 	if ( oldfc != C_AUTO ) SetTextColor(dis->hDC, oldfc);
 
 	if ( ShowCloseButton != SCB_DISABLE ){ // 閉じるボタン
@@ -839,7 +839,7 @@ void DrawTab(DRAWITEMSTRUCT *dis)
 		FillBox(dis->hDC, &box, hBack);
 		if ( C_TabCloseText != C_AUTO ){
 			oldfc = SetTextColor(dis->hDC, C_TabCloseText);
-		}else if ( X_uxt[0] >= UXT_MINPRESET ){
+		}else if ( X_uxt_color >= UXT_MINPRESET ){
 			oldfc = SetTextColor(dis->hDC, C_GrayText);
 		}
 		SetBkMode(dis->hDC, TRANSPARENT);
@@ -910,7 +910,7 @@ LRESULT CALLBACK TabHookProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 			return HTCLIENT;	// 非タブ領域上のマウス操作も取得可能にする
 
 		case WM_PAINT:
-			if ( X_uxt[0] < UXT_MINMODIFY ) break;
+			if ( X_uxt_color < UXT_MINMODIFY ) break;
 			PaintTab(hWnd);
 			return 0;
 
@@ -1477,11 +1477,14 @@ void SetTabColor(int baseindex)
 	InvalidateRect(Combo.hWnd, NULL, TRUE);
 
 	if ( (cinfo = Combo.base[baseindex].cinfo) != NULL ){
-		thprintf(id, TSIZEOF(id), T("%s_tabcolor"), (cinfo->RegSubIDNo < 0) ? cinfo->RegID : cinfo->RegSubCID);
+		thprintf(id, TSIZEOF(id), T("%s_tabcolor"),
+				(cinfo->RegSubIDNo < 0) ? cinfo->RegID : cinfo->RegSubCID);
 		if ( (Combo.base[baseindex].tabbackcolor == C_AUTO) && (Combo.base[baseindex].tabtextcolor == C_AUTO) ){
 			DeleteCustTable(T("_Path"), id, 0);
 		}else{
-			thprintf(value, TSIZEOF(value), T("H%x, H%x"), Combo.base[baseindex].tabtextcolor, Combo.base[baseindex].tabbackcolor);
+			thprintf(value, TSIZEOF(value), T("H%x, H%x"),
+					Combo.base[baseindex].tabtextcolor,
+					Combo.base[baseindex].tabbackcolor);
 			SetCustStringTable(T("_Path"), id, value, 22);
 		}
 	}
@@ -1910,6 +1913,7 @@ BOOL TabMenu(HWND hTabWnd, int baseindex, int targetpane, POINT *pos)
 					SelectGroup(targetpane, Combo.show[targetpane].tab.groupcount - 1);
 					SortComboWindows(SORTWIN_LAYOUTPAIN);
 					CreateNewTab(targetpane);
+					NewTabGroupCare(showindex);
 				}
 			}
 			break;
@@ -2494,7 +2498,7 @@ void DestroyedPaneWindow(HWND hComboWnd, int baseindex)
 
 			for ( bi = 0 ; bi < Combo.BaseCount ; bi++ ){
 				if ( (Combo.base[bi].cinfo != NULL) &&
-						!tstrcmp(buf, Combo.base[bi].cinfo->path) ){
+					 (tstrcmp(buf, Combo.base[bi].cinfo->path) == 0) ){
 					hNewFocusWnd = Combo.base[bi].hWnd;
 					break;
 				}
@@ -3456,6 +3460,7 @@ BOOL SetTabTipText(NMHDR *nmh)
 														// 表示中タブにある？
 			tie.mask = TCIF_PARAM;
 			if ( IsTrue(TabCtrl_GetItem(hTabWnd, nmh->idFrom, &tie)) ){
+				tstrcpy(tiptext, T("?"));
 				GetWindowText((HWND)tie.lParam, tiptext, TSIZEOF(tiptext));
 				((LPTOOLTIPTEXT)nmh)->lpszText = tiptext;
 				((LPTOOLTIPTEXT)nmh)->hinst = NULL;

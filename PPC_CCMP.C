@@ -92,7 +92,7 @@ void Result_Match(PPC_APPINFO *cinfo, int count)
 	}else if ( count == 0 ){
 		tstrcpy(text, MessageText(StrEENF));
 	}else{
-		thprintf(text, TSIZEOF(text), T("%s: %d"), MessageText(StrCCMP), count);
+		thprintf(text, TSIZEOF(text), T("%Ms: %d"), StrCCMP, count);
 	}
 	SetPopMsg(cinfo, POPMSG_MSG, text);
 }
@@ -1883,7 +1883,7 @@ INT_PTR CALLBACK CompareDetailDlgBox(HWND hDlg, UINT iMsg, WPARAM wParam, LPARAM
 								(mode == CMP_SHA1)
 						);
 						// EnableDlgWindow の直後は、WM_PAINT のオーバライトが効かないため
-						if ( X_uxt[0] >= UXT_MINMODIFY ) InvalidateRect(hDlg, NULL, TRUE);
+						if ( X_uxt_color >= UXT_MINMODIFY ) InvalidateRect(hDlg, NULL, TRUE);
 					}
 					break;
 

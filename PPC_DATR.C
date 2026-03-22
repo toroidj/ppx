@@ -549,7 +549,7 @@ void AtrDetailMode(HWND hDlg)
 		SendMessage(hControlWnd, BM_SETCHECK, (WPARAM)checkstate, 0);
 	}
 	// EnableDlgWindow の直後は、WM_PAINT のオーバライトが効かないため
-	if ( X_uxt[0] >= UXT_MINMODIFY ) InvalidateRect(hDlg, NULL, TRUE);
+	if ( X_uxt_color >= UXT_MINMODIFY ) InvalidateRect(hDlg, NULL, TRUE);
 }
 
 typedef struct {

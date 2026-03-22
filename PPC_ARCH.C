@@ -894,14 +894,7 @@ ERRORCODE DoSusie_all(UNPACKINFOSTRUCT *info, const TCHAR *filename, void *dt_op
 
 			if ( fi->path[0] != '\0' ){
 				if ( strcmp(fi->path, oldmakedir) != 0 ){
-				#ifdef UNICODE
-					WCHAR direntryW[VFPS];
-
-					AnsiToUnicode(fi->path, direntryW, MAX_PATH);
-					thprintf(dirpath, TSIZEOF(dirpath), L"%s%s", param, direntryW);
-				#else
-					thprintf(dirpath, TSIZEOF(dirpath), "%s%s", param, fi->path);
-				#endif
+					thprintf(dirpath, TSIZEOF(dirpath), T("%s%hs"), param, fi->path);
 					MakeDirectories(dirpath, NULL);
 					oldmakedir = fi->path;
 				}

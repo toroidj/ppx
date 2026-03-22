@@ -640,7 +640,7 @@ void USEFASTCALL CommentFunction(PPC_APPINFO *cinfo, PPXAPPINFOUNION *uptr)
 	if ( CommentID <= 0 ){
 		CommentOffset = CEL(cinfo->e.cellN).comment;
 		if ( CommentOffset != EC_NOCOMMENT ){
-			tstplimcpy(uptr->funcparam.dest, ThPointerT(&cinfo->e.Comments, CommentOffset), CMDLINESIZE);
+			CmdFunctionLongResult(&uptr->funcparam, ThPointerT(&cinfo->e.Comments, CommentOffset), -1);
 		}else{
 			uptr->funcparam.dest[0] = '\0';
 		}
@@ -1275,15 +1275,17 @@ void PPcClipEntry(PPC_APPINFO *cinfo, const TCHAR *param, DWORD effect)
 	UTCHAR code;
 
 	code = SkipSpace(&param);
-	if ( code == '\0' ){ // Žw’è‚È‚µ¨Text & File
-		ClipFiles(cinfo, effect, CFT_FILE | CFT_TEXT);
-	}else{
-		code |= 0x20; // ¬•¶Žš‰»
-		if ( code == 't' ){ // Text
-			ClipFiles(cinfo, effect, CFT_TEXT);
-		}else if ( code == 'f' ){ // File
-			ClipFiles(cinfo, effect, CFT_FILE);
-		}
+	if ( code == '\0' ) code = 'a'; // Žw’è‚È‚µ¨ all
+
+	code |= 0x20; // ¬•¶Žš‰»
+	if ( code == 't' ){ // text
+		ClipFiles(cinfo, effect, CFT_TEXT);
+	}else if ( code == 'e' ){ // entry
+		ClipFiles(cinfo, effect, CFT_DnD | CFT_TEXT);
+	}else if ( code == 'a' ){ // all
+		ClipFiles(cinfo, effect, CFT_DnD | CFT_TEXT | CFT_SHN);
+	}else if ( code == 'f' ){ // file
+		ClipFiles(cinfo, effect, CFT_DnD | CFT_SHN);
 	}
 }
 
@@ -2217,7 +2219,7 @@ void PPcIDClose(PPC_APPINFO *cinfo, const TCHAR *param) // *idclose A*closeppx‚
 
 		ccinfo = Combo.base[baseindex].cinfo;
 		if ( ccinfo != NULL ){
-			if ( FilenameRegularExpression(ccinfo->RegSubCID, &fn) ){
+			if ( FilenameRegularExpression(ccinfo->RegSubCID, &fn) != FRRESULT_NO ){
 				PostMessage(ccinfo->info.hWnd, WM_CLOSE, 0, 0);
 			}
 		}
@@ -3339,12 +3341,12 @@ DWORD_PTR PPcGetIInfo_Function(PPC_APPINFO *cinfo, PPXAPPINFOUNION *uptr)
 		if ( param == 'f' ){
 			thprintf(uptr->funcparam.dest, 20, T("%d"), cinfo->PopMsgFlag);
 		}else if ( (param == 'r') || (cinfo->PopMsgFlag & PMF_DISPLAYMASK) ){
-			tstrcpy(uptr->funcparam.dest, cinfo->PopMsgStr);
+			CmdFunctionLongResult(&uptr->funcparam, cinfo->PopMsgStr, -1);
 		}else{
 			uptr->funcparam.dest[0] = '\0';
 		}
 	}else if ( !tstrcmp(uptr->funcparam.param, T("MASKENTRY")) ){ // %*maskentry
-		tstrcpy(uptr->funcparam.dest, (cinfo->DsetMask[0] == MASK_NOUSE) ? cinfo->mask.file : cinfo->DsetMask);
+		CmdFunctionLongResult(&uptr->funcparam, (cinfo->DsetMask[0] == MASK_NOUSE) ? cinfo->mask.file : cinfo->DsetMask, -1);
 	}else if ( !tstrcmp(uptr->funcparam.param, T("SORTENTRY")) ){ // %*sortentry
 		GetSortString( (tstrchr(uptr->funcparam.optparam, 'd') != NULL) ?
 				&cinfo->XC_sort : &cinfo->sort_last,

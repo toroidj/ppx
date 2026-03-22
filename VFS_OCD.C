@@ -348,7 +348,7 @@ ERRORCODE DlgCopyDir(FOPSTRUCT *FS, const TCHAR *src, TCHAR *dst, DWORD srcattr)
 				ffmax = (WIN32_FIND_DATA *)(thDestDirList.bottom + thDestDirList.top);
 				for ( ff = (WIN32_FIND_DATA *)thDestDirList.bottom ; ff < ffmax ; ff++ ){
 					// ファイル名が一致したときの処理
-					if ( !tstricmp(find.cFileName, ff->cFileName) ){
+					if ( tstricmp(find.cFileName, ff->cFileName) == 0 ){
 						ff->cFileName[0] = '\0'; // 一致したので対象外にする
 						// 名前は同じだけど、ディレクトリとファイルだった
 						if ( ((find.dwFileAttributes ^ ff->dwFileAttributes) &

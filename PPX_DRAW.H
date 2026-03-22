@@ -180,6 +180,7 @@ extern void DxDrawAtlas(DXDRAWSTRUCT *DxDraw, BITMAPINFOHEADER *bmiHeader, LPVOI
 
 extern void DxDrawIcon(DXDRAWSTRUCT *DxDraw, HICON icon, const RECT *box, DXBMPCACHE **cache);
 extern void DxDrawFreeBMPCache(DXBMPCACHE **cache);
+extern BOOL DxDrawBGpattern(DXDRAWSTRUCT *DxDraw, const RECT *box);
 
 // ì¡éÍèàóù
 #define DxDrawCursor(DxDraw, hDC, box, color) DxDrawBack(DxDraw, hDC, box, (color) & 0x80ffffff)

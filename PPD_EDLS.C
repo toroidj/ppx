@@ -13,6 +13,11 @@
 TCHAR SEPSPACE[] = CAPTIONSEPARATOR; // タイトルバーに表示するメッセージの表示間隔
 TCHAR SEPSPACEFMT[] = CAPTIONSEPARATOR T("%s");
 #define SEPSPACElen TSIZEOFSTR(CAPTIONSEPARATOR)
+#ifdef WINEGCC
+	#undef FINDMSGSTRING // Wine 5.0 でおかしい
+	#define FINDMSGSTRING  T("commdlg_FindReplace")
+#endif
+const TCHAR FINDMSGSTRINGstr[] = FINDMSGSTRING;
 
 PPXDLL void PPXAPI SetMessageOnCaption(HWND hWnd, const TCHAR *message)
 {
@@ -125,6 +130,15 @@ BOOL InitPPeFindReplace(PPxEDSTRUCT *PES)
 	return TRUE;
 }
 
+BOOL SearchStrCheck(PPxEDSTRUCT *PES, int mode)
+{
+	if ( (PES->findrep == NULL) || (PES->findrep->findtext[0] == '\0') ){
+		return FALSE;
+	}
+	SearchStr(PES, mode);
+	return TRUE;
+}
+
 BOOL SearchStr(PPxEDSTRUCT *PES, int mode)
 {
 	TCHAR *edittext, *maxptr, *ptr, *find = NULL, *findstr;
@@ -164,7 +178,7 @@ BOOL SearchStr(PPxEDSTRUCT *PES, int mode)
 	if ( edittext == NULL ) return FALSE;
 	GetWindowText(PES->hWnd, edittext, len + 1);
 
-	if ( PES->flags & PPXEDIT_RICHEDIT ){
+	if ( IsRichMode(PES) ){
 		tstrreplace(edittext, T("\r\n"), T("\n"));
 		len = tstrlen32(edittext);
 	}
@@ -271,6 +285,90 @@ BOOL SearchStr(PPxEDSTRUCT *PES, int mode)
 		SetMessageForEdit(PES->hWnd, MES_EENF);
 		return FALSE;
 	}
+}
+
+void PPeReplaceStrCommand(PPxEDSTRUCT *PES, FINDREPLACE *freplace)
+{
+	DWORD firstC, lastC;
+
+	if ( freplace->Flags & FR_FINDNEXT ){
+		SearchStr(PES, (freplace->Flags & FR_DOWN) ? EDITDIST_NEXT_WITHNOW : EDITDIST_BACK );
+	}else if ( freplace->Flags & FR_REPLACE ){
+		SendMessage(PES->hWnd, EM_GETSEL, (WPARAM)&firstC, (LPARAM)&lastC);
+		if ( firstC != lastC ){
+			TEXTSEL ts;
+
+			if ( SelectEditStrings(PES, &ts, TEXTSEL_CHAR) == FALSE ) return;
+
+			if ( X_esrx ?
+				(IsTrue(SearchStr(PES, EDITDIST_REPLACE_TEST))) :
+				(tstricmp(ts.word, freplace->lpstrFindWhat) == 0) ){
+				SendMessage(PES->hWnd, EM_REPLACESEL, 0, (LPARAM)freplace->lpstrReplaceWith);
+			}
+			FreeTextselStruct(&ts);
+		}
+		SearchStr(PES, EDITDIST_NEXT_WITHNOW);
+	}else if ( freplace->Flags & FR_REPLACEALL ){ // はじめから最後まで
+		SendMessage(PES->hWnd, WM_SETREDRAW, FALSE, 0);
+		SendMessage(PES->hWnd, EM_SETSEL, 0, 0);
+		for ( ;; ){
+			if ( SearchStr(PES, EDITDIST_NEXT_WITHNOW) == FALSE ) break;
+			SendMessage(PES->hWnd, EM_REPLACESEL, 1, (LPARAM)freplace->lpstrReplaceWith); // replace後、カーソルは置換文字列の末尾に移動する
+		}
+		SendMessage(PES->hWnd, WM_SETREDRAW, TRUE, 0);
+		InvalidateRect(PES->hWnd, NULL, FALSE);
+		if ( freplace->lCustData != 0 ){
+			PostMessage((HWND)freplace->lCustData, WM_CLOSE, 0, 0);
+		}
+	}
+}
+
+void PPeReplaceStr(PPxEDSTRUCT *PES)
+{
+	HMODULE hCOMDLG32;
+	DefineWinAPI(HWND, ReplaceText, (LPFINDREPLACE));
+	HWND hReplaceWnd;
+	FINDREPLACE freplace;
+
+	if ( PES->findrep == NULL ){
+		if ( InitPPeFindReplace(PES) == FALSE ) return;
+	}
+
+	hCOMDLG32 = LoadSystemDLL(SYSTEMDLL_COMDLG32);
+	if ( hCOMDLG32 == NULL ) return;
+	GETDLLPROCT(hCOMDLG32, ReplaceText);
+	if ( DReplaceText == NULL ) return;
+
+	ReplaceDialogMessage = RegisterWindowMessage(FINDMSGSTRINGstr);
+
+	freplace.lStructSize = sizeof(FINDREPLACE);
+	freplace.hwndOwner = PES->hWnd;
+	freplace.Flags = FR_DOWN | FR_HIDEMATCHCASE | FR_HIDEWHOLEWORD;
+	#pragma warning(suppress:6001 6011) // InitPPeFindReplace で初期化
+	freplace.lpstrFindWhat = PES->findrep->findtext;
+	freplace.lpstrReplaceWith = PES->findrep->replacetext;
+	freplace.wFindWhatLen = VFPS;
+	freplace.wReplaceWithLen = VFPS;
+
+	hReplaceWnd = DReplaceText(&freplace);
+	if ( hReplaceWnd != NULL ){ // 置換ダイアログが出ている間のループ
+		MSG msg;
+
+		freplace.lCustData = (LPARAM)hReplaceWnd;
+		while( (int)GetMessage(&msg, NULL, 0, 0) > 0 ){
+			if ( DialogKeyProc(&msg) ) continue;
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+			if ( !IsWindow(hReplaceWnd) || (freplace.Flags & FR_DIALOGTERM) ){
+				// ダイアログを既に閉じた
+				hReplaceWnd = NULL;
+				break;
+			}
+		}
+		if ( hReplaceWnd != NULL ) DestroyWindow(hReplaceWnd);
+	}
+	FreeLibrary(hCOMDLG32);
+//	SendMessage(hWnd, EM_REPLACESEL, 0, (LPARAM)T("\"\""));
 }
 
 const TCHAR *SkipPathName(const TCHAR *pathptr)
@@ -474,7 +572,7 @@ TCHAR *SearchFileInedMain(ESTRUCT *ED, TCHAR *str, int flags)
 			MakeFN_REGEXP(&fn, buf);
 			result = FinddataRegularExpression(&ff, &fn);
 			FreeFN_REGEXP(&fn);
-			if ( result ){
+			if ( result != FRRESULT_NO ){
 				break;
 			}else{
 				continue;
@@ -928,8 +1026,8 @@ void LineCursor(PPxEDSTRUCT *PES, DWORD mes)
 	DWORD line;
 	HDC hDC;
 
+	if ( IsRichMode(PES) ) return; // 仮
 	if ( GetFocus() != PES->hWnd ) return;
-	if ( PES->flags & PPXEDIT_RICHEDIT ) return; // 仮
 
 	line = CallWindowProc(PES->hOldED, PES->hWnd, EM_GETFIRSTVISIBLELINE, 0, 0);
 	GetCaretPos(&pos);

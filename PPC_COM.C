@@ -51,7 +51,7 @@ case K_s | 'C':
 	return PPC_ExplorerCopy(cinfo, FALSE);
 //----------------------------------------------- Clip Files
 case K_c | 'C':
-	ClipFiles(cinfo, DROPEFFECT_COPY | DROPEFFECT_LINK, CFT_FILE | CFT_TEXT);
+	ClipFiles(cinfo, DROPEFFECT_COPY | DROPEFFECT_LINK, CFT_DnD | CFT_TEXT);
 	SetPopMsg(cinfo, POPMSG_MSG, MES_CPDN);
 	break;
 //----------------------------------------------- Clip Directory
@@ -234,7 +234,7 @@ case K_c | K_s | 'W':
 	return WhereIsDialog(cinfo, WHEREIS_INVFS);
 //----------------------------------------------- Cut Files
 case K_c | 'X':
-	ClipFiles(cinfo, DROPEFFECT_MOVE, CFT_FILE);
+	ClipFiles(cinfo, DROPEFFECT_MOVE, CFT_DnD | CFT_SHN);
 	SetPopMsg(cinfo, POPMSG_MSG, MES_CUTR);
 	break;
 //----------------------------------------------- sHell

@@ -2778,7 +2778,7 @@ BOOL OpenViewObject(const TCHAR *filename, HGLOBAL hMemblock, VIEWOPTIONS *viewo
 			int tab;
 
 			MakeFN_REGEXP(&fn, param);
-			if ( FilenameRegularExpression(extptr, &fn) ){
+			if ( FilenameRegularExpression(extptr, &fn) != FRRESULT_NO){
 				FreeFN_REGEXP(&fn);
 				p = keyword;
 				tab = GetIntNumber((const TCHAR **)&p);
@@ -2795,7 +2795,7 @@ BOOL OpenViewObject(const TCHAR *filename, HGLOBAL hMemblock, VIEWOPTIONS *viewo
 			int cols;
 
 			MakeFN_REGEXP(&fn, param);
-			if ( FilenameRegularExpression(extptr, &fn) ){
+			if ( FilenameRegularExpression(extptr, &fn) != FRRESULT_NO ){
 				FreeFN_REGEXP(&fn);
 				p = keyword;
 				cols = GetIntNumber((const TCHAR **)&p);
@@ -2976,7 +2976,7 @@ void GetMemo(void)
 {
 	VFSFILETYPE vft;
 										// ÉtÉ@ÉCÉãéÌï ÇÃîªíËÇ∆ÇªÇÍÇ…ÇÊÇÈèâä˙âª
-	if ( vo_.memo.bottom != NULL ) return;
+	if ( vo_.memo.top != 0 ) return;
 	vft.flags = VFSFT_INFO;
 
 	if ( VFSGetFileType(vo_.file.name, (char *)vo_.file.image, vo_.file.UseSize, &vft) != NO_ERROR ){

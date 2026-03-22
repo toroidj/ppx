@@ -1112,7 +1112,7 @@ PPXDLL int PPXAPI FilenameRegularExpression(const TCHAR *src, FN_REGEXP *fn)
 	#endif
 
 	b = fn->b;
-	if ( ((EXS_DATA *)b)->ext == EX_NONE ) return 1; // 条件なし→すべてヒット
+	if ( ((EXS_DATA *)b)->ext == EX_NONE ) return FRRESULT_NOWILDCARD; // 条件なし
 									// 比較対象の準備
 	if ( ((EXS_DATA *)b)->ext == EX_JOINEXT ){ // 拡張子分離を必ずしない
 		if ( tstrlen(src) >= VFPS ){ // OVER_VFPS_MSG
@@ -1123,7 +1123,7 @@ PPXDLL int PPXAPI FilenameRegularExpression(const TCHAR *src, FN_REGEXP *fn)
 		}
 		fext = NilStr;
 		b += ((EXS_DATA *)b)->next;
-		if ( ((EXS_DATA *)b)->ext == EX_NONE ) return 1;
+		if ( ((EXS_DATA *)b)->ext == EX_NONE ) return FRRESULT_MATCH;
 	}else{
 		int extOffset;
 
@@ -1140,20 +1140,20 @@ PPXDLL int PPXAPI FilenameRegularExpression(const TCHAR *src, FN_REGEXP *fn)
 		ext = ((EXS_DATA *)b)->ext;
 		switch ( ext ){
 			case EX_NONE:
-				return 1;
+				return FRRESULT_MATCH;
 
 			case EX_MEM:
 				b = ((EXS_MEM *)b)->nextptr;
 				continue;
 
 			case EX_NOT:
-				if ( ((EXS_DATA *)b)->next == 0 ) return 0;
+				if ( ((EXS_DATA *)b)->next == 0 ) return FRRESULT_NO;
 				b += ((EXS_DATA *)b)->next;
 				usenot = TRUE;
 				continue;
 
 			case EX_AND:
-				if ( ((EXS_DATA *)b)->next == 0 ) return 0;
+				if ( ((EXS_DATA *)b)->next == 0 ) return FRRESULT_NO;
 				b += ((EXS_DATA *)b)->next;
 				useand = TRUE;
 				continue;
@@ -1256,16 +1256,16 @@ PPXDLL int PPXAPI FilenameRegularExpression(const TCHAR *src, FN_REGEXP *fn)
 			if ( IsTrue(usenot) ){
 				usenot = FALSE;
 				useand = FALSE;
-				if ( IsTrue(result) ) return 0;
-				if ( nextsize == 0 ) return 1;
+				if ( IsTrue(result) ) return FRRESULT_NO;
+				if ( nextsize == 0 ) return FRRESULT_MATCH;
 			}else{
 				if ( IsTrue(useand) ){
 					useand = FALSE;
-					if ( result == FALSE ) return 0;
-					if ( nextsize == 0 ) return 1;
+					if ( result == FALSE ) return FRRESULT_NO;
+					if ( nextsize == 0 ) return FRRESULT_MATCH;
 				}else{
-					if ( IsTrue(result) ) return 1;
-					if ( nextsize == 0 ) return 0;
+					if ( IsTrue(result) ) return FRRESULT_MATCH;
+					if ( nextsize == 0 ) return FRRESULT_NO;
 				}
 			}
 			b += nextsize;
@@ -1332,12 +1332,12 @@ PPXDLL int PPXAPI FinddataRegularExpression(const WIN32_FIND_DATA *ff, FN_REGEXP
 	#endif
 
 	b = fn->b;
-	if ( ((EXS_DATA *)b)->ext == EX_NONE ) return 1; // 条件なし→すべてヒット
+	if ( ((EXS_DATA *)b)->ext == EX_NONE ) return FRRESULT_NOWILDCARD; // 条件なし→すべてヒット
 
 	if ( ((EXS_DATA *)b)->ext == EX_STRING ){
 		stringmode = TRUE;
 		b += ((EXS_DATA *)b)->next;
-		if ( ((EXS_DATA *)b)->ext == EX_NONE ) return 1;
+		if ( ((EXS_DATA *)b)->ext == EX_NONE ) return FRRESULT_MATCH;
 	}
 
 									// 比較対象の準備
@@ -1377,7 +1377,7 @@ PPXDLL int PPXAPI FinddataRegularExpression(const WIN32_FIND_DATA *ff, FN_REGEXP
 	if ( ((EXS_DATA *)b)->ext == EX_JOINEXT ){ // 拡張子分離を必ずしない
 		fext = NilStr;
 		b += ((EXS_DATA *)b)->next;
-		if ( ((EXS_DATA *)b)->ext == EX_NONE ) return 1;
+		if ( ((EXS_DATA *)b)->ext == EX_NONE ) return FRRESULT_MATCH;
 	}else{	// ファイルの時だけ拡張子分離
 		if ( !(ff->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ){
 			int extOffset;
@@ -1396,7 +1396,7 @@ PPXDLL int PPXAPI FinddataRegularExpression(const WIN32_FIND_DATA *ff, FN_REGEXP
 		switch ( ext ){
 			case EX_NONE:
 //				return useand ? 1 : 0; // and の時はヒット扱い、or の時はなし
-				return 1;
+				return FRRESULT_MATCH;
 
 			case EX_MEM:
 				b = ((EXS_MEM *)b)->nextptr;
@@ -1406,7 +1406,7 @@ PPXDLL int PPXAPI FinddataRegularExpression(const WIN32_FIND_DATA *ff, FN_REGEXP
 				if ( !(ff->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ){
 					// ファイルは次の判定を無視する
 					for ( ; ; ){
-						if ( ((EXS_DATA *)b)->next == 0 ) return 0;
+						if ( ((EXS_DATA *)b)->next == 0 ) return FRRESULT_NO;
 						b += ((EXS_DATA *)b)->next;
 						if ( ((EXS_DATA *)b)->ext == EX_MEM ){
 							b = ((EXS_MEM *)b)->nextptr;
@@ -1417,7 +1417,7 @@ PPXDLL int PPXAPI FinddataRegularExpression(const WIN32_FIND_DATA *ff, FN_REGEXP
 					// b は次の判定処理をポイントしている→次のでスキップ
 				}
 				// ディレクトリ→ディレクトリ判定になる
-				if ( ((EXS_DATA *)b)->next == 0 ) return 0;
+				if ( ((EXS_DATA *)b)->next == 0 ) return FRRESULT_NO;
 				b += ((EXS_DATA *)b)->next;
 				if ( ((EXS_DATA *)b)->ext == EX_MEM ){
 					b = ((EXS_MEM *)b)->nextptr;
@@ -1425,13 +1425,13 @@ PPXDLL int PPXAPI FinddataRegularExpression(const WIN32_FIND_DATA *ff, FN_REGEXP
 				continue;
 
 			case EX_NOT:
-				if ( ((EXS_DATA *)b)->next == 0 ) return 0;
+				if ( ((EXS_DATA *)b)->next == 0 ) return FRRESULT_NO;
 				b += ((EXS_DATA *)b)->next;
 				usenot = TRUE;
 				continue;
 
 			case EX_AND:
-				if ( ((EXS_DATA *)b)->next == 0 ) return 0;
+				if ( ((EXS_DATA *)b)->next == 0 ) return FRRESULT_NO;
 				b += ((EXS_DATA *)b)->next;
 				useand = TRUE;
 				continue;
@@ -1562,16 +1562,16 @@ PPXDLL int PPXAPI FinddataRegularExpression(const WIN32_FIND_DATA *ff, FN_REGEXP
 			if ( IsTrue(usenot) ){
 				usenot = FALSE;
 				useand = FALSE;
-				if ( IsTrue(result) ) return 0;
-				if ( nextsize == 0 ) return 1;
+				if ( IsTrue(result) ) return FRRESULT_NO;
+				if ( nextsize == 0 ) return FRRESULT_MATCH;
 			}else{
 				if ( IsTrue(useand) ){
 					useand = FALSE;
-					if ( result == FALSE ) return 0;
-					if ( nextsize == 0 ) return 1;
+					if ( result == FALSE ) return FRRESULT_NO;
+					if ( nextsize == 0 ) return FRRESULT_MATCH;
 				}else{
-					if ( IsTrue(result) ) return 1;
-					if ( nextsize == 0 ) return 0;
+					if ( IsTrue(result) ) return FRRESULT_MATCH;
+					if ( nextsize == 0 ) return FRRESULT_NO;
 				}
 			}
 			b += nextsize;
@@ -2481,6 +2481,39 @@ const TCHAR *RegularExpressionMatch_iregexp(PXREGEXPS *rxps, const TCHAR *target
 	return dest;
 }
 
+BSTR CreateBstring_esc(TCHAR *text)
+{
+	BSTR wtext = CreateBstring(text);
+	WCHAR *wp, *dp;
+
+	if ( wtext == NULL ) return NULL;
+	wp = strchrW(wtext, L'\\');
+	if ( wp == NULL ) return wtext;
+	dp = wp;
+	for (;;){
+		WCHAR c;
+
+		c = *(wp + 1);
+		if ( c == 'n' ){
+			*dp++ = '\r';
+			*dp++ = '\n';
+			wp += 2;
+		}else if ( c == '\\' ){
+			wp++;
+		}else{
+			*dp++ = c;
+			wp++;
+		}
+		for (;;){
+			*dp = c = *wp;
+			if ( c == '\0' ) return wtext;
+			if ( c == '\\' ) break;
+			dp++;
+			wp++;
+		}
+	}
+}
+
 BOOL InitRegularExpression(PXREGEXPS **rxpsptr, TCHAR *rxstring, BOOL slash)
 {
 	TCHAR *slist, *rlist, separater = '/';
@@ -2634,7 +2667,7 @@ BOOL InitRegularExpression(PXREGEXPS **rxpsptr, TCHAR *rxstring, BOOL slash)
 		}
 		DSysFreeString(pattern);
 		rxps->mode += RXMODE_IREGEXP_MIN;
-		rxps->string_ri = CreateBstring(rlist);
+		rxps->string_ri = CreateBstring_esc(rlist);
 		rxps->string_result = NULL;
 		rxps->iregexp = regexp;
 	}else if ( RegExpType == EX_REGICU ) {
@@ -2663,11 +2696,11 @@ BOOL InitRegularExpression(PXREGEXPS **rxpsptr, TCHAR *rxstring, BOOL slash)
 		DSysFreeString(wtext);
 
 #if ICU_USE_UTEXT
-		wtext = CreateBstring(rlist);
+		wtext = CreateBstring_esc(rlist);
 		rxps->utext_ri = utext_openUChars(NULL, wtext, -1, &ecode);
 		DSysFreeString(wtext);
 #else
-		rxps->itext_ri = CreateBstring(rlist);
+		rxps->itext_ri = CreateBstring_esc(rlist);
 #endif
 		rxps->mode += RXMODE_ICU_MIN;
 

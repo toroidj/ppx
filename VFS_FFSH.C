@@ -94,7 +94,7 @@ BOOL PPxGetSpecialFolderLocation(HWND hWnd, const TCHAR *name, LPITEMIDLIST *idl
 	if ( memcmp(name, StrShellScheme, SIZEOFTSTR(StrShellScheme)) ) return FALSE; // ::{ Œ`®
 	name += TSIZEOFSTR(StrShellScheme);
 	while ( sfls->name != NULL ){
-		if ( !tstricmp(sfls->name, name) ){
+		if ( tstricmp(sfls->name, name) == 0 ){
 			if ( sfls->mode == CSIDL_DESKTOP ){ // CSIDL_DESKTOP ‚Í idl‚ª‚È‚¢
 				*idl = NULL;
 				return TRUE;
@@ -334,7 +334,7 @@ DefineWinAPI(HRESULT, SHCreateItemFromParsingName, (PCWSTR, IBindCtx *, REFIID, 
 						goto error;
 					}
 					if ( IsTrue(PIDL2DisplayNameOf(name, pCurSF, idl)) ){
-						if ( !tstricmp(name, pathptr) ){
+						if ( tstricmp(name, pathptr) == 0 ){
 						// Ÿ‚Ì ParseDisplayName ‚Å‰“š‚ª’˜‚µ‚­’x‚­‚È‚é‚±‚Æ‚ª‚ ‚é‚Ì‚ÅAParseDisplayName ‚ğŒã‰ñ‚µ‚É‚µ‚Ä©‘O‘{õ‚ğ—Dæ‚É
 							ParseFirst = FALSE;
 							break;

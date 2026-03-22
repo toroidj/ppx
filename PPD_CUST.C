@@ -139,8 +139,8 @@ TCHAR *GetNoSepMessage(BYTE *p, TCHAR code) // セパレータが見つからない
 void SetMes(PPCUSTSTRUCT *PCS, const TCHAR *mes, const TCHAR *type_text)
 {
 	CheckSmes(PCS, SMESSIZE_MES);
-	PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%s(%4d): %s")TNL,
-			MessageText(type_text), PCS->Dnum, MessageText(mes));
+	PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%Ms(%4d): %Ms")TNL,
+			type_text, PCS->Dnum, mes);
 }
 void ErrorMes(PPCUSTSTRUCT *PCS, const TCHAR *mes)
 {
@@ -155,11 +155,11 @@ void SetItemMes(PPCUSTSTRUCT *PCS, const TCHAR *mes, const TCHAR *kword, const T
 {
 	CheckSmes(PCS, SMESSIZE_MES);
 	if ( sname == NULL ){
-		PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%s(%4d): %s - %s")TNL,
-				MessageText(type_text), PCS->Dnum, kword, MessageText(mes));
+		PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%Ms(%4d): %s - %Ms")TNL,
+				type_text, PCS->Dnum, kword, mes);
 	}else{
-		PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%s(%4d): %s:%s - %s")TNL,
-				MessageText(type_text), PCS->Dnum, kword, sname, MessageText(mes));
+		PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%Ms(%4d): %s:%s - %Ms")TNL,
+				type_text, PCS->Dnum, kword, sname, mes);
 	}
 }
 void ErrorItemMes(PPCUSTSTRUCT *PCS, const TCHAR *mes, const TCHAR *kword, const TCHAR *sname)
@@ -347,8 +347,8 @@ BOOL CSline(PPCUSTSTRUCT *PCS, const TCHAR *kword, TCHAR *sname, TCHAR *line, DW
 		if ( vercmp > 0 ){
 			if ( IsExistCustTable(kword, sname) ){
 				CheckSmes(PCS, SMESSIZE_MES);
-				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%s: %s:%s")TNL,
-						MessageText(MES_LGDE), kword, sname);
+				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%Ms: %s:%s")TNL,
+						MES_LGDE, kword, sname);
 				DeleteCustTable(kword, sname, 0);
 				PCS->reloadflag &= flags;
 			}
@@ -362,8 +362,8 @@ BOOL CSline(PPCUSTSTRUCT *PCS, const TCHAR *kword, TCHAR *sname, TCHAR *line, DW
 		if ( vercmp > 0 ){
 			if ( IsExistCustData(kword) ){
 				CheckSmes(PCS, SMESSIZE_MES);
-				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%s: %s")TNL,
-						MessageText(MES_LGDE), kword);
+				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%Ms: %s")TNL,
+						MES_LGDE, kword);
 				DeleteCustData(kword);
 				PCS->reloadflag &= flags;
 			}
@@ -412,11 +412,19 @@ BOOL CSline(PPCUSTSTRUCT *PCS, const TCHAR *kword, TCHAR *sname, TCHAR *line, DW
 		switch(*fmt++){
 //=============================================================================
 // C:色 -----------------------------------------------------------------------
-case 'C':
-	*(COLORREF *)destp = CS_color(&line, flags);
-	destp += sizeof(COLORREF);
-	break;
+case 'C': {
+	TCHAR *orgline;
 
+	orgline = line;
+	*(COLORREF *)destp = GetColor((const TCHAR **)&line, !(flags & fRC)); // A_color は自己参照させない
+	if ( orgline != line ){
+		destp += sizeof(COLORREF);
+		break;
+	}else{
+		ErrorItemMes(PCS, line, MessageText(MES_EUKW), NULL);
+		return TRUE;
+	}
+}
 // c:色/console ---------------------------------------------------------------
 case 'c':{
 	TCHAR buf[100], *pt, *dst, data;
@@ -754,11 +762,11 @@ default:
 			CheckSmes(PCS, SMESSIZE_MES);
 			if ( IsExistCustTable(kword, sname) ){ // 項目有り→上書き
 				if ( sn == '?' ) return TRUE; // "?|" は上書きしない
-				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%s: %s:%s")TNL,
-						MessageText(MES_LGOW), kword, sname);
+				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%Ms: %s:%s")TNL,
+						MES_LGOW, kword, sname);
 			}else{ // 項目無し→追加
-				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%s: %s:%s")TNL,
-						MessageText(MES_LGCR), kword, sname);
+				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("%Ms: %s:%s")TNL,
+						MES_LGCR, kword, sname);
 			}
 		}
 		if ( flags & fK_Mouse ) tstrupr(sname);	// 大文字化
@@ -863,7 +871,7 @@ default:
 					if ( (destp - bin) > size ){ // 項目が少ない
 						CheckSmes(PCS, SMESSIZE_MES);
 						PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE,
-								T("%s: %s")TNL, MessageText(MES_LGAP), kword);
+								T("%Ms: %s")TNL, MES_LGAP, kword);
 						GetCustData(kword, bin, sizeof(bin));
 					}else{ // 項目数に問題ない
 						return TRUE;
@@ -881,14 +889,14 @@ default:
 						// 上書き
 						CheckSmes(PCS, SMESSIZE_MES);
 						PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE,
-								T("%s: %s")TNL, MessageText(MES_LGOW), kword);
+								T("%Ms: %s")TNL, MES_LGOW, kword);
 					}
 				}else{	// "+|" なし	／ 既に項目があるなら保存しない
 					if ( IsExistCustData(kword) ) return TRUE;
 					// 新規
 					CheckSmes(PCS, SMESSIZE_MES);
 					PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE,
-								T("%s: %s")TNL, MessageText(MES_LGCR), kword);
+								T("%Ms: %s")TNL, MES_LGCR, kword);
 				}
 			}
 		}
@@ -972,13 +980,13 @@ int CSitem(PPCUSTSTRUCT *PCS,
 					PCS->XupdateTbl = 1;
 					CheckSmes(PCS, SMESSIZE_MES);
 					PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE,
-							T("%s: %s")TNL, MessageText(MES_LGCR), p);
+							T("%Ms: %s")TNL, MES_LGCR, p);
 				}else{
 					if ( pre > 0 ){ // Tableあり、全更新する
 						PCS->XupdateTbl = 1;
 						CheckSmes(PCS, SMESSIZE_MES);
 						PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE,
-								T("%s: %s")TNL, MessageText(MES_LGOW), p);
+								T("%Ms: %s")TNL, MES_LGOW, p);
 					}else{ // Tableあり、個別に更新
 						PCS->XupdateTbl = 0;
 					}
@@ -1133,7 +1141,7 @@ PPXDLL int PPXAPI PPcustCStore(TCHAR *mem, TCHAR *memmax, int appendmode, TCHAR 
 					kword = ne;
 					if ( IsExistCustData(kword) ){
 						PCS.Smes = thprintf(PCS.Smes, CMDLINESIZE,
-								T("%s: %s")TNL, MessageText(MES_LGDE), kword);
+								T("%Ms: %s")TNL, MES_LGDE, kword);
 						DeleteCustData(kword);
 					}
 				}else{						// 不明の形式 ----------------
@@ -1816,7 +1824,7 @@ void PPcustCDumpWildCard(PPCUSTSTRUCT *PCS, const TCHAR *wildcard)
 	for( count = 0 ; ; count++ ){
 		size = EnumCustData(count, name, bin, 0);
 		if ( size < 0 ) break;
-		if ( FilenameRegularExpression(name, &fn) ){
+		if ( FilenameRegularExpression(name, &fn) != FRRESULT_NO ){
 			PPcustCDumpPart(PCS, name, NULL, TRUE);
 			PCS->Smes = tstpcpy(PCS->Smes, TNL);
 		}

@@ -141,6 +141,7 @@ extern "C" typedef struct tagDXDRAWSTRUCT {
 
 		DWORD useIndex; // 読み書きIndex(-1:該当無し)
 	} BmpAtlas;
+	ID2D1BitmapBrush *BgPatternBrush;
 } DXDRAWSTRUCT;
 
 //const WCHAR strtailL[1] = {L'…'};
@@ -189,6 +190,7 @@ BOOL CreateDxDraw(DXDRAWSTRUCT **DxDrawPtr, HWND hWnd, int RenderType)
 	memset(&DxDraw->bmpCache, 0, sizeof(DxDraw->bmpCache));
 	DxDraw->BmpAtlas.bmp = NULL;
 	DxDraw->BmpAtlas.IndexNow = 1;
+	DxDraw->BgPatternBrush = NULL;
 
 	DxDraw->BackBrush.brush = NULL;
 	DxDraw->SubBrush.brush = NULL;
@@ -272,6 +274,11 @@ void ResetDxDraw(DXDRAWSTRUCT *DxDraw)
 			DxDraw->TextBrush.brush->Release();
 			DxDraw->TextBrush.brush = NULL;
 		}
+		if ( DxDraw->BgPatternBrush != NULL ){
+			DxDraw->BgPatternBrush->Release();
+			DxDraw->BgPatternBrush = NULL;
+		}
+
 		DxDraw->HwndRenderTarget->Release();
 		DxDraw->HwndRenderTarget = NULL;
 		DxDraw->RenderTarget = NULL;
@@ -1352,8 +1359,8 @@ BOOL DxDrawDIB(DXDRAWSTRUCT *DxDraw, BITMAPINFOHEADER *bmiHeader, LPVOID lpBits,
 		bmpprop.dpiY = DxDraw->DeskScale.y;
 		bmpprop.pixelFormat = D2D1::PixelFormat(
 				DXGI_FORMAT_B8G8R8A8_UNORM,
-//				D2D1_ALPHA_MODE_STRAIGHT);
 				D2D1_ALPHA_MODE_IGNORE);
+//				D2D1_ALPHA_MODE_PREMULTIPLIED);
 
 		HRESULT hr = DxDraw->RenderTarget->CreateBitmap(bmpsize, lpBits, bmpsize.width * 4/* Alignment済み*/ , bmpprop, &d2bmp);
 		if ( hConvertBmp != NULL ) DeleteObject(hConvertBmp); // ビットマップのメモリも削除
@@ -1424,6 +1431,52 @@ BOOL DxDrawDIB(DXDRAWSTRUCT *DxDraw, BITMAPINFOHEADER *bmiHeader, LPVOID lpBits,
 	DxDraw->RenderTarget->DrawBitmap(d2bmp, d2box , 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, d2bmpbox );
 	DxDraw->RenderTarget->SetTransform(DxDraw->DefaultTransform);
 	if ( (cache == NULL) || (*cache == NULL) ) d2bmp->Release();
+	return TRUE;
+}
+
+BOOL DxDrawBGpattern(DXDRAWSTRUCT *DxDraw, const RECT *box)
+{
+	if ( DxDraw->BgPatternBrush == NULL ){
+		ID2D1Bitmap *patternBMP;
+		D2D1_SIZE_F patternsize = {16.0, 16.0};
+		D2D1_RECT_F rect1 = {0.0, 0.0, 8.0, 8.0};
+		D2D1_RECT_F rect2 = {8.0, 8.0, 16.0, 16.0};
+		ID2D1BitmapRenderTarget *bmpRender;
+		DxDraw->RenderTarget->CreateCompatibleRenderTarget(patternsize, &bmpRender);
+		bmpRender->BeginDraw();
+//		bmpRender->SetTransform(D2D1::Matrix3x2F::Identity());
+		bmpRender->Clear(D2D1::ColorF(D2D1::ColorF::White));
+
+		ID2D1SolidColorBrush *brush;
+		bmpRender->CreateSolidColorBrush(
+//				D2D1::ColorF(D3DCOLORfromCOLORREF(0xff404040)),
+				D2D1::ColorF(D2D1::ColorF::LightGray),
+//				static_cast<float>(0xff404040 >> 24) / 255.0f),
+				&brush);
+
+		bmpRender->FillRectangle(&rect1, brush);
+		bmpRender->FillRectangle(&rect2, brush);
+		bmpRender->EndDraw();
+		brush->Release();
+
+		bmpRender->GetBitmap(&patternBMP);
+		bmpRender->Release();
+
+		 D2D1_BITMAP_BRUSH_PROPERTIES brushProp = D2D1::BitmapBrushProperties(
+		D2D1_EXTEND_MODE_WRAP, // 繰り返し設定
+		D2D1_EXTEND_MODE_WRAP,
+		D2D1_BITMAP_INTERPOLATION_MODE_LINEAR
+	);
+		DxDraw->RenderTarget->CreateBitmapBrush(patternBMP, brushProp, &DxDraw->BgPatternBrush);
+		patternBMP->Release();
+	}
+	if ( DxDraw->BgPatternBrush != NULL ){
+		D2D1_RECT_F d2box = {
+			(float)box->left, (float)box->top,
+			(float)(box->right),
+			(float)(box->bottom)};
+		DxDraw->RenderTarget->FillRectangle(d2box, DxDraw->BgPatternBrush);
+	}
 	return TRUE;
 }
 
@@ -1544,7 +1597,7 @@ void DxDrawIcon(DXDRAWSTRUCT *DxDraw, HICON icon, const RECT *box, DXBMPCACHE **
 			static_cast<float>((*cache)->bmpsize.width),
 			static_cast<float>((*cache)->bmpsize.height) };
 
-		DxDraw->RenderTarget->DrawBitmap(d2bmp, d2box , 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, d2bmpbox );
+		DxDraw->RenderTarget->DrawBitmap(d2bmp, d2box, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, d2bmpbox );
 	}else{ // GDI取得(上下反転)
 		DxDrawDIB(DxDraw, NULL, NULL, box, NULL, cache);
 	}

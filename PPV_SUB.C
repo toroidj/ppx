@@ -583,7 +583,45 @@ DWORD_PTR USECDECL PPxGetIInfo(PPV_APPINFO *vinfo, DWORD cmdID, PPXAPPINFOUNION 
 			const TCHAR *param;
 
 			param = uptr->str + tstrlen(uptr->str) + 1;
-			if ( !tstrcmp(uptr->str, T("ZOOM")) ){ // *zoom
+			if ( tstrcmp(uptr->str, T("COMMENT")) == 0 ){ // *viewoption
+				BOOL addmode = FALSE;
+				BOOL sep = FALSE;
+
+				if ( SkipSpace(&param) == '-' ){
+					if ( *(param + 1) == 'g' ){
+						vo_.memo.top = 0;
+						GetMemo();
+						break;
+					}
+				}
+
+				if ( SkipSpace(&param) == '+' ){
+					addmode = TRUE;
+					param++;
+				}
+				if ( SkipSpace(&param) == '\"' ){
+					sep = TRUE;
+					param++;
+				}
+				if ( addmode == 0 ){
+					vo_.memo.top = 0;
+				}else if ( (vo_.memo.top > 0) &&
+						(*(ThStrLastT(&vo_.memo) - 1) == '\0') ){
+					vo_.memo.top -= sizeof(TCHAR);
+				}
+				ThCatString(&vo_.memo, param);
+				if ( sep ){
+					if ( (vo_.memo.top > 0) &&
+							(*(ThStrLastT(&vo_.memo) - 1) == '\"') ){
+						vo_.memo.top -= sizeof(TCHAR);
+						*(ThStrLastT(&vo_.memo)) = '\0';
+					}
+				}
+				ThCatString(&vo_.memo, T("\r\n"));
+				break;
+			}
+
+			if ( tstrcmp(uptr->str, T("ZOOM")) == 0 ){ // *zoom
 				int mode = 0;
 				BOOL sign, notify = FALSE;
 				int num;
@@ -632,7 +670,7 @@ DWORD_PTR USECDECL PPxGetIInfo(PPV_APPINFO *vinfo, DWORD cmdID, PPXAPPINFOUNION 
 				break;
 			}
 
-			if ( !tstrcmp(uptr->str, T("REDUCEMODE")) ){ // *reducemode
+			if ( tstrcmp(uptr->str, T("REDUCEMODE")) == 0 ){ // *reducemode
 				XV.img.imgD[imdD_MM] = (XV.img.imgD[imdD_MM] & ~(STRETCH_APIMASK | STRETCH_PPVMASK)) | GetNumber(&param);
 				XV.img.StretchMode = XV.img.imgD[imdD_MM] & STRETCH_APIMASK;
 				XV.img.MoreStrech = (XV.img.imgD[imdD_MM] & STRETCH_PPVMASK) >> STRETCH_PPVSHIFT;
@@ -640,27 +678,27 @@ DWORD_PTR USECDECL PPxGetIInfo(PPV_APPINFO *vinfo, DWORD cmdID, PPXAPPINFOUNION 
 				break;
 			}
 
-			if ( !tstrcmp(uptr->str, T("JUMPLINE")) ){
+			if ( tstrcmp(uptr->str, T("JUMPLINE")) == 0 ){
 				JumpLine(param);
 				break;
 			}
 
-			if ( !tstrcmp(uptr->str, T("LAYOUT")) ){
+			if ( tstrcmp(uptr->str, T("LAYOUT")) == 0 ){
 				PPvLayoutCommand(param);
 				break;
 			}
 
-			if ( !tstrcmp(uptr->str, T("FIND")) ){
+			if ( tstrcmp(uptr->str, T("FIND")) == 0 ){
 				PPvFindCommand(vinfo, param);
 				break;
 			}
 
-			if ( !tstrcmp(uptr->str, T("HIGHLIGHT")) ){
+			if ( tstrcmp(uptr->str, T("HIGHLIGHT")) == 0 ){
 				PPvHighlightCommand(vinfo, param);
 				break;
 			}
 #if 0
-			if ( !tstrcmp(uptr->str, T("PREVIEW")) ){ // *preview 現在ファイルを背景画像に設定する(テスト)
+			if ( tstrcmp(uptr->str, T("PREVIEW")) == 0 ){ // *preview 現在ファイルを背景画像に設定する(テスト)
 				TCHAR buf[VFPS];
 				PPXAPPINFOUNION tmpuptr;
 
@@ -676,7 +714,7 @@ DWORD_PTR USECDECL PPxGetIInfo(PPV_APPINFO *vinfo, DWORD cmdID, PPXAPPINFOUNION 
 				break;
 			}
 #endif
-			if ( !tstrcmp(uptr->str, T("VIEWOPTION")) ){ // *viewoption
+			if ( tstrcmp(uptr->str, T("VIEWOPTION")) == 0 ){ // *viewoption
 				VIEWOPTIONS viewopt;
 
 				CheckParam(&viewopt, param, NULL);
@@ -692,7 +730,7 @@ DWORD_PTR USECDECL PPxGetIInfo(PPV_APPINFO *vinfo, DWORD cmdID, PPXAPPINFOUNION 
 		}
 
 		case PPXCMDID_FUNCTION:
-			if ( !tstrcmp(uptr->funcparam.param, T("VIEWOPTION")) ){ // %*viewoption
+			if ( tstrcmp(uptr->funcparam.param, T("VIEWOPTION")) == 0 ){ // %*viewoption
 				TCHAR *dest;
 
 				dest = thprintf(uptr->funcparam.dest, 256, T("-%s"), OptionNames[vo_.DModeType + OPTNAME_DTYPE - 1]);
@@ -722,7 +760,7 @@ DWORD_PTR USECDECL PPxGetIInfo(PPV_APPINFO *vinfo, DWORD cmdID, PPXAPPINFOUNION 
 				return PPXA_NO_ERROR;
 			}
 
-			if ( !tstrcmp(uptr->funcparam.param, T("ZOOM")) ){ // %*zoom
+			if ( tstrcmp(uptr->funcparam.param, T("ZOOM")) == 0 ){ // %*zoom
 				const TCHAR *param;
 				BOOL notify;
 
@@ -746,7 +784,7 @@ DWORD_PTR USECDECL PPxGetIInfo(PPV_APPINFO *vinfo, DWORD cmdID, PPXAPPINFOUNION 
 				return PPXA_NO_ERROR;
 			}
 
-			if ( !tstrcmp(uptr->funcparam.param, T("LINEMESSAGE")) ){
+			if ( tstrcmp(uptr->funcparam.param, T("LINEMESSAGE")) == 0 ){
 				TCHAR param = uptr->funcparam.optparam[0];
 
 				uptr->funcparam.dest[0] = '\0';
@@ -754,12 +792,12 @@ DWORD_PTR USECDECL PPxGetIInfo(PPV_APPINFO *vinfo, DWORD cmdID, PPXAPPINFOUNION 
 				if ( param == 'f' ){
 					thprintf(uptr->funcparam.dest, 20, T("%d"), PopMsgFlag);
 				}else if ( (param == 'r') || (PopMsgFlag & PMF_DISPLAYMASK) ){
-					tstrcpy(uptr->funcparam.dest, PopMsgStr);
+					CmdFunctionLongResult(&uptr->funcparam, PopMsgStr, -1);
 				}
 				return PPXA_NO_ERROR;
 			}
 
-			if ( !tstrcmp(uptr->funcparam.param, T("COMMENT")) ){
+			if ( tstrcmp(uptr->funcparam.param, T("COMMENT")) == 0 ){
 				TCHAR param = uptr->funcparam.optparam[0];
 
 				uptr->funcparam.dest[0] = '\0';
@@ -767,7 +805,7 @@ DWORD_PTR USECDECL PPxGetIInfo(PPV_APPINFO *vinfo, DWORD cmdID, PPXAPPINFOUNION 
 				if ( (param == 'g') || (param == 'm') ){
 					if ( param == 'g' ) GetMemo();
 					if ( (vo_.memo.bottom != NULL) && (vo_.memo.top > 0) ){
-						tstplimcpy(uptr->funcparam.dest, (const TCHAR *)vo_.memo.bottom, CMDLINESIZE);
+						CmdFunctionLongResult(&uptr->funcparam, ThStrT(&vo_.memo), -1);
 					}
 				}
 				return PPXA_NO_ERROR;
@@ -2859,7 +2897,7 @@ void DoFind(HWND hWnd, int mode)
 	}
 }
 
-typedef int (__stdcall *CREATEPICTURE)(LPCTSTR filepath, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, void *lpInfo, void *progressCallback, LONG_PTR lData);
+typedef int (__stdcall *CREATEPICTURE)(LPCTSTR filepath, unsigned int flag, HANDLE *pHBInfo, HANDLE *pHBm, void *lpInfo, SUSIE_PROGRESS *progressCallback, LONG_PTR lData);
 HMODULE hTSusiePlguin = NULL;
 CREATEPICTURE DCreatePicture;
 

@@ -295,13 +295,13 @@ PPXDLL int PPXAPI GetExtentionMenu(HMENU hSubMenu, const TCHAR *ext, PPXMENUDATA
 						continue;
 					}
 
-					if ( !tstricmp(keyN, ShellVerb_open) ){
+					if ( tstricmp(keyN, ShellVerb_open) == 0 ){
 						minfo.dwTypeData = (TCHAR *)MessageText(openstr);
-					}else if ( !tstricmp(keyN, T("print")) ){
+					}else if ( tstricmp(keyN, T("print")) == 0 ){
 						minfo.dwTypeData = (TCHAR *)MessageText(printstr);
-					}else if ( !tstricmp(keyN, T("play")) ){
+					}else if ( tstricmp(keyN, T("play")) == 0 ){
 						minfo.dwTypeData = (TCHAR *)MessageText(playstr);
-					}else if ( !tstrcmp(keyN, T("runas")) ){
+					}else if ( tstrcmp(keyN, T("runas")) == 0 ){
 						minfo.dwTypeData = (TCHAR *)MessageText(
 								(WinType >= WINTYPE_VISTA) ?
 								runasV6str : runasV5str);

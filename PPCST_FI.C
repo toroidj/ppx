@@ -267,7 +267,7 @@ BOOL CheckOpen(void)
 	if ( data[0] == '\0' ){
 		GetRegString(HKEY_LOCAL_MACHINE, RegOpen, NilStr, data, TSIZEOF(data));
 	}
-	return !tstrcmp(data, T("PPc"));
+	return tstrcmp(data, T("PPc")) == 0;
 }
 
 void USEFASTCALL KeyInputTest(HWND hDlg)

@@ -192,19 +192,19 @@ void ConvEAtime(FILETIME *ftime, TCHAR **dstptr, const TCHAR *label)
 }
 */
 
-void GetLxssEA(HANDLE hF, LPVOID *context, TCHAR **dstptr)
+void GetLxssEA(HANDLE hF, LPVOID *context, ThSTRUCT *text)
 {
 	struct LXSSEA eadata;
 	DWORD reads;
+	TCHAR buf[16];
 
-	*dstptr = tstpcpy(*dstptr, T("lxss EA(72)\r\n"));
+	ThCatString(text, T("lxss EA(72)\r\n"));
 
 	BackupRead(hF, (LPBYTE)&eadata, 72, &reads, FALSE, FALSE, context);
 	if ( reads != 72 ) return;
 	if ( memcmp(eadata.name, "LXATTRB", 8) != 0 ) return;
-	*dstptr = tstpcpy(*dstptr, T("   Attr: "));
-	MakeStatString(*dstptr, eadata.attr, ECS_NORMAL, 15);
-	*dstptr += tstrlen(*dstptr);
+	MakeStatString(buf, eadata.attr, ECS_NORMAL, 15);
+	thprintf(text, THP_CAT, T("   Attr: %s"), buf);
 /*
 	ConvEAtime(&eadata.date1, &dstptr, T("time1"));
 	ConvEAtime(&eadata.date2, &dstptr, T("time2"));
@@ -212,7 +212,7 @@ void GetLxssEA(HANDLE hF, LPVOID *context, TCHAR **dstptr)
 */
 }
 
-void LoadSummary(TCHAR *name, TCHAR *type, TCHAR *text)
+void LoadSummary(TCHAR *name, TCHAR *type, ThSTRUCT *text)
 {
 	TCHAR filename[VFPS + 100];
 	char *Summary = NULL;
@@ -226,14 +226,9 @@ void LoadSummary(TCHAR *name, TCHAR *type, TCHAR *text)
 				DWORD size;
 
 				size = *(DWORD *)(Summary + off + 4);
-				if (size){
-					tstrcat(text, T("\r\nSummary       :"));
-					text += tstrlen(text);
-					#ifdef UNICODE
-						AnsiToUnicode((Summary + off + 8), text, 200);
-					#else
-						strcpy(text, (Summary + off + 8));
-					#endif
+				if ( size != 0 ){
+					thprintf(text, THP_CAT,
+							T("\r\nSummary       :%hs"), (Summary + off + 8));
 				}
 				off += size + 1 + 4;
 			}
@@ -241,14 +236,9 @@ void LoadSummary(TCHAR *name, TCHAR *type, TCHAR *text)
 				DWORD size;
 
 				size = *(DWORD *)(Summary + off + 4);
-				if (size){
-					tstrcat(text, T("\r\nSummaryU      :"));
-					text += tstrlen(text);
-					#ifdef UNICODE
-						tstrcpy(text, (TCHAR *)(Summary + off + 8));
-					#else
-						UnicodeToAnsi((WCHAR *)(Summary + off + 8), text, 200);
-					#endif
+				if ( size != 0 ){
+					thprintf(text, THP_CAT,
+							T("\r\nSummaryU      :%Ls"), (Summary + off + 8));
 				}
 				off += (size * 2) + 4;
 			}
@@ -258,7 +248,7 @@ void LoadSummary(TCHAR *name, TCHAR *type, TCHAR *text)
 	}
 }
 
-TCHAR *DumpSID(TCHAR *dst, PSID psid, TCHAR *mes, const TCHAR *name)
+void DumpSID(ThSTRUCT *text, PSID psid, TCHAR *mes, const TCHAR *name)
 {
 	TCHAR fname[VFPS], oname[0x400], domain[0x400], *db = NULL;
 	DWORD namesize, domainsize;
@@ -276,9 +266,9 @@ TCHAR *DumpSID(TCHAR *dst, PSID psid, TCHAR *mes, const TCHAR *name)
 
 	if ( IsTrue(LookupAccountSid(db, psid,
 			oname, &namesize, domain, &domainsize, &snu)) ){
-		return thprintf(dst, 512, T("\r\n%s:%s@%s"), mes, oname, domain);
+		thprintf(text, THP_CAT, T("\r\n%s:%s@%s"), mes, oname, domain);
 	}else{
-		return thprintf(dst, 512, T("\r\n%s:(error)"), mes);
+		thprintf(text, THP_CAT, T("\r\n%s:(error)"), mes);
 	}
 }
 
@@ -314,34 +304,33 @@ struct ACCESSNAMES fileaccess[] = {
 	{ 0, NULL }
 };
 
-TCHAR *DumpAMask(TCHAR *dst, ACCESS_MASK am)
+void DumpAMask(ThSTRUCT *text, ACCESS_MASK am)
 {
-	dst = thprintf(dst, 32, T("\r\n (%04x),"), am);
+	thprintf(text, THP_CAT, T("\r\n (%04x),"), am);
 
 	if ( am == FILE_ALL_ACCESS ){
-		dst = thprintf(dst, 32, T("(All)"));
+		ThCatString(text, T("(All)"));
 	}else if ( am == FILE_GENERIC_READ ){
-		dst = thprintf(dst, 32, T("(Read)"));
+		ThCatString(text, T("(Read)"));
 	}else if ( am == FILE_GENERIC_WRITE ){
-		dst = thprintf(dst, 32, T("(Write)"));
+		ThCatString(text, T("(Write)"));
 	}else if ( am == FILE_GENERIC_EXECUTE ){
-		dst = thprintf(dst, 32, T("(Execute)"));
+		ThCatString(text, T("(Execute)"));
 	}else if ( am == (FILE_GENERIC_READ | FILE_GENERIC_EXECUTE) ){
-		dst = thprintf(dst, 32, T("(Read & Execute)"));
+		ThCatString(text, T("(Read & Execute)"));
 	}else if ( am == 0x1301bf ){
-		dst = thprintf(dst, 32, T("(Change)"));
+		ThCatString(text, T("(Change)"));
 	}else{
 		struct ACCESSNAMES *an;
 
 		an = fileaccess;
 		while ( an->flag ){
 			if ( am & an->flag ){
-				dst = thprintf(dst, 32, an->name);
+				thprintf(text, THP_CAT, an->name);
 			}
 			an++;
 		}
 	}
-	return dst;
 }
 
 #ifndef IO_REPARSE_TAG_HSM
@@ -414,7 +403,7 @@ const TCHAR *ReparseNames[ReparseNamesMax + 1] = {
 	T("WCI link"), // IO_REPARSE_TAG_WCI_LINK
 };
 
-TCHAR *DumpReparsePoint(TCHAR *dst, LPCTSTR lpFileName)
+void DumpReparsePoint(ThSTRUCT *text, LPCTSTR lpFileName)
 {
 	TCHAR rpath[VFPS];
 	const TCHAR *tagname;
@@ -425,7 +414,7 @@ TCHAR *DumpReparsePoint(TCHAR *dst, LPCTSTR lpFileName)
 	}else{
 		tagname = T("unknown");
 	}
-	return thprintf(dst, VFPS,
+	thprintf(text, THP_CAT,
 			T("\r\nReparseTag    :%08x (%s)\r\n")
 			T("ReparsePath   :%s"),
 			tag, tagname,
@@ -576,7 +565,7 @@ DefineWinAPI(BOOL, GetVolumeNameForVolumeMountPointW, (LPCWSTR, LPWSTR, DWORD) )
 				MessageA("CreateFileW error");
 				}else{
 					VOLUME_DISK_EXTENTS extents;
-					STORAGE_PROPERTY_QUERY query;
+					xSTORAGE_PROPERTY_QUERY query;
 					DWORD bytesWritten;
 					DEVICE_SEEK_PENALTY_DESCRIPTOR result;
 
@@ -595,7 +584,7 @@ DefineWinAPI(BOOL, GetVolumeNameForVolumeMountPointW, (LPCWSTR, LPWSTR, DWORD) )
 					if ( DeviceIoControl(hDF, IOCTL_STORAGE_QUERY_PROPERTY,
 						&query, sizeof(query), &result, sizeof(result),
 						  &bytesWritten, NULL) &&
-						(bytesWritten >= sizeof(STORAGE_PROPERTY_QUERY))
+						(bytesWritten >= sizeof(xSTORAGE_PROPERTY_QUERY))
 
 						) {
 						Messagef("HD %d",	result.IncursSeekPenalty);
@@ -613,7 +602,6 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 	TCHAR name[VFPS], ext[VFPS];
 	VFSFILETYPE vft;
 	ERRORCODE err;
-	TCHAR *dst;
 	UINTHL hl;
 
 	ThInit(text);
@@ -626,9 +614,8 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 		}
 	}
 	LetHLFilesize(hl, cell->f);
-	ThSize(text, 0x2000);
 
-	thprintf(text, 0,
+	thprintf(text, THP_CAT,
 			T("Path          :%s\r\n")
 			T("Long  name    :%s\r\n")
 			T("Short name    :%s\r\n")
@@ -647,14 +634,14 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 	if ( err == ERROR_NO_DATA_DETECTED ){
 		ThCatString(text, T("Unknown File Type"));
 	}else if ( err != NO_ERROR ){
-		thprintf(text, 0, T("%Mm"), err);
+		thprintf(text, THP_CAT, T("%Mm"), err);
 	}else{
-		thprintf(text, 0, T("%s(%s,*.%s)"),
+		thprintf(text, THP_CAT, T("%s(%s,*.%s)"),
 				vft.typetext, vft.type, vft.ext);
 		if ( vft.info != NULL ){
-			thprintf(text, 0, T("\r\n"));
+			thprintf(text, THP_CAT, T("\r\n"));
 			if ( tstrlen(vft.info) > 0x1000 ){
-				thprintf(text, 0, T("*info too large*"));
+				thprintf(text, THP_CAT, T("*info too large*"));
 			}else{
 				ThCatString(text, vft.info);
 			}
@@ -662,8 +649,6 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 		}
 	}
 
-	ThSize(text, 0x2000);
-	dst = ThStrLastT(text);
 
 	if ( VFSCheckFileByExt(name, ext) == FALSE ){
 		tstrcpy(ext, T("Not registration"));
@@ -673,46 +658,48 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 
 		state = cell->state;
 		if ( cell->attr & ECA_GRAY ) state = ECS_GRAY;
-		dst = thprintf(dst, CMDLINESIZE,
+		thprintf(text, THP_CAT,
 			T("\r\n")
 			T("Extension type:%s\r\n")
 			T("Attributes    :(%x),%s\r\n "),
 			ext,
 			cell->f.dwFileAttributes, status[state]);
-		if ( cell->f.dwFileAttributes == BADATTR ){
-			dst = thprintf(dst, 32, T("attribute error"));
-		}else{
-			int i, usesep = 0;
+	}
+	if ( cell->f.dwFileAttributes == BADATTR ){
+		thprintf(text, THP_CAT, T("attribute error"));
+	}else{
+		int i, usesep = 0;
 
-			for ( i = 0 ; i < ATTR_FLAGS_COUNT ; i++){
-				if ( cell->f.dwFileAttributes & ( 1 << i ) ){
-					if ( usesep != 0 ){
-						tstrcat(dst, T(","));
-					}else{
-						usesep = 1;
-					}
-					tstrcat(dst, AttrsLabels[i]);
+		for ( i = 0 ; i < ATTR_FLAGS_COUNT ; i++){
+			if ( cell->f.dwFileAttributes & ( 1 << i ) ){
+				if ( usesep != 0 ){
+					ThCatString(text, T(","));
+				}else{
+					usesep = 1;
 				}
-			}
-			dst += tstrlen(dst);
-
-			if ( cell->f.dwFileAttributes & FILE_ATTRIBUTE_COMPRESSED ){
-				UINTHL chl;
-
-				chl.s.L = GetCompressedFileSize(name, &chl.s.H);
-				dst = thprintf(dst, 64, T("\r\nCompressedSize:%'Lu"), chl.rawdata);
+				ThCatString(text, AttrsLabels[i]);
 			}
 		}
-		if ( cell->f.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ){
-			dst = DumpReparsePoint(dst, name);
+
+		if ( cell->f.dwFileAttributes & FILE_ATTRIBUTE_COMPRESSED ){
+			UINTHL chl;
+
+			chl.s.L = GetCompressedFileSize(name, &chl.s.H);
+			thprintf(text, THP_CAT, T("\r\nCompressedSize:%'Lu"), chl.rawdata);
 		}
 	}
 
-	dst = thprintf(dst, 300, T("\r\nCreate time   :%MF")
-							 T("\r\nLast Write    :%MF")
-							 T("\r\nLast Access   :%MF"),
+
+	if ( cell->f.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ){
+		DumpReparsePoint(text, name);
+	}
+
+	thprintf(text, THP_CAT, T("\r\nCreate time   :%MF")
+							T("\r\nLast Write    :%MF")
+							T("\r\nLast Access   :%MF"),
 			&cell->f.ftCreationTime , &cell->f.ftLastWriteTime,
 			&cell->f.ftLastAccessTime);
+
 	{
 		HANDLE hFile;
 		BY_HANDLE_FILE_INFORMATION fi;
@@ -731,33 +718,30 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 				BYTE buf[0x400];
 				if ( IsTrue(DGetFileInformationByHandleEx(hFile,
 						xFileBasicInfo, &buf, sizeof(buf))) ){
-					dst = thprintf(dst, 100, T("\r\nChange Time   :%MF"),
+					thprintf(text, THP_CAT, T("\r\nChange Time   :%MF"),
 							&((xFILE_BASIC_INFO *)buf)->ChangeTime);
 				}
 				if ( IsTrue(DGetFileInformationByHandleEx(hFile,
 						xFileStandardInfo, &buf, sizeof(buf))) ){
-					dst = thprintf(dst, 100, T("\r\nAllocationSize:%'Lu"),
+					thprintf(text, THP_CAT, T("\r\nAllocationSize:%'Lu"),
 							((UINTHL *)(&((xFILE_STANDARD_INFO *)buf)->AllocationSize))->rawdata);
 				}
 				if ( IsTrue(DGetFileInformationByHandleEx(hFile,
 						xFileRemoteProtocolInfo, &buf, sizeof(buf))) ){
 					TCHAR buf1[64], buf2[256];
 
-					dst = thprintf(dst, CMDLINESIZE, T("\r\nRemote Protocol name:%s\r\nRemote Protocol types:%s"),
+					thprintf(text, THP_CAT, T("\r\nRemote Protocol name:%s\r\nRemote Protocol types:%s"),
 						RemoteTypeName(((xFILE_REMOTE_PROTOCOL_INFO *)buf)->Protocol, buf1),
 						RemoteFlagsName(((xFILE_REMOTE_PROTOCOL_INFO *)buf)->Flags, buf2)
 					);
 				}
 			}
-			text->top = (char *)dst - text->bottom;
-			ThSize(text, 0x2000);
-			dst = (TCHAR *)(char *)(text->bottom + text->top);
 
 			if ( IsTrue(GetFileInformationByHandle(hFile, &fi)) ){
 				DefineWinAPI(HANDLE, FindFirstFileNameW, (LPCWSTR lpFileName, DWORD dwFlags, LPDWORD StringLength, PWCHAR LinkName));
 				DefineWinAPI(BOOL, FindNextFileNameW, (HANDLE hFindStream, LPDWORD StringLength, PWCHAR LinkName));
 
-				dst = thprintf(dst, 64, T("\r\nHard Links    :%d"),
+				thprintf(text, THP_CAT, T("\r\nHard Links    :%d"),
 						fi.nNumberOfLinks);
 				if ( fi.nNumberOfLinks >= 2){
 					GETDLLPROC(hKernel32, FindFirstFileNameW);
@@ -769,7 +753,6 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 						#ifdef UNICODE
 							#define nameW name
 						#else
-							char nameT[VFPS];
 							WCHAR nameW[VFPS];
 
 							AnsiToUnicode(name, nameW, VFPS);
@@ -777,12 +760,7 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 						len = VFPS;
 						hFFFN = DFindFirstFileNameW(nameW, 0, &len, linknameW);
 						if ( hFFFN != INVALID_HANDLE_VALUE ) for(;;){
-							#ifdef UNICODE
-								#define nameT linknameW
-							#else
-								UnicodeToAnsi(linknameW, nameT, VFPS);
-							#endif
-							dst = thprintf(dst, VFPS, T("\r\n*HardLink name:%s"), nameT);
+							thprintf(text, THP_CAT, T("\r\n*HardLink name:%Ls"), linknameW);
 							len = VFPS;
 							if ( FALSE == DFindNextFileNameW(hFFFN, &len, linknameW) ){
 								FindClose(hFFFN);
@@ -796,7 +774,6 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 				WIN32_STREAM_ID stid;
 				DWORD size, reads;
 				WCHAR wname[VFPS];
-				TCHAR *baseptr;
 
 				for ( ; ; ){
 					size = (LPBYTE)&stid.cStreamName - (LPBYTE)&stid;
@@ -811,72 +788,64 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 						break;
 					}
 					if ( reads < stid.dwStreamNameSize ) break;
-					baseptr = dst;
-					dst = tstpcpy(dst, T("\r\n*Stream Name  :"));
-					if ( stid.dwStreamNameSize ){
-						wname[stid.dwStreamNameSize >> 1] = 0;
-						#ifdef UNICODE
-							tstrcpy(dst, wname);
-						#else
-							UnicodeToAnsi(wname, dst, VFPS);
-						#endif
-					}else{
-						tstrcpy(dst, T("(none)"));
-					}
-					dst += tstrlen(dst);
-					dst = tstpcpy(dst, T("\r\n  Stream Type :"));
-					switch ( stid.dwStreamId ){
-						case BACKUP_DATA: // $DATA
-							dst = baseptr;
-							*dst = '\0';
-							break;
-						case BACKUP_EA_DATA: // $EA
-							if ( (*(DWORD *)(&stid.Size) == 0x48) && (*((DWORD *)(&stid.Size) + 1) == 0) ){
-								GetLxssEA(hFile, &context, &dst);
-								continue;
-							}
-							tstrcpy(dst, T("Enhanced attributes"));
-							break;
-						case BACKUP_SECURITY_DATA: // $SECURITY_DESCRIPTOR
-							tstrcpy(dst, T("Securities"));
-							break;
-						case BACKUP_ALTERNATE_DATA:
-							tstrcpy(dst, T("Alternate data"));
-							break;
-						case BACKUP_LINK: // $FILE_NAME
-							tstrcpy(dst, T("Hard Link"));
-							break;
-						case BACKUP_PROPERTY: // BACKUP_PROPERTY_DATA
-							tstrcpy(dst, T("Properties"));
-							break;
-						case BACKUP_OBJECT_ID: // $OBJECT_ID
-							tstrcpy(dst, T("Object ID"));
-							break;
-						case BACKUP_REPARSE_DATA: // $REPARSE_POINT
-							tstrcpy(dst, T("Reparse DATA"));
-							break;
-						case BACKUP_SPARSE_BLOCK:
-							tstrcpy(dst, T("Sparse blocks"));
-							break;
-						#ifndef BACKUP_TXFS_DATA
-						  #define BACKUP_TXFS_DATA 0xa
-						#endif
-						case BACKUP_TXFS_DATA: // $TXF_DATA
-							tstrcpy(dst, T("Transactional NTFS (TxF)"));
-							break;
-						#ifndef BACKUP_GHOSTED_FILE_EXTENTS
-						  #define BACKUP_GHOSTED_FILE_EXTENTS 0xb
-						#endif
-						case BACKUP_GHOSTED_FILE_EXTENTS:
-							tstrcpy(dst, T("Ghosted file extent"));
-							break;
-						default:
-							thprintf(dst, 32, T("Unknown(%x)"), stid.dwStreamId);
-							break;
-					}
-					if ( *dst != '\0' ){
-						dst += tstrlen(dst);
-						dst = thprintf(dst, 100, T("\r\n  Stream Size :%'Lu"),
+
+					if ( stid.dwStreamId != BACKUP_DATA ){
+						ThCatString(text, T("\r\n*Stream Name  :"));
+						if ( stid.dwStreamNameSize ){
+							wname[stid.dwStreamNameSize >> 1] = 0;
+							thprintf(text, THP_CAT, T("%Ls"), wname);
+						}else{
+							ThCatString(text, T("(none)"));
+						}
+						ThCatString(text, T("\r\n  Stream Type :"));
+						switch ( stid.dwStreamId ){
+							//case BACKUP_DATA: // $DATA ... skip
+							//	break;
+							case BACKUP_EA_DATA: // $EA
+								if ( (*(DWORD *)(&stid.Size) == 0x48) && (*((DWORD *)(&stid.Size) + 1) == 0) ){
+									GetLxssEA(hFile, &context, text);
+									continue;
+								}
+								ThCatString(text, T("Enhanced attributes"));
+								break;
+							case BACKUP_SECURITY_DATA: // $SECURITY_DESCRIPTOR
+								ThCatString(text, T("Securities"));
+								break;
+							case BACKUP_ALTERNATE_DATA:
+								ThCatString(text, T("Alternate data"));
+								break;
+							case BACKUP_LINK: // $FILE_NAME
+								ThCatString(text, T("Hard Link"));
+								break;
+							case BACKUP_PROPERTY: // BACKUP_PROPERTY_DATA
+								ThCatString(text, T("Properties"));
+								break;
+							case BACKUP_OBJECT_ID: // $OBJECT_ID
+								ThCatString(text, T("Object ID"));
+								break;
+							case BACKUP_REPARSE_DATA: // $REPARSE_POINT
+								ThCatString(text, T("Reparse DATA"));
+								break;
+							case BACKUP_SPARSE_BLOCK:
+								ThCatString(text, T("Sparse blocks"));
+								break;
+							#ifndef BACKUP_TXFS_DATA
+							  #define BACKUP_TXFS_DATA 0xa
+							#endif
+							case BACKUP_TXFS_DATA: // $TXF_DATA
+								ThCatString(text, T("Transactional NTFS (TxF)"));
+								break;
+							#ifndef BACKUP_GHOSTED_FILE_EXTENTS
+							  #define BACKUP_GHOSTED_FILE_EXTENTS 0xb
+							#endif
+							case BACKUP_GHOSTED_FILE_EXTENTS:
+								ThCatString(text, T("Ghosted file extent"));
+								break;
+							default:
+								thprintf(text, THP_CAT, T("Unknown(%x)"), stid.dwStreamId);
+								break;
+						}
+						thprintf(text, THP_CAT, T("\r\n  Stream Size :%'Lu"),
 								((UINTHL *)&stid.Size)->rawdata);
 					}
 
@@ -894,19 +863,21 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 			CloseHandle(hFile);
 		}
 	}
-	if ( tstricmp(GetPathExt(name), StrShortcutExt) == 0 ){
-		TCHAR *np;
 
-		np = tstpcpy(dst, T("\r\nLinked path   :"));
-		if ( SUCCEEDED(GetLink(cinfo->info.hWnd, name, np)) ){
-			dst = np + tstrlen(np);
+	if ( tstricmp(GetPathExt(name), StrShortcutExt) == 0 ){
+		ThCatString(text, T("\r\nLinked path   :"));
+		if ( ThSize(text, MAX_PATH * sizeof(TCHAR)) ){
+			if ( SUCCEEDED(GetLink(cinfo->info.hWnd, name, ThLastT(text))) ){
+				text->top += tstrlen(ThLastT(text)) * sizeof(TCHAR);
+			}
 		}
 	}
 
 	if ( cell->comment != EC_NOCOMMENT ){
-		dst = tstpcpy(dst, T("\r\nComment       :"));
-		dst = tstpcpy(dst, ThPointerT(&cinfo->e.Comments, cell->comment));
+		thprintf(text, THP_CAT, T("\r\nComment       :%s"),
+				ThPointerT(&cinfo->e.Comments, cell->comment));
 	}
+
 	if ( cell->cellcolumn >= 0 ){
 		ENTRYEXTDATASTRUCT eeds;
 		int CommentID;
@@ -916,10 +887,11 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 			eeds.size = VFPS * sizeof(TCHAR);
 			eeds.data = (BYTE *)ext;
 			if ( IsTrue(EntryExtData_GetDATA(cinfo, &eeds, cell)) ){
-				dst = thprintf(dst, CMDLINESIZE, T("\r\nComment%d      :%s"), CommentID, ext);
+				thprintf(text, THP_CAT, T("\r\nComment%d      :%s"), CommentID, ext);
 			}
 		}
 	}
+
 	{
 		SECURITY_DESCRIPTOR *sd;
 		BYTE sdbuf[0x400];
@@ -934,16 +906,11 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 			GetSecurityDescriptorOwner(sd, &psid, &ownflag);
 
 			if ( IsTrue(ownflag) ){
-				dst = thprintf(dst, 64, T("\r\nOwner         :<inheritance>"));
+				thprintf(text, THP_CAT, T("\r\nOwner         :<inheritance>"));
 			}else{
-				dst = DumpSID(dst, psid, T("Owner         "), name);
+				DumpSID(text, psid, T("Owner         "), name);
 			}
 		}
-	}
-	{
-		SECURITY_DESCRIPTOR *sd;
-		BYTE sdbuf[0x400];
-		DWORD size;
 
 		sd = (SECURITY_DESCRIPTOR *)sdbuf;
 		if ( FALSE != GetFileSecurity(name, DACL_SECURITY_INFORMATION,
@@ -957,47 +924,40 @@ void MakeFileInformation(PPC_APPINFO *cinfo, ThSTRUCT *text, ENTRYCELL *cell)
 				ACE_HEADER *ace;
 
 				if ( pacl == NULL ){
-					dst = thprintf(dst, 32, T("\r\n*Access All"));
+					thprintf(text, THP_CAT, T("\r\n*Access All"));
 				}else while( IsTrue(GetAce(pacl, index++, (void **)&ace)) ){
 					switch ( ace->AceType ){
 						case ACCESS_ALLOWED_ACE_TYPE:
-							dst = DumpSID(dst,
+							DumpSID(text,
 								(PSID)&((ACCESS_ALLOWED_ACE *)ace)->SidStart,
 								T("*Access Allow."), name);
-							dst = DumpAMask(dst,
-										((ACCESS_ALLOWED_ACE *)ace)->Mask);
+							DumpAMask(text, ((ACCESS_ALLOWED_ACE *)ace)->Mask);
 							break;
 						case ACCESS_DENIED_ACE_TYPE:
-							dst = DumpSID(dst,
+							DumpSID(text,
 								(PSID)&((ACCESS_DENIED_ACE *)ace)->SidStart,
 								T("*Access Denied"), name);
-							dst = DumpAMask(dst,
-										((ACCESS_ALLOWED_ACE *)ace)->Mask);
+							DumpAMask(text, ((ACCESS_ALLOWED_ACE *)ace)->Mask);
 							break;
 						case SYSTEM_AUDIT_ACE_TYPE:
-							dst = DumpSID(dst,
+							DumpSID(text,
 								(PSID)&((SYSTEM_AUDIT_ACE *)ace)->SidStart,
 								T("*Audit        "), name);
-							dst = DumpAMask(dst,
-										((ACCESS_ALLOWED_ACE *)ace)->Mask);
+							DumpAMask(text, ((ACCESS_ALLOWED_ACE *)ace)->Mask);
 							break;
 						default:
-							dst = thprintf(dst, 32, T("\r\n*Access Unknown:"));
+							thprintf(text, THP_CAT, T("\r\n*Access Unknown:"));
 					}
 				}
 			}
 		}
 	}
-	dst = GetColumnExtTextInfo(cinfo, cell->cellcolumn, dst);
+
+	GetColumnExtTextInfo(cinfo, cell->cellcolumn, text);
 	if ( tstrlen(name) < VFPS ){
-		LoadSummary(name, T("SummaryInformation"), dst);
-		LoadSummary(name, T("DocumentSummaryInformation"), dst);
-		LoadSummary(name, T("SebiesnrMkudrfcoIaamtykdDa"), dst);
+		LoadSummary(name, T("SummaryInformation"), text);
+		LoadSummary(name, T("DocumentSummaryInformation"), text);
+		LoadSummary(name, T("SebiesnrMkudrfcoIaamtykdDa"), text);
 	}
-	dst += tstrlen(dst);
-	*dst++ = '\r';
-	*dst++ = '\n';
-	*dst = '\0';
-	text->top = (char *)dst - text->bottom;
 	VistaProperties(name, text);
 }

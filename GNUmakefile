@@ -37,7 +37,7 @@ ifndef MinGW
 endif
 ifeq ($(strip $(MinGW)),1)
 # MinGW
-Copy	= copy
+Copy	= cmd /c copy
 Ccn	= gcc -DMinGW
 cc	= @$(Ccn) $(WarnOpt) $(SimpleWarnOpt) $(UnicodeCopt) -mms-bitfields -finput-charset=CP932 -fexec-charset=CP932 -O2 -Os
 Rcn	= brc32 -r
@@ -131,7 +131,7 @@ $(PPXLIB).o:
     ifneq ('','$(wildcard *.res)')
 	-@$(Delete) *.res 2> $(Nul)
     endif
-	@$(Copy) $(Nul) $(PPXLIB).o > $(Nul)
+	@$(Copy) $(Nul) $(PPXLIB).o 
 
 #--------------------------------------------------------------------- PPCOMMON
 PPDH	= $(PPXH) PPCOMMON.RH PPD_DEF.H PPD_GVAR.C
@@ -161,7 +161,7 @@ PPDCPPOBJ	= PPD_SUBP.o	VFS_SHNP.o
 PPDOBJ	= $(PPDCOBJ) $(PPDCPPOBJ)
 
 $(PPXLIB).DLL:	GNUmakefile	$(PPDOBJ)	PPCOMMON.coff
-	-@PPB$(W) /c *closeppx
+	-@PPB$(W) -c *closeppx
 	@dlltool --output-def PPCOMMON.def $(PPDOBJ)
 	@dlltool --dllname $(PPXLIB).dll --def PPCOMMON.def --output-lib libppcommon.a
 	$(linkdll) --def ppcommon.def -mwindows -o $@ $(PPDOBJ) PPCOMMON.coff -limm32 -lole32 -luuid -lstdc++ -loleaut32 -lversion

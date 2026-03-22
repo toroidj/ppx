@@ -68,7 +68,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
 // ※ CreateThread, ShGetFolderPath は使用禁止
 BOOL InitProcessDLL(void)
 {
-	TCHAR buf[VFPS];
+	TCHAR buf[VFPS], *last;
 	TCHAR buf2[VFPS];
 	DWORD tempsize;
 
@@ -102,7 +102,8 @@ BOOL InitProcessDLL(void)
 		ExpandEnvironmentStrings(usernamestr, UserName, TSIZEOF(UserName));
 	}
 								// DLL 情報の取得 =====================
-	*(tstrrchr(DLLpath, '\\') + 1) = '\0';
+	last = tstrrchr(DLLpath, '\\');
+	if ( last != NULL ) *(last + 1) = '\0';
 	ProcHeap = GetProcessHeap();
 	WM_PPXCOMMAND = RegisterWindowMessage(T(PPXCOMMAND_WM)); // User32.dll
 	ProcTempPath[0] = '\0';
@@ -117,7 +118,7 @@ BOOL InitProcessDLL(void)
 	hKernel32 = GetModuleHandle(T("KERNEL32.DLL"));
 	hShell32 = GetModuleHandle(T("SHELL32.DLL"));
 								// 例外処理の組み込み =================
-
+	*(DWORD *)FR_igpn.b = 0; // 無視フィルタを初期化
 	#ifndef _WIN64
 		if ( WinType >= WINTYPE_VISTA ){
 			GETDLLPROC(hKernel32, AddVectoredExceptionHandler);
@@ -289,6 +290,14 @@ BOOL InitProcessDLL(void)
 	FixCharlengthTable(NULL); // ReportLCID を使用
 
 	GetCustData(T("X_log"), &X_log, sizeof(X_log));
+	{
+		DWORD igpn_size;
+		TCHAR *X_igpn = GetCustValue(T("X_igpn"), NULL, &igpn_size, 0);
+		if ( X_igpn != NULL ){
+			MakeFN_REGEXP(&FR_igpn, X_igpn);
+			HeapFree(ProcHeap, 0, X_igpn);
+		}
+	}
 	return TRUE;
 }
 

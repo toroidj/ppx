@@ -158,8 +158,9 @@ extern ERRORCODE MaskEntry(PPC_APPINFO *cinfo, int mode, const TCHAR *defmask, c
 extern void OpenExplorer(PPC_APPINFO *cinfo);
 extern void OpenFileWithPPe(PPC_APPINFO *cinfo);
 extern void ClipDirectory(PPC_APPINFO *cinfo);
-#define CFT_FILE	B0		// Drag & Drop 形式
-#define CFT_TEXT	B1		// Text 形式
+#define CFT_DnD  B0  // Drag & Drop 形式
+#define CFT_TEXT B1  // Text 形式
+#define CFT_SHN  B2  // Shell name 形式
 extern void ClipFiles(PPC_APPINFO *cinfo, DWORD effect, DWORD cliptypes);
 extern void SetMag(PPC_APPINFO *cinfo, int offset);
 extern BOOL SetPairPath(PPC_APPINFO *cinfo, const TCHAR *path, const TCHAR *entry);
@@ -663,7 +664,7 @@ typedef struct {
 extern void SyncProperties(HWND hWnd, SYNCPROPINFO *info);
 
 extern WORD GetColumnExtItemIndex(PPC_APPINFO *cinfo, const TCHAR *itemname);
-extern TCHAR *GetColumnExtTextInfo(PPC_APPINFO *cinfo, int cellcolumn, TCHAR *dst);
+extern void GetColumnExtTextInfo(PPC_APPINFO *cinfo, int cellcolumn, ThSTRUCT *text);
 
 extern void VistaProperties(const TCHAR *filename, ThSTRUCT *text);
 extern void PPcChangeTabletMode(PPC_APPINFO *cinfo, int pmc);

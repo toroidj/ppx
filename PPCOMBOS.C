@@ -650,7 +650,6 @@ HWND InitCombo(PPCSTARTPARAM *psp)
 	return Combo.hWnd;
 }
 
-// *pane コマンド =============================================================
 const TCHAR TGHSPROP[] = T("PcmbTabGH");
 
 BOOL TabGroupLDownMouse(TABHOOKSTRUCT *THS, /*WPARAM wParam,*/ LPARAM lParam)
@@ -835,7 +834,7 @@ void DrawGroupTab(DRAWITEMSTRUCT *dis)
 	// 文字色
 	if ( C_capt[select_index] != C_AUTO ) {
 		oldfc = SetTextColor(dis->hDC, C_capt[select_index]);
-	}else if ( X_uxt[0] >= UXT_MINPRESET ){
+	}else if ( X_uxt_color >= UXT_MINPRESET ){
 		oldfc = SetTextColor(dis->hDC, C_DialogText);
 	}
 
@@ -846,8 +845,8 @@ void DrawGroupTab(DRAWITEMSTRUCT *dis)
 
 		if ( C_capt[select_index + CI_TabBackOffset] != C_AUTO ) {
 			col = C_capt[select_index + CI_TabBackOffset];
-		}else if ( X_uxt[0] >= UXT_MINPRESET ){
-			col = C_DialogBack;
+		}else if ( X_uxt_color >= UXT_MINPRESET ){
+			col = (select_index == CI_TabSelected) ? C_FocusBack : C_DialogBack;
 //		}else if ( select_index == CI_TabFocus ){
 //			col = GetSysColor(COLOR_3DHIGHLIGHT);
 		}else if ( select_index == CI_TabSelected ){
@@ -866,10 +865,9 @@ void DrawGroupTab(DRAWITEMSTRUCT *dis)
 	box.top += 4;
 	#pragma warning(suppress: 6054) // TabCtrl_GetItem で取得
 	DrawText(dis->hDC, buf, tstrlen32(buf), &box, DT_LEFT | DT_NOPREFIX);
-
 	//DT_END_ELLIPSIS DT_PATH_ELLIPSIS
-	if ( oldfc != C_AUTO ) SetTextColor(dis->hDC, oldfc);
 
+	if ( oldfc != C_AUTO ) SetTextColor(dis->hDC, oldfc);
 	if ( oldbc != C_AUTO ) SetBkColor(dis->hDC, oldbc);
 }
 
@@ -1001,7 +999,7 @@ LRESULT CALLBACK TabGroupHookProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lP
 			return HTCLIENT;	// 非タブ領域上のマウス操作も取得可能にする
 
 		case WM_PAINT:
-			if ( X_uxt[0] < UXT_MINMODIFY ) break;
+			if ( X_uxt_color < UXT_MINMODIFY ) break;
 			PaintGroupTab(hWnd);
 			return 0;
 
@@ -1192,7 +1190,7 @@ const TCHAR *NewTabGroupName(TCHAR *name)
 	if ( name[0] == '\0' ) tail = tstpcpy(name, T("group"));
 
 	for (;;){
-		thprintf(tail, 20, T(" %d"), Group_id++);
+		thprintf(tail, 20, T("%d"), Group_id++);
 		for ( showindex = 0; showindex < Combo.Tabs; showindex++){
 			COMBOTABINFO *tabs;
 
@@ -1281,6 +1279,22 @@ ERRORCODE NewTabGroup(int targetpane, const TCHAR *groupname)
 			}
 		}
 		return NO_ERROR;
+	}
+}
+
+void NewTabGroupCare(int showindex)
+{
+	if ( !(X_combos[0] & CMBS_TABSEPARATE) && (Combo.ShowCount > 1) ){
+		int index;
+
+		for ( index = 0; index < Combo.ShowCount; index++){
+			if ( index != showindex ){
+				TCHAR param[32];
+
+				thprintf(param, TSIZEOF(param), T("-pane:%d"), index);
+				CallPPcParam(Combo.hWnd, param);
+			}
+		}
 	}
 }
 
@@ -1643,6 +1657,12 @@ void ReopenTab(int targetpane, const TCHAR **param)
 	}
 }
 
+const TCHAR *PaneStatus_RegID(COMBOITEMSTRUCT *cmb)
+{
+	if ( cmb->cinfo == NULL ) return NilStr;
+	return cmb->cinfo->RegSubCID;
+}
+
 void PaneStatus(void)
 {
 	HeapStr hstr;
@@ -1656,8 +1676,10 @@ void PaneStatus(void)
 		COMBOITEMSTRUCT *base;
 
 		base = &Combo.base[baseindex];
-		thprintf(buf, TSIZEOF(buf), T("Base#%3d: HWND:%x AcitveID:%d Cap:%d"),
-				baseindex, (DWORD)(DWORD_PTR)base->hWnd, base->ActiveID, base->capture);
+		thprintf(buf, TSIZEOF(buf), T("Base #%3d: HWND:%s(%x) AcitveIndex:%d Capture:%d color[FG:%x BG:%x]"),
+				baseindex, PaneStatus_RegID(base), (DWORD)(DWORD_PTR)base->hWnd,
+				base->ActiveID, base->capture,
+				base->tabtextcolor, base->tabbackcolor);
 		SetComboReportText(buf);
 	}
 
@@ -1683,33 +1705,34 @@ void PaneStatus(void)
 	PPcHeapFree(memo);
 
 	{
-		int show, grp;
+		int showindex, grpindex;
 
 		COMBOITEMSTRUCT *base;
-		for ( show = 0; show < Combo.ShowCount; show++ ){
+		for ( showindex = 0; showindex < Combo.ShowCount; showindex++ ){
 			COMBOTABINFO *tabs;
+			COMBOPANES *show;
 
-			base = &Combo.base[Combo.show[show].baseNo];
-			thprintf(buf, TSIZEOF(buf), T("pane #%d base:%d %x, tab:%x grpsel:%x"),
-					show, Combo.show[show].baseNo, base->hWnd,
-					Combo.show[show].tab.hWnd, Combo.show[show].tab.hSelecterWnd);
+			show = &Combo.show[showindex];
+			base = &Combo.base[show->baseNo];
+			thprintf(buf, TSIZEOF(buf), T("Showpane #%d base:%d[%s(%x)], select:%x tab wnd:%x group wnd:%x"),
+					showindex, show->baseNo, PaneStatus_RegID(base), base->hWnd,
+					show->tab.hWnd, show->tab.hSelecterWnd);
 			SetComboReportText(buf);
 
-			tabs = &Combo.show[show].tab;
+			tabs = &show->tab;
 			if ( tabs->groupcount <= 0 ){
-				thprintf(buf, TSIZEOF(buf), T("pane #%d no group"),show);
+				thprintf(buf, TSIZEOF(buf), T("\tno group"));
 				SetComboReportText(buf);
 			}else{
-				for ( grp = 0; grp < tabs->groupcount; grp++ ){
+				for ( grpindex = 0; grpindex < tabs->groupcount; grpindex++ ){
 					TCHAR buf2[1000];
 
 					buf2[0] = '\0';
-					GetWindowText(tabs->group[grp].hWnd, buf2, 1000);
-					thprintf(buf, TSIZEOF(buf), T("pane:%d group:%d Tab:%x IsWnd:%d Count:%d [%s]"),
-						show, grp,
-						tabs->group[grp].hWnd,
-						IsWindow(tabs->group[grp].hWnd),
-						TabCtrl_GetItemCount(tabs->group[grp].hWnd), buf2);
+					GetWindowText(tabs->group[grpindex].hWnd, buf2, 1000);
+					thprintf(buf, TSIZEOF(buf), T("\tgroup#%d(%s) hCurWnd:%x Tab:%x(%d items) valid:%d"),
+						grpindex, buf2, tabs->group[grpindex].hCurWnd,
+						tabs->group[grpindex].hWnd, TabCtrl_GetItemCount(tabs->group[grpindex].hWnd),
+						IsWindow(tabs->group[grpindex].hWnd) );
 					SetComboReportText(buf);
 				}
 			}
@@ -1738,6 +1761,38 @@ int GetComboShowIndexGroup(HWND hBaseWnd)
 	return -1;
 }
 
+int GetTabItemIndex_R(HWND hWnd, int tabwndindex)
+{
+	TC_ITEM tie;
+	int tabindex;
+	int tabcount;
+	HWND hTabWnd;
+
+	hTabWnd = Combo.show[tabwndindex].tab.hWnd;
+	tabcount = TabCtrl_GetItemCount(hTabWnd);
+	for ( tabindex = 0 ; tabindex < tabcount ; tabindex++ ){
+		tie.mask = TCIF_PARAM;
+		if ( TabCtrl_GetItem(hTabWnd, tabindex, &tie) == FALSE ) continue;
+		if ( tie.lParam == (LPARAM)hWnd ) return tabindex;
+	}
+	return -1;
+}
+
+int SearchTabData(HWND hTabWnd, HWND data)
+{
+	TC_ITEM tie;
+	int tabindex;
+	int tabcount;
+
+	tabcount = TabCtrl_GetItemCount(hTabWnd);
+	for ( tabindex = 0 ; tabindex < tabcount ; tabindex++ ){
+		tie.mask = TCIF_PARAM;
+		if ( TabCtrl_GetItem(hTabWnd, tabindex, &tie) == FALSE ) continue;
+		if ( tie.lParam == (LPARAM)data ) return tabindex;
+	}
+	return -1;
+}
+
 ERRORCODE SelectGroup(int showindex, int groupindex)
 {
 	COMBOTABINFO *tabs;
@@ -1761,27 +1816,80 @@ ERRORCODE SelectGroup(int showindex, int groupindex)
 	}
 
 	if ( (X_combos[0] & CMBS_TABEACHITEM) || (Combo.ShowCount <= 1) ){ // 個別タブなら、選択タブを利用
+	XMessage(NULL, NULL, XM_DbgDIA, T("1"));
 		tabindex = TabCtrl_GetCurSel(tabs->hWnd);
 	// 共用タブの場合、hCurWnd が使えたらそのタブ、使えない場合は空きタブを捜す
-	}else if ( (tabindex = GetTabItemIndex(tabs->group[groupindex].hCurWnd, showindex)) < 0 ){
-		tabindex = TabCtrl_GetCurSel(tabs->hWnd);
+	}else{
+		COMBOTABINFO *a_tabs;
+		int a_tabindex, show_i;
+		HWND hChgWnd;
+
+	XMessage(NULL, NULL, XM_DbgDIA, T("2"));
+		tabindex = GetTabItemIndex_R(tabs->group[groupindex].hCurWnd, showindex);
+		if ( tabindex < 0 ){
+			tabindex = TabCtrl_GetCurSel(tabs->hWnd);
+			tie.mask = TCIF_PARAM;
+			TabCtrl_GetItem(tabs->hWnd, tabindex, &tie);
+			if ( GetComboShowIndex((HWND)tie.lParam) != showindex ){
+				tabindex = 0;
+
+				for (;;){
+					if ( TabCtrl_GetItem(tabs->hWnd, tabindex, &tie) == FALSE ){
+						tabindex = 0;
+						break;
+					}
+					if ( GetComboShowIndexGroup((HWND)tie.lParam) < 0 ) break;
+					tabindex++;
+				}
+			}
+
+			if ( tabindex < 0 ) tabindex = 0;
+		}
 
 		tie.mask = TCIF_PARAM;
-		TabCtrl_GetItem(tabs->hWnd, tabindex, &tie);
-		if ( GetComboShowIndex((HWND)tie.lParam) != showindex ){
-			tabindex = 0;
+		if ( IsTrue(TabCtrl_GetItem(tabs->hWnd, tabindex, &tie)) ){
+			hChgWnd = (HWND)tie.lParam;
+			SelectComboWindow(showindex, hChgWnd, TRUE);
+		}else{
+			SortComboWindows(SORTWIN_LAYOUTPAIN);
+			InvalidateRect(Combo.hWnd, NULL, TRUE);
+		}
 
-			for (;;){
-				if ( TabCtrl_GetItem(tabs->hWnd, tabindex, &tie) == FALSE ){
-					tabindex = 0;
-					break;
+		for ( show_i = 0; show_i < Combo.ShowCount; show_i++){
+			if ( show_i == showindex ) continue;
+			// XMessage(Combo.hWnd, NULL, XM_MesLogWnd, T("%d check%d"),showindex,show_i);
+			a_tabs = &Combo.show[show_i].tab;
+			if ( ((a_tabindex = SearchTabData(a_tabs->group[groupindex].hWnd, a_tabs->group[groupindex].hCurWnd)) >= 0) ){
+				// XMessage(Combo.hWnd, NULL, XM_MesLogWnd, T("hit %d"),show_i);
+				SelectComboWindow(show_i, a_tabs->group[groupindex].hCurWnd, FALSE);
+			}else{
+				a_tabindex = TabCtrl_GetCurSel(tabs->hWnd);
+				tie.mask = TCIF_PARAM;
+				TabCtrl_GetItem(tabs->hWnd, a_tabindex, &tie);
+				if ( GetComboShowIndex((HWND)tie.lParam) == show_i ){
+					// XMessage(Combo.hWnd, NULL, XM_MesLogWnd, T("use csr %d"),show_i);
+					SelectComboWindow(show_i, (HWND)tie.lParam, FALSE);
+				}else{
+					a_tabindex = 0;
+					// XMessage(Combo.hWnd, NULL, XM_MesLogWnd, T("search %d"),show_i);
+
+					for (;;){
+						if ( TabCtrl_GetItem(tabs->hWnd, a_tabindex, &tie) == FALSE ){
+							break;
+						}
+						if ( GetComboShowIndexGroup((HWND)tie.lParam) < 0 ){
+							// XMessage(Combo.hWnd, NULL, XM_MesLogWnd, T("search hit %d"),show_i);
+							SelectComboWindow(show_i, (HWND)tie.lParam, FALSE);
+							break;
+						}
+						a_tabindex++;
+					}
 				}
-				if ( GetComboShowIndexGroup((HWND)tie.lParam) < 0 ) break;
-				tabindex++;
 			}
 		}
+		TabCtrl_SetCurSel(tabs->hWnd, tabindex);
+		return NO_ERROR;
 	}
-
 	if ( tabindex < 0 ) tabindex = 0;
 	tie.mask = TCIF_PARAM;
 	if ( IsTrue(TabCtrl_GetItem(tabs->hWnd, tabindex, &tie)) ){
@@ -1793,6 +1901,7 @@ ERRORCODE SelectGroup(int showindex, int groupindex)
 	return NO_ERROR;
 }
 
+// *pane コマンド =============================================================
 // WmComboCommand から呼び出される target;呼び出し元PPc
 ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 {
@@ -1820,21 +1929,22 @@ ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 	baseindex = GetPaneBaseIndexParam(&param, &targetpane, DefaultBaseIndex);
 	if ( baseindex < 0 ) return ERROR_INVALID_DATA;
 
-	if ( !tstrcmp(cmdname, T("FOCUS")) ){
+	if ( tstrcmp(cmdname, T("FOCUS")) == 0 ){
 		if ( GetComboShowIndex(Combo.base[baseindex].hWnd) < 0 ){
 			CreateAndInitPane(baseindex);
 		}
 		SetFocus(Combo.base[baseindex].hWnd);
-	}else if ( !tstrcmp(cmdname, T("FOCUSTAB")) ){
+	}else if ( tstrcmp(cmdname, T("FOCUSTAB")) == 0 ){
 		if ( Combo.Tabs ){
 			int showindex = GetComboShowIndex(Combo.base[baseindex].hWnd);
 
 			if ( showindex >= 0 ) SetFocus(Combo.show[showindex].tab.hWnd);
 		}
-	}else if ( !tstrcmp(cmdname, T("COLOR")) ){
+	}else if ( tstrcmp(cmdname, T("COLOR")) == 0 ){
 		PaneNextParam(&param);
 		PaneColorCommand(baseindex, param);
-	}else if ( !tstrcmp(cmdname, T("SELECT")) || !tstrcmp(cmdname, T("CHANGE"))){
+	}else if ( (tstrcmp(cmdname, T("SELECT")) == 0) ||
+			   (tstrcmp(cmdname, T("CHANGE")) == 0) ){
 		if ( PaneNextParam(&param) != '\0' ){
 			int bi, tp = targetpane;
 
@@ -1844,18 +1954,19 @@ ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 			if ( targetpane < 0 ) return ERROR_INVALID_DATA;
 		}
 		SelectComboWindow(targetpane, Combo.base[baseindex].hWnd, cmdname[0] == 'S');
-	}else if ( !tstrcmp(cmdname, T("HIDE")) ){
+	}else if ( tstrcmp(cmdname, T("HIDE")) == 0 ){
 		int showindex;
 
 		showindex = GetComboShowIndex(Combo.base[baseindex].hWnd);
 		if ( showindex >= 0 ) HidePane(showindex);
-	}else if ( !tstrcmp(cmdname, T("TABSHIFT")) || !tstrcmp(cmdname, T("SHIFT"))){
+	}else if ( (tstrcmp(cmdname, T("TABSHIFT")) == 0) ||
+			   (tstrcmp(cmdname, T("SHIFT")) == 0) ){
 		int offset;
 
 		PaneNextParam(&param);
 		offset = GetIntNumber(&param);
 
-		if ( (Combo.Tabs == 0) || !tstrcmp(cmdname, T("SHIFT")) ){ // 実体のみシフト
+		if ( (Combo.Tabs == 0) || (tstrcmp(cmdname, T("SHIFT")) == 0) ){ // 実体のみシフト
 			int showindex, newshowindex;
 
 			showindex = GetComboShowIndex(Combo.base[baseindex].hWnd);
@@ -1894,11 +2005,12 @@ ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 			LastTabInsType = 7000;
 			UseTabInsType |= B1;
 		}
-	}else if ( !tstrcmp(cmdname, T("EJECT")) ){
+	}else if ( tstrcmp(cmdname, T("EJECT")) == 0 ){
 		PostMessage(Combo.hWnd, WM_PPXCOMMAND, KCW_eject, (LPARAM)baseindex);
-	}else if ( !tstrcmp(cmdname, T("CLOSE")) || !tstrcmp(cmdname, T("CLOSETAB")) ){
+	}else if ( (tstrcmp(cmdname, T("CLOSE")) == 0) ||
+			   (tstrcmp(cmdname, T("CLOSETAB")) == 0) ){
 		PostMessage(Combo.base[baseindex].hWnd, WM_CLOSE, 0, 0);
-	}else if ( !tstrcmp(cmdname, T("LOCK")) ){
+	}else if ( tstrcmp(cmdname, T("LOCK")) == 0 ){
 		int mode;
 
 		PaneNextParam(&param);
@@ -1908,10 +2020,10 @@ ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 			Combo.base[baseindex].cinfo->ChdirLock = mode;
 			SetTabInfo(-1, Combo.base[baseindex].hWnd); // ロック状態を文字で表現している間、用意
 		}
-	}else if ( !tstrcmp(cmdname, T("MENU")) ){
+	}else if ( tstrcmp(cmdname, T("MENU")) == 0 ){
 		ReplyMessage(ERROR_CANCELLED);
 		TabMenu(NULL, baseindex, targetpane, NULL);
-	}else if ( !tstrcmp(cmdname, T("MOVE")) ){
+	}else if ( tstrcmp(cmdname, T("MOVE")) == 0 ){
 		int DestBaseIndex, DestShowIndex = targetpane;
 
 		targetpane = GetComboShowIndexAll(Combo.base[baseindex].hWnd);
@@ -1930,24 +2042,24 @@ ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 		Tab_MovePosition(Combo.show[targetpane].tab.hWnd,
 				GetTabItemIndex(Combo.base[baseindex].hWnd, targetpane),
 				DestShowIndex, -1, -1);
-	}else if ( !tstrcmp(cmdname, T("REOPEN")) ){
+	}else if ( tstrcmp(cmdname, T("REOPEN")) == 0 ){
 		ReopenTab(targetpane, &param);
-	}else if ( !tstrcmp(cmdname, T("STATUS")) ){
+	}else if ( tstrcmp(cmdname, T("STATUS")) == 0 ){
 		PaneStatus();
-	}else if ( !tstrcmp(cmdname, T("SWAPPANE")) ){
+	}else if ( tstrcmp(cmdname, T("SWAPPANE")) == 0 ){
 		SwapPane(targetpane);
-	}else if ( !tstrcmp(cmdname, T("SWAPTAB")) ){
+	}else if ( tstrcmp(cmdname, T("SWAPTAB")) == 0 ){
 		PostMessage(Combo.base[baseindex].hWnd, WM_PPXCOMMAND, K_raw | 'G', 0);
-	}else if ( !tstrcmp(cmdname, T("CLOSELEFT")) ){
+	}else if ( tstrcmp(cmdname, T("CLOSELEFT")) == 0 ){
 		PaneCloseCommand(targetpane, baseindex, -1, param);
-	}else if ( !tstrcmp(cmdname, T("CLOSEPANE")) ){
+	}else if ( tstrcmp(cmdname, T("CLOSEPANE")) == 0 ){
 		PaneCloseCommand(targetpane, baseindex, 0, param);
-	}else if ( !tstrcmp(cmdname, T("CLOSERIGHT")) ){
+	}else if ( tstrcmp(cmdname, T("CLOSERIGHT")) == 0 ){
 		PaneCloseCommand(targetpane, baseindex, 1, param);
-	}else if ( !tstrcmp(cmdname, T("CLOSEOTHER")) ){
+	}else if ( tstrcmp(cmdname, T("CLOSEOTHER")) == 0 ){
 		PaneCloseCommand(targetpane, baseindex, 1, param);
 		PaneCloseCommand(targetpane, baseindex, -1, param);
-	}else if ( !tstrcmp(cmdname, T("MAIN")) ){
+	}else if ( tstrcmp(cmdname, T("MAIN")) == 0 ){
 		if ( Combo.ShowCount > 1 ){
 			int showindex;
 
@@ -1966,7 +2078,7 @@ ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 			}
 			SetFocus(Combo.base[baseindex].hWnd);
 		}
-	}else if ( !tstrcmp(cmdname, T("SUB")) ){
+	}else if ( tstrcmp(cmdname, T("SUB")) == 0 ){
 		if ( (hComboSubPaneFocus != NULL) &&
 			 (Combo.base[baseindex].hWnd != hComboSubPaneFocus) ){
 			// メインをサブにするときは入れ替える
@@ -1977,7 +2089,7 @@ ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 				InvalidateRect(Combo.hWnd, NULL, FALSE);
 			}
 		}
-	}else if ( !tstrcmp(cmdname, T("NEWGROUP")) ){
+	}else if ( tstrcmp(cmdname, T("NEWGROUP")) == 0 ){
 		ERRORCODE result;
 		if ( SkipSpace(&param) == '\"' ){
 			GetCommandParameter(&param, cmdname, TSIZEOF(cmdname));
@@ -1990,16 +2102,16 @@ ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 		SelectGroup(targetpane, Combo.show[targetpane].tab.groupcount - 1);
 		SortComboWindows(SORTWIN_LAYOUTPAIN);
 		CreateNewTabParam(targetpane, -1, param);
-//	}else if ( !tstrcmp(cmdname, T("TABTEXT")) ){
-//	}else if ( !tstrcmp(cmdname, T("COLOR")) ){
-	}else if ( !tstrcmp(cmdname, T("NEWPANE")) ){
+		NewTabGroupCare(targetpane);
+//	}else if ( tstrcmp(cmdname, T("TABTEXT")) == 0 ){
+	}else if ( tstrcmp(cmdname, T("NEWPANE")) == 0 ){
 		ReplyMessage(NO_ERROR); // ここで返事をしておかないと、CreateNewTabParam 内実行中(新しい窓登録時？)に、呼び出し元の SendMessage がエラー終了してしまうことがある
 		SkipSpace(&param);
 		NewPane((id_use >= ' ') ? baseindex : -1, param);
-	}else if ( !tstrcmp(cmdname, T("NEWTAB")) ){
+	}else if ( tstrcmp(cmdname, T("NEWTAB")) == 0 ){
 		ReplyMessage(NO_ERROR); // ここで返事をしておかないと、CreateNewTabParam 内実行中(新しい窓登録時？)に、呼び出し元の SendMessage がエラー終了してしまうことがある
 		CreateNewTabParam(targetpane, baseindex, param);
-	}else if ( !tstrcmp(cmdname, T("SELECTGROUP")) ){
+	}else if ( tstrcmp(cmdname, T("SELECTGROUP")) == 0 ){
 		TCHAR name[VFPS];
 		int groupindex;
 		COMBOTABINFO *tabs;
@@ -2059,13 +2171,13 @@ ERRORCODE PaneCommand(const TCHAR *paramptr, int DefaultBaseIndex)
 		}
 		return SelectGroup(targetpane, groupindex);
 
-	}else if ( !tstrcmp(cmdname, T("SHOWTABBAR")) ){
+	}else if ( tstrcmp(cmdname, T("SHOWTABBAR")) == 0 ){
 		if ( Combo.Tabs == 0 ){
 			CreateTabBar(CREATETAB_APPEND, NULL, FALSE);
 			SortComboWindows(SORTWIN_LAYOUTPAIN);
 			InvalidateRect(Combo.hWnd, NULL, TRUE);
 		}
-	}else if ( !tstrcmp(cmdname, T("EXECUTE")) ){
+	}else if ( tstrcmp(cmdname, T("EXECUTE")) == 0 ){
 		PaneExecuteParam(baseindex, param);
 	}else{
 		ReplyMessage(ERROR_INVALID_DATA);
@@ -2118,7 +2230,7 @@ void SavePane_Base(TCHAR *dest, TCHAR *memo, int save) //save=2 - 区切り追加
 		}
 		if ( save != 0 ){
 			WPos.pos = Combo.show[showindex].box;
-			thprintf(kbuf, TSIZEOF(kbuf), T("%s%d"), ComboID, showindex + 1);
+			thprintf(kbuf, TSIZEOF(kbuf), T("%s%d"), ComboID, showindex);
 			SetCustTable(Str_WinPos, kbuf, &WPos, sizeof(WPos));
 		}
 	}
@@ -2273,6 +2385,23 @@ void SavePane_Tab(HeapStr *hstr, TCHAR *memo) // memo有り→check用
 							showindex = GetComboShowIndex((HWND)tie.lParam);
 							if ( showindex >= 0 ){
 								panedst = thprintf(panedst, 12, T("%d"), showindex);
+							}
+						}
+						// グループで選択されたタブ
+						if ( groupcount > 0 ){
+							if ( X_combos[0] & CMBS_TABEACHITEM ){
+								if ( (HWND)tie.lParam == tabs->group[tablist].hCurWnd ){
+									panedst = thprintf(panedst, 12, T(".%d"), tabid);
+								}
+							}else{
+								int showindex;
+
+								for ( showindex = 0; showindex < Combo.ShowCount; showindex++ ){
+									if ( (HWND)tie.lParam == Combo.show[showindex].tab.group[tablist].hCurWnd ){
+										panedst = thprintf(panedst, 12, T(".%d"), showindex);
+										break;
+									}
+								}
 							}
 						}
 						hstr->dest = panedst;
@@ -2518,6 +2647,7 @@ void ResetSubFocus(TCHAR *buf)
 	}
 }
 
+#ifndef RELEASE
 TCHAR * nestedinfo(void)
 {
 	TCHAR *nested = PPcHeapAllocT(512), *dest;
@@ -2558,18 +2688,36 @@ TCHAR * nestedinfo(void)
 	 );
 	return nested;
 }
+#endif
 
 void CheckComboTable_NowPaneError(const TCHAR *fmt, const TCHAR *p1)
 {
+#ifdef RELEASE
+	XMessage(Combo.hWnd, NULL, XM_DbgLOG, fmt, p1, NilStr);
+#else
 	TCHAR *nested;
 
 	nested = nestedinfo();
 	XMessage(Combo.hWnd, NULL, XM_DbgLOG, fmt, p1, nested);
 	PPcHeapFree(nested);
+#endif
 }
 
 void CheckComboTable_PairPaneError(const TCHAR *fmt, const TCHAR *p1)
 {
+#ifdef RELEASE
+	TCHAR *buf;
+	DWORD len;
+
+	len  = Panelistsize(max(Combo.BaseCount, Combo.ShowCount)) * 3 + 512;
+	buf = PPcHeapAllocT(len);
+
+	thprintf(buf, len, fmt, p1, ChangeReason, NilStr,
+			Combo.ShowCount, Combo.BaseCount, Combo.Tabs);
+
+	ResetSubFocus(buf);
+	PPcHeapFree(buf);
+#else
 	TCHAR *buf, *nested;
 	DWORD len;
 
@@ -2583,6 +2731,7 @@ void CheckComboTable_PairPaneError(const TCHAR *fmt, const TCHAR *p1)
 	ResetSubFocus(buf);
 	PPcHeapFree(nested);
 	PPcHeapFree(buf);
+#endif
 }
 
 void CheckComboTable(const TCHAR *p1)
@@ -2590,11 +2739,11 @@ void CheckComboTable(const TCHAR *p1)
 	HeapStr hstr;
 	TCHAR *memo;
 	int scount = max(Combo.BaseCount, Combo.ShowCount);
-	#if VersionP
+	#ifdef RELEASE
+		#define IfCheckPaneList(str, errcode) CheckPaneList(str);
+	#else
 		int paneerr = 0;
 		#define IfCheckPaneList(str, errcode) if ( CheckPaneList(str) == FALSE ) paneerr += errcode;
-	#else
-		#define IfCheckPaneList(str, errcode) CheckPaneList(str);
 	#endif
 
 	ComboTableCheck(); // 破損チェック
@@ -2612,7 +2761,7 @@ void CheckComboTable(const TCHAR *p1)
 			IfCheckPaneList(hstr.str, 10);
 
 			SavePane_Tab(&hstr, memo);
-			#if VersionP
+			#ifndef RELEASE
 			if ( CheckPaneList(hstr.str) == FALSE ){
 				if ( ComboInit <= 0 ) paneerr += 100; // ●初期化中はエラーにしない 1.92+2 仮(tab group の問題？)
 			}
@@ -2623,7 +2772,7 @@ void CheckComboTable(const TCHAR *p1)
 		FreeHeapStr(&hstr);
 	}
 
-	#if VersionP
+	#ifndef RELEASE
 	if ( paneerr ){
 		if ( paneerr != oldpaneerr ){
 			TCHAR *buf, *nested;

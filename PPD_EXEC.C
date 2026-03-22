@@ -635,7 +635,7 @@ BOOL WaitJobDialog(HWND hWnd, HANDLE handle, const TCHAR *title, DWORD flags)
 			if ( (hDlg == NULL) && !(flags & XEO_WAITQUIET) ){
 				BOOL hide;
 
-				if ( X_uxt[0] == UXT_NA ) InitUnthemeCmd();
+				if ( X_uxt_color == UXT_NA ) InitUnthemeCmd();
 				wds.md.title = (title != NULL) ? title : PPXJOBMUTEX;
 				hDlg = CreateDialogParam(DLLhInst, MAKEINTRESOURCE(IDD_NULLMIN), NULL, WaitDlgBox, (LPARAM)&wds);
 

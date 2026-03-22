@@ -678,14 +678,7 @@ void GetFailedModuleAddr(HANDLE hProcess, TAIL64(IMAGEHLP_SYMBOL) *syminfo, TCHA
 	// funcname, offset
 	if ( (DSymGetSymFromAddr != NULL) && IsTrue(DSymGetSymFromAddr(
 			hProcess, (DWORD_PTR)addr, &funcoffset, syminfo)) ){
-		#ifdef UNICODE
-		WCHAR funcnameW[256];
-
-		AnsiToUnicode(syminfo->Name, funcnameW, 256);
-		dest = thprintf(dest, 256, T(".%s+%1p"), funcnameW, funcoffset);
-		#else
-		dest = thprintf(dest, 256, T(".%s+%1p"), syminfo->Name, funcoffset);
-		#endif
+		dest = thprintf(dest, 256, T(".%hs+%1p"), syminfo->Name, funcoffset);
 	}
 	*dest++ = ')';
 	*dest = '\0';
@@ -758,6 +751,11 @@ void DeepExceptionInfo(const TCHAR **Msg, TCHAR *exceptionbuf, TCHAR *stackinfo,
 	GetExceptionCodeText(&OldExceptionRecord, Msg, eb, NULL);
 }
 
+#define ACTION_REPORT IDYES
+#define ACTION_TERMINATE_PROCESS IDNO
+#define ACTION_NEXTHANDLER IDCANCEL
+#define ACTION_TERMINATE_THREAD IDIGNORE // ダイアログには選択肢としてでない
+
 #pragma argsused
 void CALLBACK ForceCloseProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
@@ -768,7 +766,7 @@ void CALLBACK ForceCloseProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
 	KillTimer(hWnd, idEvent);
 	hFocusWnd = GetActiveWindow();
 	if ( hFocusWnd != NULL ){
-		PostMessage(GetCaptionWindow(hFocusWnd), WM_COMMAND, TMAKEWPARAM(IDNO, BN_CLICKED), 0);
+		PostMessage(GetCaptionWindow(hFocusWnd), WM_COMMAND, TMAKEWPARAM(ACTION_TERMINATE_PROCESS, BN_CLICKED), 0);
 	}
 }
 
@@ -954,7 +952,7 @@ THREADEXRET THREADEXCALL PPxUnhandledExceptionFilterMain(ExceptionData *EP)
 						if ( (WinType >= WINTYPE_8) && !IsExistCustTable(StrCustOthers, StrJScr) ){
 							SetCustTable(StrCustOthers, StrJScr, StrJScrFix, sizeof(StrJScrFix));
 						}
-						result = IDNO;
+						result = ACTION_TERMINATE_PROCESS;
 					}
 				}
 #if 0
@@ -963,7 +961,7 @@ THREADEXRET THREADEXCALL PPxUnhandledExceptionFilterMain(ExceptionData *EP)
 				if ( (tstruct == NULL) &&
 					 (tstrstr(threadname, T("(PPC")) != NULL) ){
 					if ( tstrstr(addrstr, T("CriticalSection")) != NULL ){
-						if ( NowExit ) result = IDNO;
+						if ( NowExit ) result = ACTION_TERMINATE_PROCESS;
 						stacks += 3;
 						// スレッド共通化
 						GetCustData(T("X_combos"), &X_combosD, sizeof(X_combosD));
@@ -1010,34 +1008,37 @@ THREADEXRET THREADEXCALL PPxUnhandledExceptionFilterMain(ExceptionData *EP)
 	if ( (tstrchr(threadname, '(') != NULL) &&
 		 (tstristr(threadname, T("PP")) == NULL) &&
 		 (tstristr(stackinfo, T("(") AppExeName) == NULL) ){
-		result = IDCANCEL;
-	// 管理外スレッドで、無視しても良さそうなのは、強制終了
+		result = ACTION_NEXTHANDLER;
+	// X_igpn に該当する場合はエラー処理をしない
+	}else if ( FilenameRegularExpression(stackinfo, &FR_igpn) == FRRESULT_MATCH ){
+		result = ACTION_NEXTHANDLER;
+	// 管理外スレッドで、無視しても良さそうなのは、スレッド強制終了
 	}else if ( (tstruct == NULL) && (
 		  (tstrstr(stackinfo, T("SS1H001")) != 0) ) ){
-		result = IDIGNORE;
+		result = ACTION_TERMINATE_THREAD;
 	// スレッド再起動可能スレッドで、一部の異常が起きやすいDLLなら、Thr再起動
 	}else if ( ((tstruct != NULL) && (tstruct->flag & XTHREAD_RESTARTREQUEST))
 		&&
 		( (WinType == WINTYPE_VISTA) || // ← SHGetFileInfo が DOS EXE で落ちる対策、XP, 7, 10 では問題なし
-		  (tstrstr(stackinfo, T("SS1H001")) != 0) ||
 		  (tstrstr(stackinfo, T("SugarSyncShellExt")) != 0) ||
 		  (tstrstr(stackinfo, T("Resource")) != 0) || // LdrResSearchResource, FindResourceEx, BaseDllMapResourceId
 		  (tstrstr(stackinfo, T("TortoiseSVN")) != 0) ||
 		  (tstrstr(stackinfo, T("libapr_tsvn")) != 0) ) ){
-		result = IDNO;
+		result = ACTION_TERMINATE_THREAD;
 	// 例外そのものか、例外を握りつぶして動作する物なら続行させて、任せる
 	}else if (
 			(tstrstr(stackinfo, T("IsBad")) != 0) || // IsBadRead など
 			(tstrstr(stackinfo, T(CHECK_HOOK)) != 0) || // hook.dll
 			(tstrstr(stackinfo, ValueX3264(T("astMC32:"), T("astMC:"))) != 0) || // AssetView
 			(tstrstr(stackinfo, T("ctiuser:")) != 0) || // Cb Defense Sensor
+			(tstrstr(stackinfo, T("SS1H001")) != 0) ||
 			(tstrstr(threadname, T(CHECK_LoadDLL)) != 0) || // Malware判定？
 			(tstrstr(stackinfo, T("RaiseException")) != 0) ){
-		result = IDCANCEL;
+		result = ACTION_NEXTHANDLER;
 	// シャットダウン時、PPx の関与が分からない問題なら、ダイアログなしにする
 	}else if ( Sm->NowShutdown &&
 		 (tstristr(stackinfo, T("(") AppExeName) == NULL) ){
-		result = IDNO;
+		result = ACTION_TERMINATE_PROCESS;
 	}else if ( result == 0 ){
 		if ( Sm->NowShutdown ){ // シャットダウン時は 20秒後、自動NO選択
 			SetTimer(NULL, TIMERID_SHUTDOWN_FAULT, TIME_SHUTDOWN_FAULT, ForceCloseProc);
@@ -1045,12 +1046,13 @@ THREADEXRET THREADEXCALL PPxUnhandledExceptionFilterMain(ExceptionData *EP)
 		result = ShowErrorDialog(Msg, msgstr_fault, threadname, exceptionbuf, stackinfo, Comment);
 	}
 
-	if ( result == IDCANCEL ){ // IDCANCEL : 他のエラーハンドラへ
+	if ( result == ACTION_NEXTHANDLER ){ // 他のエラーハンドラへ
 		if ( DSymCleanup != NULL ) DSymCleanup(hProcess);
 		PPxUnhandledExceptionFilterThreadID = 0;
 		EP->Result = EXCEPTION_CONTINUE_SEARCH;
 		t_endthreadex(EXCEPTION_CONTINUE_SEARCH);
 	}
+
 	if ( (tstruct != NULL) &&
 		 (tstruct->flag & (XTHREAD_RESTARTREQUEST | XTHREAD_TERMENABLE)) ){
 		if ( tstruct->flag & XTHREAD_RESTARTREQUEST ){
@@ -1061,9 +1063,10 @@ THREADEXRET THREADEXCALL PPxUnhandledExceptionFilterMain(ExceptionData *EP)
 		}else{
 			XMessage(NULL, NULL, XM_DbgLOG, T("Terminate Thread"));
 		}
-		result = IDIGNORE;
+		result = ACTION_TERMINATE_THREAD;
 	}
-	if ( result == IDIGNORE ){ // IDIGNORE : 無視して強制終了
+
+	if ( result == ACTION_TERMINATE_THREAD ){ // 無視してスレッドを強制終了
 		HANDLE hCloseThread;
 
 		if ( DSymCleanup != NULL ) DSymCleanup(hProcess);
@@ -1077,6 +1080,7 @@ THREADEXRET THREADEXCALL PPxUnhandledExceptionFilterMain(ExceptionData *EP)
 		t_endthreadex(0);
 	}
 
+	// ACTION_TERMINATE_PROCESS / ACTION_REPORT
 	ExitProcess(ExceptionRecord->ExceptionCode);
 	#pragma warning(suppress: 4702) // 直前のExitProcessで終わるけど、念のため
 	t_endthreadex(EXCEPTION_EXECUTE_HANDLER);
@@ -1245,7 +1249,7 @@ int ShowErrorDialog(const TCHAR **Msg, int msgtype, const TCHAR *threadtext, con
 	XMessage(NULL, NULL, XM_DbgLOG, T("%s"), msgbuf);
 	result = CriticalMessageBox(msgbuf, msgtitle,
 			MB_YESNOCANCEL | MB_DEFBUTTON2 | MB_ICONSTOP);
-	if ( result == IDYES ){
+	if ( result == ACTION_REPORT ){
 		thprintf(msgbuf, TSIZEOF(msgbuf), REPORTURL T("?exe=") AppName
 			T("\1ver=") T(FileProp_Version) MSGCTYPE
 			T("\1type=%s\1thread=%s\1info=%s\1os=%s\1addr=%s"),
@@ -1262,7 +1266,7 @@ int ShowErrorDialog(const TCHAR **Msg, int msgtype, const TCHAR *threadtext, con
 
 void ReportLCID(LCID userlcid)
 {
-	ThSTRUCT th;
+	ThSTRUCT threcv;
 	TCHAR msgbuf[WSSIZE], OSverstr[16];
 
 	GetOSverStr(OSverstr);
@@ -1272,8 +1276,8 @@ void ReportLCID(LCID userlcid)
 			T("&type=report&thread=-&info=LCID%04x&os=%s&addr=-"),
 			LOWORD(userlcid), OSverstr);
 	QueryEncode(tstrchr(msgbuf, '?') + 1);
-	GetImageByHttp(msgbuf, &th);
-	ThFree(&th);
+	GetImageByHttp(msgbuf, &threcv);
+	ThFree(&threcv);
 }
 
 #pragma warning(suppress:6262) // スタックを使いすぎだが、現在は無視

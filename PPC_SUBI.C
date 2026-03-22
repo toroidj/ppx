@@ -274,11 +274,13 @@ BOOL SearchCacheIcon(PPC_APPINFO *cinfo, ENTRYCELL *celltmp, int iconmode, Overl
 			listmin = CacheIcon.minID;
 			for ( ; ; ){
 				if ( ci->index >= listmin ){
-					if ( (ci->crc == crcname) && !tstrcmp(filename, ci->name) ){
+					if ( (ci->crc == crcname) &&
+						 (tstrcmp(filename, ci->name) == 0) ){
 						celltmp->icon = ci->index;
 						return TRUE;
 					}
-					if ( (ci->crc == crcext) && !tstrcmp(ext, ci->name) ){
+					if ( (ci->crc == crcext) &&
+						 (tstrcmp(ext, ci->name) == 0) ){
 						celltmp->icon = ci->index;
 						CheckStaticIcon(cinfo, ext, ci->index, iconmode);
 						return TRUE;
@@ -1133,7 +1135,7 @@ HICON LoadIconFromIcol(/*PPC_APPINFO *cinfo,*/ ENTRYCELL *celltmp, int iconsize)
 				MakeFN_REGEXP(&fn, keyword + 1);
 				fnresult = FinddataRegularExpression(&celltmp->f, &fn);
 				FreeFN_REGEXP(&fn);
-				if ( fnresult == 0 ) continue;
+				if ( fnresult == FRRESULT_NO ) continue;
 			}
 		}
 		EnumCustTable(index, T("X_icnl"), keyword, buf, TSTROFF(CMDLINESIZE));
@@ -1763,7 +1765,11 @@ BOOL USEFASTCALL LoadCellImage(PPC_APPINFO *cinfo, ENTRYCELL *celltmp, BYTE *fmt
 	}
 
 	// âÊëúçÏê¨
-	if ( IsTrue(useimage) && (hTbmp.size.cx > 0) && (hTbmp.size.cy > 0) && (hTbmp.bits != NULL) && (lpBits != NULL) ){
+	if ( (useimage != 0) &&
+		 (hTbmp.size.cx > 0) &&
+		 (hTbmp.size.cy > 0) &&
+		 (hTbmp.bits != NULL) &&
+		 (lpBits != NULL) ){
 		int rate;
 		int srcX = 0, srcY = 0;
 
@@ -1896,7 +1902,6 @@ BOOL USEFASTCALL LoadCellImage(PPC_APPINFO *cinfo, ENTRYCELL *celltmp, BYTE *fmt
 		if ( bmpinfo.bmiHeader.biBitCount == 32 ){ // Éøçƒê›íË
 			int x, xmax, y, height;
 			BYTE *ptr;
-
 
 			xmax = drawWidth;
 			x = drawX;

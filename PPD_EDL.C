@@ -15,11 +15,6 @@
 #include "VFS_STRU.H"
 #pragma hdrstop
 
-#ifdef WINEGCC
-	#undef FINDMSGSTRING // Wine 5.0 でおかしい
-	#define FINDMSGSTRING  T("commdlg_FindReplace")
-#endif
-
 #ifndef CFM_BACKCOLOR
   #define CFM_SMALLCAPS	0x0040
   #define CFM_ALLCAPS	0x0080
@@ -106,13 +101,11 @@ typedef struct
 #define GT_NOHIDDENTEXT 8
 #endif
 
-#define TwipToPixel(twip, dpi) (((twip) * 1440) / (dpi))
-#define PixelToTwip(twip, dpi) (((twip) * (dpi)) / 1440)
+#define PixelToTwip(pix, dpi) (((pix) * 1440) / (dpi))
+#define TwipToPixel(twip, dpi) (((twip) * (dpi)) / 1440)
 
 const TCHAR StrPPxED[] = T("PPxExEdit");
 const TCHAR StrReload[] = MES_QRLT;
-
-#define INMENU_BREAK B31 // 次の段へ
 
 #define INUM_SEL_START 4
 #define INUM_SEL_END 5
@@ -127,29 +120,20 @@ int Cursor_LogUp[] = {-18, 0, -1, 0, 0, 0};
 int Cursor_LogDown[] = {-18, 0, 1, 0, 0, 0};
 
 #ifndef UNICODE
-int xpbug = 0;		// XP で EM_?ETSEL が WIDE に必ずなる bug なら負
+int xpbug = 0; // XP で EM_?ETSEL が WIDE に必ずなる bug なら負
 #endif
 int USEFASTCALL PPeFill(PPxEDSTRUCT *PES);
 int USEFASTCALL PPeDefaultMenu(PPxEDSTRUCT *PES);
-ERRORCODE PPedCommand(PPxEDSTRUCT *PES, PPECOMMANDPARAM *param);
 ERRORCODE PPedExtCommand(PPxEDSTRUCT *PES, PPECOMMANDPARAM *param, const TCHAR *command);
 void InitExEdit(PPxEDSTRUCT *PES);
 int X_esrx = 0; // 検索で正規表現を使う
 
-const TCHAR FINDMSGSTRINGstr[] = FINDMSGSTRING;
 UINT ReplaceDialogMessage = 0xff77ff77;
 
 const TCHAR CRCD_CR[] = T("CR");
 const TCHAR CRCD_CRLF[] = T("CRLF");
 const TCHAR CRCD_LF[] = T("LF");
 const TCHAR *CRCD_list[] = {CRCD_CRLF, CRCD_CR, CRCD_LF};
-
-typedef struct {
-	TCHAR *text;
-	TCHAR textbuf[0x410];
-	int len;
-} EditTextStruct;
-
 
 #define SYNTAXCOLOR_NOCOLOR SYNTAXCOLOR_count
 
@@ -184,6 +168,7 @@ void RichChangeSynColor(PPxEDSTRUCT *PES, EDITCOLORS *ec)
 	if ( ec->text < C_S_AUTO ){
 		setflag(chfmt.dwMask, CFM_COLOR);
 		chfmt.crTextColor = ec->text;
+		if ( X_vclr ) VisibledTextColor(&chfmt.crTextColor, ec->back < C_S_AUTO ? ec->back : C_WindowBack);
 	}
 	if ( ec->back < C_S_AUTO ){
 		setflag(chfmt.dwMask, CFM_BACKCOLOR);
@@ -196,7 +181,7 @@ void RichChangeFontStyle(PPxEDSTRUCT *PES, DWORD mask, DWORD effect)
 {
 	CHARFORMAT chfmt;
 
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) ) return;
+	if ( !IsRichMode(PES) ) return;
 
 	chfmt.cbSize = sizeof(chfmt);
 	chfmt.dwMask = mask;
@@ -209,7 +194,7 @@ void RichChangeFontColor(PPxEDSTRUCT *PES)
 {
 	CHARFORMAT chfmt;
 
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) ) return;
+	if ( !IsRichMode(PES) ) return;
 
 	chfmt.cbSize = sizeof(chfmt);
 	chfmt.dwMask = CFM_COLOR;
@@ -227,7 +212,7 @@ void RichChangeBackColor(PPxEDSTRUCT *PES)
 {
 	CHARFORMAT2 chfmt;
 
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) ) return;
+	if ( !IsRichMode(PES) ) return;
 
 	chfmt.cbSize = sizeof(chfmt);
 	chfmt.dwMask = CFM_BACKCOLOR;
@@ -300,7 +285,7 @@ void RichSyntaxColor(PPxEDSTRUCT *PES)
 	BYTE *attrptr, *ptr, nowattr;
 	int width;
 
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) ) return;
+	if ( !IsRichMode(PES) ) return;
 	if ( OpenEditText(PES, &ets, 0) == FALSE ) return;
 	if ( ets.len == 0 ) return; // Close 不要
 	etsattr = (BYTE *)HeapAlloc(DLLheap, 0, ets.len + 1);
@@ -370,7 +355,7 @@ void RichSyntaxColor(PPxEDSTRUCT *PES)
 
 void SetRichSyntaxColor(PPxEDSTRUCT *PES)
 {
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) ) return;
+	if ( !IsRichMode(PES) ) return;
 	PES->flags ^= PPXEDIT_SYNTAXCOLOR;
 	if ( PES->flags & PPXEDIT_SYNTAXCOLOR ){
 		X_csyh = 1;
@@ -390,7 +375,7 @@ BOOL IsEditCursorPos(PPxEDSTRUCT *PES, DWORD coff)
 
 	GetCaretPos(&pos); // DPI仮想化未対応
 
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) || (OSver.dwMajorVersion < 5) ){
+	if ( !IsRichMode(PES) || (OSver.dwMajorVersion < 5) ){
 		coffset = (DWORD)SendMessage(PES->hWnd, EM_CHARFROMPOS, 0, TMAKELPARAM(pos.x, pos.y));
 	}else{
 		coffset = (DWORD)SendMessage(PES->hWnd, EM_CHARFROMPOS, 0, (LPARAM)&pos);
@@ -576,9 +561,8 @@ int USEFASTCALL PPeSelectExtensionMain(PPxEDSTRUCT *PES, int mode)
 	if ( ets.len == 0 ) return FALSE; // len == 0 の時はClose不要
 												// 編集文字列(全て)を取得
 	GetEditSel(hWnd, ets.text, &cursor);
-	if ( PES->flags & PPXEDIT_RICHEDIT ){
-		tstrreplace(ets.text, T("\r\n"), T("\n"));
-	}
+	if ( IsRichMode(PES) ) tstrreplace(ets.text, T("\r\n"), T("\n"));
+
 	if ( PES->flags & PPXEDIT_SINGLEREF ){	// １項目のみ
 		cursorRange.start = 0;
 		cursorRange.end = ets.len;
@@ -653,9 +637,7 @@ BOOL USEFASTCALL PPeLogicalLinePos(PPxEDSTRUCT *PES, EditLPos *elp)
 	if ( OpenEditText(PES, &ets, 0) == FALSE ) return FALSE;
 	len = ets.len;
 	if ( len == 0 ) return FALSE; // len == 0 の時はClose不要
-	if ( PES->flags & PPXEDIT_RICHEDIT ){
-		tstrreplace(ets.text, T("\r\n"), T("\n"));
-	}
+	if ( IsRichMode(PES) ) tstrreplace(ets.text, T("\r\n"), T("\n"));
 
 	textptr = ets.text;
 
@@ -883,9 +865,8 @@ void EditSelectWord(PPxEDSTRUCT *PES, int mode)
 	textbuf = ets.text;
 
 	GetEditSel(PES->hWnd, textbuf, &cursor);
-	if ( PES->flags & PPXEDIT_RICHEDIT ){
-		tstrreplace(ets.text, T("\r\n"), T("\n"));
-	}
+	if ( IsRichMode(PES) ) tstrreplace(ets.text, T("\r\n"), T("\n"));
+
 	braket = GetWordStrings(textbuf, &cursor, GWSF_SPLIT_PARAM);
 	if ( mode == -5 ){
 		if ( braket >= GWS_BRAKET_LEFT ) cursor.start--;
@@ -1068,97 +1049,17 @@ void ListWidth(PPxEDSTRUCT *PES, int dest)
 	ListWidthMain(PES->list.hSubWnd, dest);
 }
 
-BOOL SearchStrCheck(PPxEDSTRUCT *PES, int mode)
+ERRORCODE NextSuggestCheck(PPxEDSTRUCT *PES, PPECOMMANDPARAM *param)
 {
-	if ( (PES->findrep == NULL) || (PES->findrep->findtext[0] == '\0') ){
-		return FALSE;
-	}
-	SearchStr(PES, mode);
-	return TRUE;
-}
+	DWORD lPos, rPos;
+	DWORD len;
 
-void PPeReplaceStrCommand(PPxEDSTRUCT *PES, FINDREPLACE *freplace)
-{
-	DWORD firstC, lastC;
-
-	if ( freplace->Flags & FR_FINDNEXT ){
-		SearchStr(PES, (freplace->Flags & FR_DOWN) ? EDITDIST_NEXT_WITHNOW : EDITDIST_BACK );
-	}else if ( freplace->Flags & FR_REPLACE ){
-		SendMessage(PES->hWnd, EM_GETSEL, (WPARAM)&firstC, (LPARAM)&lastC);
-		if ( firstC != lastC ){
-			TEXTSEL ts;
-
-			if ( SelectEditStrings(PES, &ts, TEXTSEL_CHAR) == FALSE ) return;
-
-			if ( X_esrx ?
-				(IsTrue(SearchStr(PES, EDITDIST_REPLACE_TEST))) :
-				(tstricmp(ts.word, freplace->lpstrFindWhat) == 0) ){
-				SendMessage(PES->hWnd, EM_REPLACESEL, 0, (LPARAM)freplace->lpstrReplaceWith);
-			}
-			FreeTextselStruct(&ts);
-		}
-		SearchStr(PES, EDITDIST_NEXT_WITHNOW);
-	}else if ( freplace->Flags & FR_REPLACEALL ){ // はじめから最後まで
-		SendMessage(PES->hWnd, WM_SETREDRAW, FALSE, 0);
-		SendMessage(PES->hWnd, EM_SETSEL, 0, 0);
-		for ( ;; ){
-			if ( SearchStr(PES, EDITDIST_NEXT_WITHNOW) == FALSE ) break;
-			SendMessage(PES->hWnd, EM_REPLACESEL, 1, (LPARAM)freplace->lpstrReplaceWith); // replace後、カーソルは置換文字列の末尾に移動する
-		}
-		SendMessage(PES->hWnd, WM_SETREDRAW, TRUE, 0);
-		InvalidateRect(PES->hWnd, NULL, FALSE);
-		if ( freplace->lCustData != 0 ){
-			PostMessage((HWND)freplace->lCustData, WM_CLOSE, 0, 0);
-		}
-	}
-}
-
-void PPeReplaceStr(PPxEDSTRUCT *PES)
-{
-	HMODULE hCOMDLG32;
-	DefineWinAPI(HWND, ReplaceText, (LPFINDREPLACE));
-	HWND hReplaceWnd;
-	FINDREPLACE freplace;
-
-	if ( PES->findrep == NULL ){
-		if ( InitPPeFindReplace(PES) == FALSE ) return;
-	}
-
-	hCOMDLG32 = LoadSystemDLL(SYSTEMDLL_COMDLG32);
-	if ( hCOMDLG32 == NULL ) return;
-	GETDLLPROCT(hCOMDLG32, ReplaceText);
-	if ( DReplaceText == NULL ) return;
-
-	ReplaceDialogMessage = RegisterWindowMessage(FINDMSGSTRINGstr);
-
-	freplace.lStructSize = sizeof(FINDREPLACE);
-	freplace.hwndOwner = PES->hWnd;
-	freplace.Flags = FR_DOWN | FR_HIDEMATCHCASE | FR_HIDEWHOLEWORD;
-	#pragma warning(suppress:6001 6011) // InitPPeFindReplace で初期化
-	freplace.lpstrFindWhat = PES->findrep->findtext;
-	freplace.lpstrReplaceWith = PES->findrep->replacetext;
-	freplace.wFindWhatLen = VFPS;
-	freplace.wReplaceWithLen = VFPS;
-
-	hReplaceWnd = DReplaceText(&freplace);
-	if ( hReplaceWnd != NULL ){ // 置換ダイアログが出ている間のループ
-		MSG msg;
-
-		freplace.lCustData = (LPARAM)hReplaceWnd;
-		while( (int)GetMessage(&msg, NULL, 0, 0) > 0 ){
-			if ( DialogKeyProc(&msg) ) continue;
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-			if ( !IsWindow(hReplaceWnd) || (freplace.Flags & FR_DIALOGTERM) ){
-				// ダイアログを既に閉じた
-				hReplaceWnd = NULL;
-				break;
-			}
-		}
-		if ( hReplaceWnd != NULL ) DestroyWindow(hReplaceWnd);
-	}
-	FreeLibrary(hCOMDLG32);
-//	SendMessage(hWnd, EM_REPLACESEL, 0, (LPARAM)T("\"\""));
+	len = (DWORD)CallWindowProc(PES->hOldED, PES->hWnd, WM_GETTEXTLENGTH, 0, 0);
+	SendMessage(PES->hWnd, EM_GETSEL, (WPARAM)&lPos, (LPARAM)&rPos);
+	if ( (lPos != rPos) || (rPos < len) ) return ERROR_INVALID_FUNCTION;
+	param->key = K_raw | K_F4;
+	PPedCommand(PES, param);
+	return NO_ERROR; // 実行済み
 }
 
 typedef struct {
@@ -1285,189 +1186,20 @@ void ChangeFontSize(PPxEDSTRUCT *PES, int delta)
 	}
 	InvalidateRect(hWnd, NULL, TRUE);
 
-	if ( PES->flags & PPXEDIT_RICHEDIT ){ // タブの再設定が必要
+	if ( IsRichMode(PES) ){ // タブの再設定が必要
 		PPeSetTab(PES, PES->tab);
 	}
 }
 
-PPXINMENU escmenu[] = {
-	{ K_c | 'O',	MES_MCOP },
-	{ K_F12,		T("&Save as...")},
-//	{ KE_en,		T("&New Files")},
-//	{ ,				T("&Read Files")},
-//	{ K_c | 'L',	T("&Load File")}, // 差し替え読み込み
-	{ KE_ea,		T("&Append to file") },
-//	{ ,				T("&Path Rename")}, // filename を変更、保存はしない
-	{ KE_ed,		T("&Duplicate PPe")},
-//	{ KE_eu,		T("&Undo Edit")}, // 再読み込み
-	{ KE_ei,		T("&Insert from file")},
-//	{ ,				T("Close all(&X)")},
-	{ K_c | 'Q',	MES_MEED}, // T("edit menu")},
-	{ K_s | K_F2,	T("%G\"MEST|settings menu\"(&G)")},
-	{PPXINMENY_SEPARATE, NULL },
-	{ KE_kp	,		T("&Print by PPv")}, // 印刷
-	{PPXINMENY_SEPARATE, NULL },
-	{ K_s | K_F1,	T("&Help")},
-	{PPXINMENY_SEPARATE, NULL },
-	{ KE_er,		T("&Run as admin")},
-	{ KE_ee,		T("&Exec command")},
-	{ KE_ec,		MES_TABC },
-//	{ KE_eq,		T("&Quit")},
-	{ 0, NULL }
-};
-
-PPXINMENU f2menu[] = {
-	{ KE_qj,	MES_SJLN},
-//	{ KE_2b,	T("&Block Top/End")},
-//	{ KE_2l,	T("Restore &Line")},
-//	{ KE_2s,	T("&Screen Lines")}, // 行数変更
-//	{ KE_kr,	T("&Read Only")},
-	{ KE_qv,	MES_MERO}, //T("&View Mode")},
-	{ KE_2t,	T("&TAB stop...")},
-	{ KE_2c,	T("&Char code...")},
-	{ KE_2r,	T("&Return code...")},
-	{ KE_2p,	MES_MEWW}, // T("&Word wrap")},
-	{ K_c | K_s | 'G',	T("Syntax highlight (&G)")}, // T("&Word wrap")},
-	{ KE_2x,	MES_MERS}, // T("Regexp serach(&X)")},
-//	{ KE_2a,	T("&Auto Save")},
-	{ 0, NULL }
-};
-
-PPXINMENU kmenu[] = {
-	{ KE_kp,	T("&Print by PPv")},
-//	{ KE_ku,	T("&Undo Paste")},
-//	{ KE_kc,	T("Paste(&Copy)")},
-//	{ KE_kk,	T("Copy Line/Bloc&k")},
-	{ KE_kd,	MES_MEDL}, // T("&Duplicate line")},
-	{ KE_kz,	MES_SWCZ},
-//	{ KE_kr,	T("&Read only")},
-//	{ KE_kb,	T("Column &Block")},
-//	{ KE_ky,	T("&Y clear stack")},
-//	{ KE_k0,	T("Set Marker #&0")},
-//	{ KE_k1,	T("Set Marker #&1")},
-//	{ KE_k2,	T("Set Marker #&2")},
-//	{ KE_k3,	T("Set Marker #&3")},
-//	{ KE_k4,	T("Set Marker #&4")},
-	{ 0, NULL }
-};
-
-PPXINMENU qmenu[] = {
-//	{ KE_qh,	T("Cut word left(&H)")},
-//	{ KE_qt,	T("Cu&t BOL")},
-//	{ KE_qy,	T("Cut EOL(&Y)")},
-	{ KE_qu,	T("%G\"SWCA|Word case\"(&U)")},
-	{ KE_kz,	MES_SWCZ},
-	{ KE_kd,	MES_MEDL}, // T("&Duplicate line")},
-	{ KE_qv,	MES_MERO}, //T("&View Mode")},
-//	{ KE_ql,	T("Restore &Line")},
-//	{ KE_qf,	T("Set &Find string")},
-//	{ KE_qo,	T("Replece Next(&O)")},
-//	{ KE_qp,	T("&Put File Name")},
-	{ K_c | K_s | 'I', T("%G\"VIMF|Insert selected filename...\"(&N)")},
-	{ K_s | K_F7,	T("%G\"MEFS|&Insert find str\"\tShift+F7")},
-
-	{ KE_qj,	MES_SJLN},
-	{ KE_qr,	MES_SJTT}, // T("Top of text(&R)")},
-	{ KE_qc,	MES_SJTE}, // T("End of text(&C)")},
-//	{ KE_qp,	T("Last &Position")},
-//	{ KE_qo,	T("Replace Next(&O)")},
-//	{ KE_qlw,	T("Left of Window(&[)")},
-//	{ KE_qrw,	T("Right of Window(&])")},
-//	{ KE_qs,	T("Top of Line(&S)")},
-//	{ KE_qd,	T("End of Line(&D)")},
-	{ KE_qe,	MES_SJWT}, // T("Top of Window(&E)")},
-	{ KE_qx,	MES_SJWE}, // T("End of Window(&X)")},
-//	{ KE_qk,	T("Jump Brac&ket")},
-//	{ KE_qm,	T("Set &Marker #0")},
-//	{ KE_q0,	T("Jump to Marker #&0")},
-//	{ KE_q1,	T("Jump to Marker #&1")},
-//	{ KE_q2,	T("Jump to Marker #&2")},
-//	{ KE_q3,	T("Jump to Marker #&3")},
-//	{ KE_q4,	T("Jump to Marker #&4")},
-//	{ KE_qb,	T("&Block Top/End")},
-	{ 0, NULL }
-};
-
-//abcdefg  j lmnopq stu w  z
-PPXINMENU amenu[] = {
-	{ K_c | 'Z',	T("%G\"JMUN|Undo\"(&U)\tCtrl+Z")},
-	{PPXINMENY_SEPARATE, NULL},
-	{ K_c | 'X',	T("%G\"JMCU|Cut\"(&T)\tCtrl+X")},
-	{ K_c | 'C',	T("%G\"JMCL|Copy\"(&C)\tCtrl+C")},
-	{ K_c | 'V',	T("%G\"JMPA|Paste\"(&P)\tCtrl+V")},
-	{ K_del,		T("%G\"JMDE|Delete\"(&D)\tDelete")},
-	{PPXINMENY_SEPARATE, NULL},
-	{ K_c | 'A',	T("%G\"JMAL|Select All\"(&A)\tCtrl+A")},
-
-	{ KE_defmenu | INMENU_BREAK,	T("%G\"MEDM|Original menu\"(&B)\tShift+F10")},
-	{ K_c | ']',	T("%G\"MEMD|File &menu\"\tCtrl+]")},
-	{ K_c | 'Q',	T("%G\"MEED|Edit menu\"\tCtrl+&Q")},
-	{ K_s | K_F2,	T("%G\"MEST|Settings menu\"(&S)\tShift+F2")},
-	{PPXINMENY_SEPARATE, NULL},
-	{ KE_qu,		T("%G\"SWCA|Word case transfer\"(&W)\tCtrl+Q-U")},
-	{ KE_kz,		T("%G\"SWCZ|&Zen/han transfer\"\tCtrl+K-Z")},
-	{ KE_er,		T("&Run as admin\tESC-R")},
-//	{ KE_ee,		T("&Execute command\tESC-E")},
-
-	{ KE_qj | INMENU_BREAK,	T("%G\"SJLN|&Jump to Line\"\tCtrl+Q-J")},
-	{ K_c | 'F',	T("%G\"VCHF|Find\"(&F)\tCtrl+F")},
-	{PPXINMENY_SEPARATE, NULL},
-	{ K_raw | K_s | K_c | 'P', T("Path List(&N)\tCtrl+Shift+P")},
-	{ K_raw | K_s | K_c | 'L', T("PPc &List\tCtrl+Shift+L")},
-	{ K_c | K_s | 'D', T("F&older dialog...\tCtrl+Shift+D")},
-	{ K_c | K_s | 'I', T("%G\"VIMF|Insert selected filename...\"(&G)\tCtrl+Shift+I")},
-	{ 0, NULL }
-};
-
-const TCHAR amenu2str[] = T("&Insert");
-PPXINMENU amenu2[] = {
-	{ K_c | 'N',	T("File&name\tCtrl+N")},
-	{ K_c | 'P',	T("Full&path Filename\tCtrl+P")},
-	{ K_c | 'E',	T("Filename without &ext\tCtrl+E")},
-	{ K_c | 'T',	T("File ext\tCtrl+&T")},
-	{ K_c | 'R',	T("Filename on curso&r\tCtrl+&R")},
-	{ K_c | '0',	T("PPx path\tCtrl+&0")},
-	{ K_c | '1',	T("Current path\tCtrl+&1")},
-	{ K_c | '2',	T("Pair path\tCtrl+&2")},
-	{ K_F5,			T("now &Date\tF5")},
-	{ 0, NULL }
-};
-
-PPXINMENU returnmenu[] = {
-	{ VTYPE_CRLF + 1,	T("C&R LF(Windows)")},
-	{ VTYPE_CR + 1,		T("&CR")},
-	{ VTYPE_LF + 1,		T("&LF(Unix)")},
-	{ 0, NULL }
-};
-
 const TCHAR charmenustr_lcp[] = T("&local codepage");
-const TCHAR charmenustr_other[] = T("&other...");
-
-PPXINMENU charmenu[charmenu_items] = {
-	{ CP__US,			T("US(&A)")},
-	{ CP__LATIN1,		T("&Latin1")},
-	{ VTYPE_SYSTEMCP,	T("&Shift_JIS")},
-	{ VTYPE_EUCJP,		T("&EUC-JP")},
-	{ CP__UTF16L,		T("UTF-1&6")},
-	{ VTYPE_UNICODE,	T("&UTF-16LE(BOM)")},
-	{ CP__UTF16B,		T("UTF-1&6BE")},
-	{ VTYPE_UNICODEB,	T("UTF-1&6BE(BOM)")},
-	{ CP_UTF8,			T("UTF-&8")},
-	{ VTYPE_UTF8,		T("UTF-8(&BOM)")},
-	{ 0, NULL }, //	{ VTYPE_SYSTEM/CP_UTF8,	charmenustr_lcp},
-	{ 0, NULL }, //	{ VTYPE_OTHER		, T("codepage : %d")}
-	{ 0, NULL }
-};
 
 typedef struct {
 	PPXAPPINFO info;
 	PPxEDSTRUCT *PES;
 } EDITMODULEINFOSTRUCT;
 const TCHAR EditInfoName[] = WC_EDIT;
-const TCHAR GetFileExtsStr[] = T("All Files\0*.*\0\0");
 
 LRESULT EdPPxWmCommand(PPxEDSTRUCT *PES, HWND hWnd, WPARAM wParam, LPARAM lParam);
-void GetPPePopupPositon(PPxEDSTRUCT *PES, POINT *pos);
 
 #define WIDEDELTA 32
 
@@ -2201,7 +1933,7 @@ void EditSetTextProperties(PPxEDSTRUCT *PES, const TCHAR *param) // *textprop
 	BOOL rangedefault = FALSE;
 	WPARAM range = 0;
 
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) ) return;
+	if ( !IsRichMode(PES) ) return;
 
 	memset(&chfmt, 0, sizeof(chfmt));
 	chfmt.cbSize = sizeof(chfmt);
@@ -2240,7 +1972,7 @@ void EditSetTextProperties(PPxEDSTRUCT *PES, const TCHAR *param) // *textprop
 					if ( *(more + 1) == 't' ){
 						chfmt.yHeight *= 20;
 					}else if ( (*(more + 1) == 'i') || (*(more + 1) == 'x') ){
-						chfmt.yHeight = TwipToPixel(chfmt.yHeight, 96);
+						chfmt.yHeight = PixelToTwip(chfmt.yHeight, GetGDIdpi(PES->hWnd));
 					}
 				}
 				setflag(chfmt.dwMask, CFM_SIZE);
@@ -2390,18 +2122,6 @@ void EditSetTextProperties(PPxEDSTRUCT *PES, const TCHAR *param) // *textprop
 	if ( prfmt.dwMask != 0 ){
 		SendMessage(PES->hWnd, EM_SETPARAFORMAT, 0, (LPARAM)&prfmt);
 	}
-/*
-	int mode = 3;
-
-	if ( tstrcmp(buf, T("cursor")) == 0 ){
-		mode = 1;
-	}else if ( tstrcmp(buf, T("back")) == 0 ){
-		mode = 2;
-	}
-	if ( mode & 1 ){ // cursor color
-		clr = (*param > ' ') ? GetColor(&param, TRUE) : C_AUTO;
-	}
-*/
 }
 
 void EditGetTextProperties(PPxEDSTRUCT *PES, PPXMDLFUNCSTRUCT *funcparam) // %*textprop
@@ -2410,7 +2130,7 @@ void EditGetTextProperties(PPxEDSTRUCT *PES, PPXMDLFUNCSTRUCT *funcparam) // %*t
 	PARAFORMAT2 prfmt;
 
 	funcparam->dest[0] = '\0';
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) ) return;
+	if ( !IsRichMode(PES) ) return;
 
 	chfmt.cbSize = sizeof(chfmt);
 	chfmt.dwMask = CFM_ALL2;
@@ -2462,7 +2182,7 @@ void EditGetTextProperties(PPxEDSTRUCT *PES, PPXMDLFUNCSTRUCT *funcparam) // %*t
 		chfmt.bPitchAndFamily,
 		chfmt.szFaceName,
 		chfmt.wWeight,
-		chfmt.yHeight / 20, chfmt.yHeight, PixelToTwip(chfmt.yHeight, 96),
+		chfmt.yHeight / 20, chfmt.yHeight, TwipToPixel(chfmt.yHeight, GetGDIdpi(PES->hWnd)),
 		chfmt.sSpacing,
 		chfmt.bUnderlineType,
 //		chfmt.bUnderlineType, chfmt.bUnderlineColor,
@@ -2500,29 +2220,15 @@ void CursorTextFunction(PPxEDSTRUCT *PES, PPXMDLFUNCSTRUCT *funcparam) // %*curs
 {
 	EditTextStruct ets;
 	ECURSOR cursor;
-	int len;
 
 	funcparam->dest[0] = '\0';
 	if ( OpenEditText(PES, &ets, 0) == FALSE ) return;
 	GetEditSel(PES->hWnd, ets.text, &cursor);
-	if ( PES->flags & PPXEDIT_RICHEDIT ){
-		tstrreplace(ets.text, T("\r\n"), T("\n"));
-	}
+	if ( IsRichMode(PES) ) tstrreplace(ets.text, T("\r\n"), T("\n"));
+
 	GetWordStrings(ets.text, &cursor, (*funcparam->optparam == 'o') ? GWSF_SPLIT_PARAM : 0);
 
-	len = tstrlen(ets.text + cursor.start);
-	if ( len >= CMDLINESIZE ){
-		TCHAR *longbuf;
-		longbuf = HeapAlloc(ProcHeap, 0, TSTROFF(len + 1));
-		if ( longbuf != NULL ){
-			funcparam->dest = longbuf;
-			tstrcpy(funcparam->dest, ets.text + cursor.start);
-		}else{
-			tstplimcpy(funcparam->dest, ets.text + cursor.start, CMDLINESIZE);
-		}
-	}else{
-		tstrcpy(funcparam->dest, ets.text + cursor.start);
-	}
+	CmdFunctionLongResult(funcparam, ets.text + cursor.start, -1);
 	CloseEditText(&ets);
 }
 
@@ -2635,7 +2341,7 @@ void EditGetPropFunction(PPxEDSTRUCT *PES, PPXMDLFUNCSTRUCT *fparam)
 
 		case 'f': // flags, findtext
 			if ( tstrcmp(param + 1, T("indtext")) == 0 ){ // findtext
-				tstrcpy(fparam->dest, (PES->findrep != NULL) ? PES->findrep->findtext : NilStr);
+				CmdFunctionLongResult(fparam, (PES->findrep != NULL) ? PES->findrep->findtext : NilStr, -1);
 			}else{ // flags
 				Numer32ToString(fparam->dest, PES->flags);
 			}
@@ -2713,7 +2419,7 @@ void EditGetPropFunction(PPxEDSTRUCT *PES, PPXMDLFUNCSTRUCT *fparam)
 			}else if ( tstrcmp(param, T("edittype")) == 0 ){
 				if ( PES->flags & PPXEDIT_COMBOBOX ){
 					tstrcpy(fparam->dest, T("combobox"));
-				}else if ( PES->flags & PPXEDIT_RICHEDIT ){
+				}else if ( IsRichMode(PES) ){
 					tstrcpy(fparam->dest, T("richedit"));
 				}else{
 					tstrcpy(fparam->dest, T("edit"));
@@ -2881,7 +2587,7 @@ void EditSetModeCommand(PPxEDSTRUCT *PES, const TCHAR *param) // *editmode
 							LineBreak_NOWRAP : LineBreak_CHAR);
 				}
 			}else if ( !tstrcmp(buf + 1, T("SYNTAX")) ){
-				if ( PES->flags & PPXEDIT_RICHEDIT ){
+				if ( IsRichMode(PES) ){
 					if ( *more == '\0' ){
 						PES->flags ^= PPXEDIT_SYNTAXCOLOR;
 						if ( PES->flags & PPXEDIT_SYNTAXCOLOR ){
@@ -3120,17 +2826,8 @@ DWORD_PTR USECDECL EditInfoFunc(PPXAPPINFO *info, DWORD cmdID, PPXAPPINFOUNION *
 				return PPXA_NO_ERROR;
 			}
 			if ( !tstrcmp(uptr->funcparam.param, T("EDITTEXT")) ){
-				int len;
-				len = Edit_GetWindowTextLength(PES);
-				if ( len >= CMDLINESIZE ){
-					TCHAR *longbuf;
-					longbuf = HeapAlloc(ProcHeap, 0, TSTROFF(len + 1));
-					if ( longbuf != NULL ){
-						uptr->funcparam.dest = longbuf;
-					}else{
-						len = CMDLINESIZE - 1;
-					}
-				}
+				int len = Edit_GetWindowTextLength(PES);
+				CmdFunctionLongResult(&uptr->funcparam, NULL, len + 1);
 				Edit_GetWindowText(PES, uptr->funcparam.dest, len + 1);
 				uptr->funcparam.dest[len] = '\0';
 				return PPXA_NO_ERROR;
@@ -3290,77 +2987,6 @@ LRESULT CmdSelText(PPxEDSTRUCT *PES, TCHAR *strbuf)
 	return NO_ERROR;
 }
 
-HMENU MakePopupMenus(PPXINMENU *menus, DWORD check)
-{
-	HMENU hMenu;
-	TCHAR strbuf[0x200];
-
-	hMenu = CreatePopupMenu();
-	while ( menus->key ){
-		if ( menus->str != NULL ){
-			const TCHAR *str;
-
-			if ( *menus->str == '%' ){
-				PP_ExtractMacro(NULL, NULL, NULL, menus->str, strbuf, 0);
-				str = strbuf;
-			}else{
-				str = MessageText(menus->str);
-			}
-
-			AppendMenu(hMenu,
-					((menus->key == check) ? MF_CHECKED : 0) |
-					((menus->key & INMENU_BREAK) ? MF_ES | MF_MENUBARBREAK : MF_ES),
-					menus->key & ~INMENU_BREAK, str);
-		}else{
-			AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
-		}
-		menus++;
-	}
-	return hMenu;
-}
-
-void GetPPePopupPositon(PPxEDSTRUCT *PES, POINT *pos)
-{
-	if ( PES->mousepos ){
-		GetCursorPos(pos);
-	}else{
-		GetCaretPos(pos);
-		pos->y += PES->fontY;
-		ClientToScreen(PES->hWnd, pos);
-	}
-}
-
-void PPeMenu(PPxEDSTRUCT *PES, PPECOMMANDPARAM *param, PPXINMENU *menus)
-{
-	POINT pos;
-	HMENU popup;
-	WORD key;
-
-	GetPPePopupPositon(PES, &pos);
-	popup = MakePopupMenus(menus, 0);
-	if ( menus == amenu ){
-		AppendMenu(popup, MF_EPOP, (UINT_PTR)MakePopupMenus(amenu2, 0), amenu2str);
-	}
-	if ( menus == f2menu ){
-		if ( !(PES->style & ES_AUTOHSCROLL) ){
-			CheckMenuItem(popup, KE_2p, MF_BYCOMMAND | MF_CHECKED );
-		}
-		if ( PES->flags & PPXEDIT_SYNTAXCOLOR ){
-			CheckMenuItem(popup, K_s | K_c | 'G', MF_BYCOMMAND | MF_CHECKED );
-		}
-		if ( X_esrx ) CheckMenuItem(popup, KE_2x, MF_BYCOMMAND | MF_CHECKED );
-		if ( PES->style & ES_READONLY ){
-			CheckMenuItem(popup, KE_qv, MF_BYCOMMAND | MF_CHECKED );
-		}
-	}
-	key = (WORD)TrackPopupMenu(popup, TPM_TDEFAULT, pos.x, pos.y, 0, PES->hWnd, NULL);
-	DestroyMenu(popup);
-	if ( key != 0 ){
-		param->key = (WORD)(key | K_raw);
-		PPedCommand(PES, param);
-	}
-}
-
 void USEFASTCALL PPeClip(PPxEDSTRUCT *PES, UINT mode)
 {
 	ECURSOR cursor = {0, 0};
@@ -3368,7 +2994,7 @@ void USEFASTCALL PPeClip(PPxEDSTRUCT *PES, UINT mode)
 	DWORD len;
 	GETTEXTEX textex;
 
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) ){
+	if ( !IsRichMode(PES) ){
 		CallWindowProc(PES->hOldED, PES->hWnd, mode, 0, 0);
 		return;
 	}
@@ -3449,8 +3075,7 @@ int USEFASTCALL PPePaste(PPxEDSTRUCT *PES)
 					src++;
 				}
 				// richedit か 改行編集した場合は自前ペーストに
-				if ( (PES->flags & PPXEDIT_RICHEDIT) ||
-					 ((size_t)(dest - textp) < len) ){
+				if ( IsRichMode(PES) || ((size_t)(dest - textp) < len) ){
 					*dest = '\0';
 					SendMessage(PES->hWnd, EM_REPLACESEL, TRUE, (LPARAM)textp);
 					dopaste = TRUE;
@@ -3560,83 +3185,6 @@ int USEFASTCALL PPeCloseFile(PPxEDSTRUCT *PES)
 	}
 	return 0;
 }
-//----------------------------------------------- Tab/Ins によるファイル名補完
-int USEFASTCALL PPeFillMain(PPxEDSTRUCT *PES)
-{
-	EditTextStruct ets;
-	ECURSOR cursor;
-	TCHAR *ptr;
-	DWORD mode;
-	HWND hWnd;
-
-	mode = PES->ED.cmdsearch & CMDSEARCH_MATCHFLAGS;
-
-	if ( OpenEditText(PES, &ets, 0) == FALSE ) return 0;
-	if ( PES->flags & PPXEDIT_RICHEDIT ){
-		tstrreplace(ets.text, T("\r\n"), T("\n"));
-	}
-												// 編集文字列(全て)を取得
-	hWnd = PES->hWnd;
-	GetEditSel(hWnd, ets.text, &cursor);
-	SendMessage(hWnd, WM_SETREDRAW, FALSE, 0);
-	mode |= ((PES->list.WhistID & PPXH_COMMAND) ?
-					CMDSEARCH_CURRENT : CMDSEARCH_OFF) |
-			((PES->flags & PPXEDIT_SINGLEREF) ? 0 : CMDSEARCH_MULTI) |
-			CMDSEARCH_EDITBOX;
-
-	if ( (PES->list.WhistID & (PPXH_DIR | PPXH_PPCPATH)) &&
-		 IsTrue(GetCustDword(T("X_fdir"), TRUE)) ){
-		setflag(mode, CMDSEARCH_DIRECTORY);
-	}
-
-	ptr = SearchFileIned(&PES->ED, ets.text, &cursor, mode);
-	if ( ptr != NULL ){
-		size_t len;
-
-		SendMessage(hWnd, EM_SETSEL, cursor.start, cursor.end);
-								// ※↑SearchFileIned 内で加工済み
-		SendMessage(hWnd, EM_REPLACESEL, 0, (LPARAM)ptr);
-		SendMessage(hWnd, EM_SETSEL, 0, 0);	// 表示開始桁を補正させる
-
-		len = tstrlen(ptr);
-		if ( len && (*(ptr + len - 1) == '\"') ) len--;
-#ifndef UNICODE
-		if ( xpbug < 0 ) CaretFixToW(ptr, (DWORD *)&len);
-#endif
-		SendMessage(hWnd, EM_SETSEL, cursor.start + len, cursor.start + len);
-		SendMessage(hWnd, WM_SETREDRAW, TRUE, 0);
-		InvalidateRect(hWnd, NULL, FALSE);
-		SetMessageForEdit(PES->hWnd, NULL);
-	}else{
-		SendMessage(hWnd, WM_SETREDRAW, TRUE, 0);
-		SetMessageForEdit(PES->hWnd, MES_EENF);
-	}
-	CloseEditText(&ets);
-	return 0;
-}
-
-int USEFASTCALL PPeFillInit(PPxEDSTRUCT *PES)
-{
-	if ( PES->flags & PPXEDIT_LISTCOMP ){
-		if ( PES->list.mode >= LIST_FILL ){
-			if ( PES->list.ListFocus != LISTU_NOLIST ){
-				PES->oldkey2 = 1;
-				if ( ListUpDown(PES->hWnd, PES, 1, 0) == FALSE ) return 0;
-				return 0;
-			}
-		}
-		FloatList(PES, EDITDIST_NEXT_FILL);
-		return 0;
-	}
-	// 一覧無し補完
-	return PPeFillMain(PES);
-}
-
-int USEFASTCALL PPeFillIns(PPxEDSTRUCT *PES)
-{
-	resetflag(PES->ED.cmdsearch, CMDSEARCH_FLOAT);
-	return PPeFillInit(PES);
-}
 
 int USEFASTCALL PPeTabChar(PPxEDSTRUCT *PES)
 {
@@ -3665,33 +3213,6 @@ int USEFASTCALL PPeShiftTab(PPxEDSTRUCT *PES)
 		return 0;
 	}
 	return 0;
-}
-
-int USEFASTCALL PPeFillTab(PPxEDSTRUCT *PES)
-{
-	DWORD X_ltab[2] = Default_X_ltab;
-
-	if ( PES->flags & (PPXEDIT_TEXTEDIT | PPXEDIT_LINE_MULTILINE)){
-		if ( PES->flags & PPXEDIT_WANTALLKEY ){
-			PostMessage(PES->hWnd, WM_CHAR, (WPARAM)'\t', 0);
-		}
-		return 1;	// PPeなら本来のTAB
-	}
-	if ( !(PES->flags & PPXEDIT_TABCOMP) ){
-		HWND hWnd = PES->hWnd;
-
-		if ( PES->flags & PPXEDIT_LINE_MULTI ) return 1; // 複数行一行編集のとき
-		SetFocus(GetNextDlgTabItem(GetParentCaptionWindow(hWnd), hWnd, FALSE));
-		return 0;
-	}
-	// 補完
-	GetCustData(T("X_ltab"), &X_ltab, sizeof(X_ltab));
-	if ( X_ltab[1] == 0 ){
-		if ( X_flst_part && (X_ltab[0] < 2) ) X_ltab[0] = 2;
-		resetflag(PES->ED.cmdsearch, CMDSEARCH_MATCHFLAGS);
-		SetMatchMode(PES, X_ltab[0] );
-	}
-	return PPeFillInit(PES);
 }
 
 int USEFASTCALL DeleteSub(PPxEDSTRUCT *PES, int mode, int key)
@@ -3763,49 +3284,6 @@ int USEFASTCALL PPeDelete(PPxEDSTRUCT *PES)
 		}
 	}
 	return result;
-}
-
-int USEFASTCALL PPeGetFileName(PPxEDSTRUCT *PES)
-{
-	TCHAR buf[VFPS], path[VFPS];
-	PPXCMDENUMSTRUCT work;
-	HMODULE hCOMDLG32;
-	impGetOpenFileName DGetOpenFileName;
-	HWND hWnd = PES->hWnd;
-	OPENFILENAME ofile = {sizeof(ofile), NULL, NULL, GetFileExtsStr, NULL, 0, 0,
-		NULL, VFPS, NULL, 0, NULL, NULL, OFN_HIDEREADONLY | OFN_SHAREAWARE,
-		0, 0, WildCard_All, 0, NULL, NULL OPENFILEEXTDEFINE };
-
-	ofile.lpstrTitle = MessageText(MES_TSFN);
-	PPxEnumInfoFunc(PES->info, '1', path, &work);
-	hCOMDLG32 = LoadSystemDLL(SYSTEMDLL_COMDLG32);
-	if ( hCOMDLG32 == NULL ) return 0;
-	GETDLLPROCT(hCOMDLG32, GetOpenFileName);
-	if ( DGetOpenFileName == NULL ) return 0;
-	tstrcpy(buf, NilStr);  // 例えば、d:\\winnt\\*.*
-	ofile.hwndOwner = hWnd;
-	ofile.lpstrFile = buf;
-	ofile.lpstrInitialDir = path;
-	if ( !DGetOpenFileName(&ofile) ){
-		FreeLibrary(hCOMDLG32);
-		return 0;
-	}
-	FreeLibrary(hCOMDLG32);
-	if ( PES->flags & PPXEDIT_SINGLEREF ){
-		SendMessage(hWnd, EM_SETSEL, 0, EC_LAST);
-	}else{
-		DWORD wP, lP;
-
-		SendMessage(hWnd, EM_GETSEL, (WPARAM)&wP, (LPARAM)&lP);
-		if ( tstrchr(buf, ' ') != NULL ){ // 空白があるので、「"|"」の|に挿入
-			SendMessage(hWnd, EM_REPLACESEL, 0, (LPARAM)T("\"\""));
-			SendMessage(hWnd, EM_SETSEL, wP + 1, wP + 1);
-			PostMessage(hWnd, WM_KEYDOWN, VK_RIGHT, 0);
-			PostMessage(hWnd, WM_KEYUP, VK_RIGHT, 0);
-		}
-	}
-	SendMessage(hWnd, EM_REPLACESEL, 1, (LPARAM)buf);
-	return 0;
 }
 
 int USEFASTCALL PPeDuplicate(PPxEDSTRUCT *PES)
@@ -4239,7 +3717,7 @@ void PPeSetTab(PPxEDSTRUCT *PES, int usetab)
 			p = keyword;
 			ctab = GetIntNumber(&p);
 			MakeFN_REGEXP(&fn, param);
-			if ( FilenameRegularExpression(entry, &fn) ){
+			if ( FilenameRegularExpression(entry, &fn) != FRRESULT_NO ){
 				tab = ctab;
 				FreeFN_REGEXP(&fn);
 				break;
@@ -4575,6 +4053,10 @@ case K_s | K_Pdw:		// \[PgDw]
 case K_Pdw:				// [PgDw]
 	return ListPageUpDown(PES, EDITDIST_NEXT, FALSE);
 //-----------------------------------------------
+case K_ri:			// [→]
+	if ( !(PES->flags & PPXEDIT_SUGGEST) ) return ERROR_INVALID_FUNCTION;
+	return NextSuggestCheck(PES, param);
+
 case K_e | K_lf:			// ~[←]
 	ListHScroll(PES, -1);
 	break;
@@ -4923,32 +4405,53 @@ default:
 	return NO_ERROR; // 実行済み
 }
 
+#define RICH_DEF_LINESPASE_RATE 32
 LRESULT EditSetFont(PPxEDSTRUCT *PES, HFONT hFont, LPARAM lParam)
 {
 	CHARFORMAT2 chfmt;
 	LOGFONT lfont;
+	int Gdpi;
 
 	PES->hEditFont = hFont;
 	GetHeight(PES, hFont);
-	if ( !(PES->flags & PPXEDIT_RICHEDIT) ){
+	if ( !IsRichMode(PES) ){
 		return CallWindowProc(PES->hOldED, PES->hWnd, WM_SETFONT, (WPARAM)hFont, lParam);
 	}
-
-	// フォント設定
+	// フォント設定(RICHEDIT)
+	Gdpi = GetGDIdpi(PES->hWnd);
 	GetObject(hFont, sizeof(LOGFONT), &lfont);
+	PES->fontY = lfont.lfHeight;
+	if ( (int)PES->fontY < 0 ) PES->fontY = (DWORD)-(int)PES->fontY;
+	chfmt.yHeight = PixelToTwip(PES->fontY, Gdpi);
+
 	chfmt.cbSize = sizeof(chfmt);
 	chfmt.dwMask = CFM_SIZE | CFM_FACE | CFM_CHARSET | CFM_LCID;
-	if ( lfont.lfHeight < 0 ) lfont.lfHeight = -lfont.lfHeight;
-	chfmt.yHeight = TwipToPixel(lfont.lfHeight, 96/*GetMonitorDPI(PES->hWnd)*/);
-	if ( chfmt.yHeight < 0 ) chfmt.yHeight = -chfmt.yHeight;
 	tstrcpy(chfmt.szFaceName, lfont.lfFaceName);
 	chfmt.bCharSet = lfont.lfCharSet;
 	chfmt.lcid = GetUserDefaultLCID();
 	chfmt.bPitchAndFamily = lfont.lfPitchAndFamily;
 
+	PES->fontYext = (PES->fontY * RICH_DEF_LINESPASE_RATE) / 100;
+
+	// RichEditD2D は、１度目の WM_DPICHANGED で DPI をフォントサイズに反映できないことがあるため、予め送信しておく
+	if ( PES->RichType == UXTRICH_DW ){
+		RECT box;
+		int Mdpi;
+
+		Mdpi = GetMonitorDPI(PES->hWnd);
+		GetWindowRect(PES->hWnd, &box);
+		CallWindowProc(PES->hOldED, PES->hWnd, WM_DPICHANGED,
+				TMAKEWPARAM(Mdpi,Mdpi), (LPARAM)&box);
+	}
+#if 0
+	XMessage(NULL, NULL, XM_DbgLOG, T("EditSetFont1=%d-%d:%d+%d=%d DPI=%d,%d"),
+		chfmt.yHeight,lfont.lfHeight,
+		PES->fontY,PES->fontYext,
+		PES->fontY+PES->fontYext,GetMonitorDPI(PES->hWnd),GetGDIdpi(PES->hWnd));
+#endif
 	// SCF_DEFAULT は 0 なので別個に指定
-	SendMessage(PES->hWnd, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&chfmt);
-	SendMessage(PES->hWnd, EM_SETCHARFORMAT, SPF_SETDEFAULT | SCF_SELECTION | SCF_ALL, (LPARAM)&chfmt);
+	CallWindowProc(PES->hOldED, PES->hWnd, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&chfmt);
+	CallWindowProc(PES->hOldED, PES->hWnd, EM_SETCHARFORMAT, SPF_SETDEFAULT | SCF_SELECTION | SCF_ALL, (LPARAM)&chfmt);
 
 	if ( lParam != 0 ) InvalidateRect(PES->hWnd, NULL, TRUE);
 	return 0;
@@ -5004,7 +4507,7 @@ void LineExpand(HWND hWnd, PPxEDSTRUCT *PES)
 	GetDesktopRect(hWnd, &eis.boxDesk);
 
 	lineY = PES->fontY;
-	if ( PES->flags & PPXEDIT_RICHEDIT ) lineY += PES->fontYext;
+	if ( IsRichMode(PES) ) lineY += PES->fontYext;
 
 	deskline = (eis.boxDesk.bottom - eis.boxDesk.top) / lineY;
 	if ( deskline < 1 ) deskline = 1;
@@ -5029,7 +4532,7 @@ void LineExpand(HWND hWnd, PPxEDSTRUCT *PES)
 	PES->caretLY = line;
 	EditBoxExpand(PES, &eis);
 
-	if ( (PES->flags & PPXEDIT_RICHEDIT) && (PES->list.hWnd != NULL) ){
+	if ( IsRichMode(PES) && (PES->list.hWnd != NULL) ){
 		PostMessage(hWnd, WM_PPXCOMMAND, KE_changepos, 0);
 	}
 
@@ -5271,8 +4774,7 @@ LRESULT CALLBACK EDsHell(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		#endif
 
 		case WM_IME_COMPOSITION:
-			if ( !(PES->flags & PPXEDIT_RICHEDIT) ||
-				 !(lParam & GCS_RESULTSTR) ){
+			if ( !IsRichMode(PES) || !(lParam & GCS_RESULTSTR) ){
 				return CallWindowProc(PES->hOldED, hWnd, iMsg, wParam, lParam);
 			}else{
 				LRESULT lr;
@@ -5831,7 +5333,7 @@ void InitExEdit(PPxEDSTRUCT *PES)
 			PES->caretLY = 1;
 			if ( WinType >= WINTYPE_VISTA ){
 				SendMessage(PES->hWnd, EM_SETWORDBREAKPROC, 0,
-					(LPARAM)((PES->flags & PPXEDIT_RICHEDIT) ?
+					(LPARAM)(IsRichMode(PES) ?
 						LineRichEditWordBreakProcW : LineEditWordBreakProcW));
 			}
 		}else{
@@ -5842,7 +5344,7 @@ void InitExEdit(PPxEDSTRUCT *PES)
 			if ( (WinType >= WINTYPE_VISTA) &&
 				 (PES->flags & PPXEDIT_NOWORDBREAK) ){
 				SendMessage(PES->hWnd, EM_SETWORDBREAKPROC, 0,
-					(LPARAM)((PES->flags & PPXEDIT_RICHEDIT) ?
+					(LPARAM)(IsRichMode(PES) ?
 						LineRichEditWordBreakProcW : LineEditWordBreakProcW));
 			}
 		}
@@ -5853,17 +5355,19 @@ void InitExEdit(PPxEDSTRUCT *PES)
 void InitRichMode(PPxEDSTRUCT *PES, HWND hRealED, HFONT hEditFont)
 {
 	CHARFORMAT2 chfmt;
-//	PARAFORMAT2 paragfmt;
 	LOGFONT lfont;
 	TCHAR classname[128];
 	IUnknown *Unknown;
+	int Gdpi;
 
 	GetClassName(hRealED, classname, TSIZEOF(classname));
 	if ( TinyCharLower(classname[0]) != 'r' ) return;
-	setflag(PES->flags, PPXEDIT_RICHEDIT);
-	PES->fontYext = 4;
+	PES->fontYext = 4; // 仮
 	PES->hEditFont = hEditFont;
 	PES->RichEdit = NULL;
+	PES->RichType = UXTRICH_V3;
+	if ( classname[8] == '5' ) PES->RichType = UXTRICH_V4;
+	if ( classname[9] == '2' ) PES->RichType = UXTRICH_DW;
 
 	SendMessage(hRealED, EM_GETOLEINTERFACE, 0, (LPARAM)&Unknown);
 	if ( Unknown != NULL ){
@@ -5876,28 +5380,39 @@ void InitRichMode(PPxEDSTRUCT *PES, HWND hRealED, HFONT hEditFont)
 	// フォント設定
 	// ASCII フォントと日本語フォントを共通にする
 	// IMF_AUTOFONT ?
-	SendMessage(hRealED, EM_SETLANGOPTIONS, 0,
+	SendMessage(PES->hWnd, EM_SETLANGOPTIONS, 0,
 			SendMessage(hRealED, EM_GETLANGOPTIONS, 0, 0) & ~IMF_DUALFONT );
 
 	// 規定フォントを取得
+	Gdpi = GetGDIdpi(PES->hWnd);
+
 	if ( hEditFont == NULL ){
 		chfmt.cbSize = sizeof(chfmt);
 		chfmt.dwMask = CFM_SIZE | CFM_FACE | CFM_CHARSET | CFM_LCID;
 		SendMessage(hRealED, EM_GETCHARFORMAT, SCF_DEFAULT, (LPARAM)&chfmt);
+		PES->fontY = TwipToPixel(chfmt.yHeight, Gdpi);
 	}else{
 		GetObject(hEditFont, sizeof(LOGFONT), &lfont);
-		chfmt.yHeight = TwipToPixel(lfont.lfHeight, 96);
+		chfmt.yHeight = PixelToTwip(lfont.lfHeight, Gdpi);
 		tstrcpy(chfmt.szFaceName, lfont.lfFaceName);
 		chfmt.bCharSet = lfont.lfCharSet;
 		chfmt.bPitchAndFamily = lfont.lfPitchAndFamily;
+		PES->fontY = lfont.lfHeight;
 	}
 	if ( chfmt.yHeight < 0 ) chfmt.yHeight = -chfmt.yHeight;
-
+	if ( (int)PES->fontY < 0 ) PES->fontY = (DWORD)-(int)PES->fontY;
+	PES->fontYext = (PES->fontY * RICH_DEF_LINESPASE_RATE) / 100;
+#if 0
+	XMessage(NULL, NULL, XM_DbgLOG, T("InitRichMode=%d-%d:%d+%d=%d DPI=%d,%d"),
+		chfmt.yHeight,PES->fontY,
+		PES->fontY,PES->fontYext,
+		PES->fontY+PES->fontYext,GetMonitorDPI(PES->hWnd),GetGDIdpi(PES->hWnd));
+#endif
 	// 背景色設定
 	chfmt.cbSize = sizeof(chfmt);
 	chfmt.dwEffects = CFE_AUTOCOLOR;
 	if ( ThemeColors.ExtraDrawFlags & (EDF_WINDOW_TEXT | EDF_WINDOW_BACK) ){
-		SendMessage(hRealED, EM_SETBKGNDCOLOR, 0, (LPARAM)C_WindowBack);
+		CallWindowProc(PES->hOldED, hRealED, EM_SETBKGNDCOLOR, 0, (LPARAM)C_WindowBack);
 		chfmt.dwEffects = 0;
 		chfmt.crTextColor = C_WindowText;
 	}
@@ -5906,8 +5421,8 @@ void InitRichMode(PPxEDSTRUCT *PES, HWND hRealED, HFONT hEditFont)
 	chfmt.dwMask = CFM_COLOR | CFM_SIZE | CFM_FACE | CFM_CHARSET | CFM_LCID;
 	chfmt.lcid = GetUserDefaultLCID();
 		// SCF_DEFAULT は 0 なので別個に指定
-	SendMessage(hRealED, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&chfmt);
-	SendMessage(hRealED, EM_SETCHARFORMAT, SPF_SETDEFAULT | SCF_SELECTION | SCF_ALL, (LPARAM)&chfmt);
+	CallWindowProc(PES->hOldED, hRealED, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&chfmt);
+	CallWindowProc(PES->hOldED, hRealED, EM_SETCHARFORMAT, SPF_SETDEFAULT | SCF_SELECTION | SCF_ALL, (LPARAM)&chfmt);
 #if 0
 	if ( chfmt.bCharSet == SHIFTJIS_CHARSET ){
 		chfmt.bCharSet = ANSI_CHARSET;
@@ -5916,7 +5431,9 @@ void InitRichMode(PPxEDSTRUCT *PES, HWND hRealED, HFONT hEditFont)
 		SendMessage(hRealED, EM_SETCHARFORMAT, SPF_SETDEFAULT | SCF_SELECTION | SCF_ALL, (LPARAM)&chfmt);
 }
 #endif
+#if 0
 	{	// 行間の算出。本当は twip 単位っぽいので、行数が嵩むと誤差が出る。
+		CHARFORMAT2 chfmt;
 		PARAFORMAT2 prfmt;
 		prfmt.cbSize = sizeof(prfmt);
 		prfmt.dwMask = PFM_LINESPACING;
@@ -5927,6 +5444,12 @@ void InitRichMode(PPxEDSTRUCT *PES, HWND hRealED, HFONT hEditFont)
 		#else
 			#define YEXT 4
 		#endif
+
+		chfmt.cbSize = sizeof(chfmt);
+		chfmt.dwMask = CFM_SIZE;
+		SendMessage(hRealED, EM_GETCHARFORMAT, SCF_SELECTION, (LPARAM)&chfmt);
+
+//		chfmt.yHeight = (TwipToPixel * GetGDIdpi(PES->hWnd)) / 1900;
 
 		switch ( prfmt.bLineSpacingRule ){
 			case 0:
@@ -5942,12 +5465,12 @@ void InitRichMode(PPxEDSTRUCT *PES, HWND hRealED, HFONT hEditFont)
 				break;
 
 			case 3:
-				PES->fontYext = TwipToPixel(prfmt.dyLineSpacing, 96);
+				PES->fontYext = PixelToTwip(prfmt.dyLineSpacing, GetGDIdpi(PES->hWnd));
 				if ( PES->fontYext < YEXT ) PES->fontYext = YEXT;
 				break;
 
 			case 4:
-				PES->fontYext = TwipToPixel(prfmt.dyLineSpacing, 96);
+				PES->fontYext = PixelToTwip(prfmt.dyLineSpacing, GetGDIdpi(PES->hWnd));
 				break;
 
 			case 5:
@@ -5955,7 +5478,7 @@ void InitRichMode(PPxEDSTRUCT *PES, HWND hRealED, HFONT hEditFont)
 				break;
 		}
 	}
-
+#endif
 	SendMessage(hRealED, EM_SETOPTIONS, ECOOP_OR, ECO_NOHIDESEL);
 	SendMessage(hRealED, EM_SETTARGETDEVICE, 0, 0); // 右端で折り返す
 
@@ -6076,7 +5599,7 @@ PPXDLL HWND PPXAPI PPxRegistExEdit(PPXAPPINFO *info, HWND hEditWnd, int maxlen, 
 
 	if ( wHist != 0 ) setflag(PES->flags, PPXEDIT_SUGGEST);
 
-	if ( X_uxt[2] > 0 ) InitRichMode(PES, hRealED, hEditFont);
+	if ( hRichEdit != NULL ) InitRichMode(PES, hRealED, hEditFont);
 
 	GetCustData(T("X_pmc"), &X_pmc, sizeof(X_pmc));
 	InitExEdit(PES);

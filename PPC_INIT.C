@@ -60,12 +60,13 @@ PPXINMENU barEdit[] = {
 	{K_c | 'V',	T("&Paste\tCtrl+V")},
 	{K_c | K_s | 'V',	T("Paste &Shortcut\tCtrl+Shift+V")},
 	{1,	NULL},
-		{K_c | K_s | 'C',	T("This directory\tCtrl+Shift+C")},
-		{(DWORD_PTR)T("*cliptext %C"), T("&Filename")},
-		{(DWORD_PTR)T("*cliptext %X"), T("Filename(widthout e&xt)")},
-		{(DWORD_PTR)T("*cliptext %T"), T("&Extension")},
-		{K_c | 'C', T("Full&path")},
-		{(DWORD_PTR)T("*cliptext %2"), T("Pair Directory(&2)")},
+		{K_c | K_s | 'C',	T("This directory(&D)\tCtrl+Shift+C")},
+		{(DWORD_PTR)T("*cliptext %OC%*regexp(\"%#,C\",\"/,/\\n/g\")"), T("Filename list(&F)")},
+		{(DWORD_PTR)T("*cliptext %OC%*regexp(\"%#,X\",\"/,/\\n/g\")"), T("Filename list(widthout ext, &X)")},
+		{(DWORD_PTR)T("*cliptext %T"), T("filename &Extension(&E)")},
+		{(DWORD_PTR)T("*clipentry all"), T("Fullpath filename list, DnD, and shortcut(&P)")},
+		{(DWORD_PTR)T("*clipentry entry"), T("Fullpath filename list, and DnD(&N)\tCtrl+C")},
+		{(DWORD_PTR)T("*cliptext %2"), T("Pair Window Directory(&2)")},
 		{0, T("others C&lip")},
 	{PPXINMENY_SEPARATE, NULL},
 	{'W',		T("&Write entry\tW")},
@@ -575,13 +576,13 @@ BOOL LoadParam(PPCSTARTPARAM *psp, const TCHAR *param, BOOL bootparam)
 									//	"sps" single process
 		if ( !tstrcmp( buf + 1, T("SPS") )){
 			modify = TRUE;
-			X_sps = psp->SingleProcess = TRUE;
+			X_sps = psp->SingleProcess = 1;
 			continue;
 		}
 									//	"mps" multi process
 		if ( !tstrcmp( buf + 1, T("MPS") )){
 			modify = TRUE;
-			X_sps = psp->SingleProcess = FALSE;
+			X_sps = psp->SingleProcess = 0;
 			continue;
 		}
 									//	"K"
@@ -1195,11 +1196,11 @@ void CloseGuiControl(PPC_APPINFO *cinfo, BOOL reload)
 
 void ReloadThemeSettings(HWND hWnd)
 {
-	X_uxt[0] = PPxCommonExtCommand(K_UxTheme, KUT_LOADCUST);
+	X_uxt_color = PPxCommonExtCommand(K_UxTheme, KUT_LOADCUST);
 	WinColors.ExtraDrawFlags = KUTS_COLORS;
 	WinColors.c.FrameHighlight = sizeof(WinColors);
 	PPxCommonExtCommand(K_UxTheme, (WPARAM)&WinColors);
-	if ( X_uxt[0] >= UXT_MINMODIFY ){
+	if ( X_uxt_color >= UXT_MINMODIFY ){
 		LocalizeDialogText(hWnd, 0);
 	}
 	if ( WinColors.ExtraDrawFlags & EDF_DIALOG_BACK ){
@@ -1344,7 +1345,7 @@ void PPcLoadCust(PPC_APPINFO *cinfo, BOOL reload)
 	}
 
 //--------------------------
-	if ( (int)PPxCommonExtCommand(K_UxTheme, KUT_NEW_UXT) != X_uxt[0] ){
+	if ( (int)PPxCommonExtCommand(K_UxTheme, KUT_NEW_UXT) != X_uxt_color ){
 		if ( cinfo->combo ){
 			ReloadThemeSettings(Combo.hWnd);
 			InvalidateRect(Combo.hWnd, NULL, TRUE);
@@ -1547,7 +1548,7 @@ void InitPPcGlobal(void)
 	WM_PPXCOMMAND = RegisterWindowMessage(T(PPXCOMMAND_WM));
 	WM_TaskbarButtonCreated = RegisterWindowMessage(TaskbarButtonCreatedReg);
 	FixCharlengthTable(T_CHRTYPE);
-	X_uxt[0] = PPxCommonExtCommand(K_UxTheme, KUT_INIT);
+	X_uxt_color = PPxCommonExtCommand(K_UxTheme, KUT_INIT);
 	WinColors.ExtraDrawFlags = KUTS_COLORS;
 	WinColors.c.FrameHighlight = sizeof(WinColors);
 	PPxCommonExtCommand(K_UxTheme, (WPARAM)&WinColors);
@@ -1599,10 +1600,10 @@ void InitPPcGlobal(void)
 
 #ifdef USEDIRECTX
 	setflag(X_combos[0], CMBS_THREAD);
-	X_MultiThread = 0;
+	if ( (X_combo != COMBO_OFF) || (X_sps != 2) ) X_MultiThread = 0;
 #else
 	if ( (OSver.dwMajorVersion >= 6) || (X_combos[0] & CMBS_THREAD) ){
-		X_MultiThread = 0;
+		if ( (X_combo != COMBO_OFF) || (X_sps != 2) ) X_MultiThread = 0;
 	}
 #endif
 }

@@ -657,8 +657,8 @@ BOOL FindEntryFATImage(FATSTRUCT *fats, TCHAR *fname, WIN32_FIND_DATA *ff)
 		fats->nowleft--;
 		if ( EntryToFindData(ff, entry, lfnname) > 0 ) continue;
 		if ( next != NULL ){
-			if ( !tstricmp(now, ff->cFileName) ||
-				 !tstricmp(now, ff->cAlternateFileName) ){
+			if ( (tstricmp(now, ff->cFileName) == 0) ||
+				 (tstricmp(now, ff->cAlternateFileName) == 0) ){
 				fats->nowroot = -1;
 				fats->nowpointer = entry->clusterL;
 				if ( fats->fattype == DISKFAT32 ){

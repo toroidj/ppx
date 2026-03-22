@@ -371,13 +371,13 @@ void CreateTipWnd(PPC_APPINFO *cinfo)
 	if ( C_tip[0] == C_AUTO ){
 		GetCustData(T("C_tip"), &C_tip, sizeof(C_tip));
 		if ( C_tip[0] == C_AUTO ){
-			C_tip[0] = (X_uxt[0] >= UXT_MINPRESET) ?
+			C_tip[0] = (X_uxt_color >= UXT_MINPRESET) ?
 					C_DialogText : GetSysColor(COLOR_INFOTEXT);
 		}else{
 			C_tip[0] = GetSchemeColor(C_tip[0], 0);
 		}
 		if ( C_tip[1] == C_AUTO ){
-			C_tip[1] = (X_uxt[0] >= UXT_MINPRESET) ?
+			C_tip[1] = (X_uxt_color >= UXT_MINPRESET) ?
 					C_DialogBack : GetSysColor(COLOR_INFOBK);
 		}else{
 			C_tip[1] = GetSchemeColor(C_tip[1], 0);

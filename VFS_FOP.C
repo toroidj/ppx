@@ -1127,7 +1127,7 @@ void FopConsoleSameAction(FOPSTRUCT *FS, const TCHAR *src, const TCHAR *dst)
 	PrintToConsole(buf);
 	thprintf(buf, TSIZEOF(buf), T("Destination: %s\r\n"), dst);
 	PrintToConsole(buf);
-	thprintf(buf, TSIZEOF(buf), T("%s\r\n"), MessageText(MES_QSAO));
+	thprintf(buf, TSIZEOF(buf), T("%Ms\r\n"), MES_QSAO);
 	PrintToConsole(buf);
 
 	hPopup = CreatePopupMenu();
@@ -1239,23 +1239,18 @@ ERRORCODE SameNameAction(FOPSTRUCT *FS, HANDLE dstH, BY_HANDLE_FILE_INFORMATION 
 				pbufp = thprintf(pathbuf, TSIZEOF(pathbuf), MessageText(MES_QSAN), FS->progs.info.count_exists);
 				switch ( opt->fop.same ){
 					case FOPSAME_NEWDATE:
-						thprintf(pbufp, 200, T("%d %s, %d %s"),
-								FS->progs.info.exists[2],
-								MessageText(MES_LGOW),
-								FS->progs.info.filesall - FS->progs.info.count_exists,
-								MessageText(MES_JMCP));
+						thprintf(pbufp, 200, T("%d %Ms, %d %Ms"),
+								FS->progs.info.exists[2], MES_LGOW,
+								FS->progs.info.filesall - FS->progs.info.count_exists, MES_JMCP);
 						break;
 					case FOPSAME_RENAME:
-						thprintf(pbufp, 200, T("%d %s, %d %s"),
-								FS->progs.info.count_exists,
-								MessageText(MES_TREN),
-								FS->progs.info.filesall - FS->progs.info.count_exists,
-								MessageText(MES_JMCP));
+						thprintf(pbufp, 200, T("%d %Ms, %d %Ms"),
+								FS->progs.info.count_exists, MES_TREN,
+								FS->progs.info.filesall - FS->progs.info.count_exists, MES_JMCP);
 						break;
 					case FOPSAME_SKIP:
-						thprintf(pbufp, 200, T("%d %s"),
-								FS->progs.info.filesall - FS->progs.info.count_exists,
-								MessageText(MES_JMCP));
+						thprintf(pbufp, 200, T("%d %Ms"),
+								FS->progs.info.filesall - FS->progs.info.count_exists, MES_JMCP);
 						break;
 					case FOPSAME_ADDNUMBER:
 						thprintf(pbufp, 200, T("%d number copy"), FS->progs.info.count_exists);
@@ -1463,11 +1458,11 @@ ERRORCODE ShowExistsList(FOPSTRUCT *FS, COUNTWORKSTRUCT *cws)
 	ERRORCODE result;
 	TCHAR buf[200];
 
-	thprintf(buf, TSIZEOF(buf), T("[%s:%d][%s:%d][%s:%d]%s:%d\r\n"),
-		MessageText(StrExist[2]), FS->progs.info.exists[2],
-		MessageText(StrExist[1]), FS->progs.info.exists[1],
-		MessageText(StrExist[0]), FS->progs.info.exists[0],
-		MessageText(StrExist[3]), FS->progs.info.filesall - FS->progs.info.count_exists
+	thprintf(buf, TSIZEOF(buf), T("[%Ms:%d][%Ms:%d][%Ms:%d]%Ms:%d\r\n"),
+		StrExist[2], FS->progs.info.exists[2],
+		StrExist[1], FS->progs.info.exists[1],
+		StrExist[0], FS->progs.info.exists[0],
+		StrExist[3], FS->progs.info.filesall - FS->progs.info.count_exists
 	);
 
 	FShowLog(FS);
@@ -1501,7 +1496,7 @@ void Count_Exists(FOPSTRUCT *FS, COUNTWORKSTRUCT *cws, WIN32_FIND_DATA *CountFF,
 	CreateFWriteLogWindow(FS);
 	compare = FuzzyCompareFileTime(&CountSrcFF.ftLastWriteTime, &CountDestStat.ftLastWriteTime) + 1;
 	FS->progs.info.exists[compare]++;
-	thprintf(buf, TSIZEOF(buf), T("%s\t%s\r\n"), MessageText(StrExist[compare]), filename);
+	thprintf(buf, TSIZEOF(buf), T("%Ms\t%s\r\n"), StrExist[compare], filename);
 	FWriteLog(FS, buf);
 
 	tick = GetTickCount();
@@ -2185,7 +2180,7 @@ TCHAR *MakeFOPlistFromParam(const TCHAR *param, const TCHAR *path, DWORD *fopfla
 		MakeFN_REGEXP(&fn, mask);
 		do{
 			if ( IsRelativeDirectory(ff.cFileName) ) continue;
-			if ( FinddataRegularExpression(&ff, &fn) ){
+			if ( FinddataRegularExpression(&ff, &fn) != FRRESULT_NO ){
 				CatPath(name, hpath, ff.cFileName);
 				ThAddString(&th, name);
 			}

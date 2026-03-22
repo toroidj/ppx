@@ -15,16 +15,16 @@
 
 BOOL ImgExtractFile(FOPSTRUCT *FS, HANDLE hFile, const TCHAR *srcDir, const TCHAR *srcPath, const TCHAR *dstDIR);
 
-typedef BOOL (WINAPI *WriteTextFunction)(HANDLE hFile, const TCHAR *text, size_t textlen);
+typedef BOOL (WINAPI *WriteTextFileFunction)(HANDLE hFile, const TCHAR *text, size_t textlen);
 
-BOOL WINAPI WriteTextNative(HANDLE hFile, const TCHAR *text, size_t textlen)
+BOOL WINAPI WriteTextFileNative(HANDLE hFile, const TCHAR *text, size_t textlen)
 {
 	DWORD tmp;
 
 	return WriteFile(hFile, text, TSTROFF(textlen), &tmp, NULL);
 }
 
-BOOL WINAPI WriteTextUTF8(HANDLE hFile, const TCHAR *text, size_t textlen)
+BOOL WINAPI WriteTextFileUTF8(HANDLE hFile, const TCHAR *text, size_t textlen)
 {
 	DWORD tmp;
 	int len;
@@ -43,7 +43,7 @@ BOOL WINAPI WriteTextUTF8(HANDLE hFile, const TCHAR *text, size_t textlen)
 }
 
 #ifdef UNICODE
-BOOL WINAPI WriteTextA(HANDLE hFile, const WCHAR *text, size_t textlen)
+BOOL WINAPI WriteTextFileA(HANDLE hFile, const WCHAR *text, size_t textlen)
 {
 	DWORD tmp;
 	int len;
@@ -54,7 +54,7 @@ BOOL WINAPI WriteTextA(HANDLE hFile, const WCHAR *text, size_t textlen)
 	return WriteFile(hFile, textA, len, &tmp, NULL);
 }
 #else
-BOOL WINAPI WriteTextUTF16(HANDLE hFile, const char *text, size_t textlen)
+BOOL WINAPI WriteTextFileUTF16(HANDLE hFile, const char *text, size_t textlen)
 {
 	DWORD tmp;
 	int len;
@@ -81,7 +81,7 @@ int OperationStartListFile(FOPSTRUCT *FS, const TCHAR *srcDIR, TCHAR *dstDIR)
 	DWORD size;
 	int i;
 	int charcode;
-	WriteTextFunction WriteText;
+	WriteTextFileFunction WriteText;
 	BOOL JSON = FALSE;
 	if ( FS->testmode ) return Operation_END_SUCCESS;
 
@@ -94,22 +94,22 @@ int OperationStartListFile(FOPSTRUCT *FS, const TCHAR *srcDIR, TCHAR *dstDIR)
 	(void)ReadFile(hFile, src.A, sizeof(src), &size, NULL);
 	charcode = GetFileCodeType(dstDIR, (BYTE *)src.T, size);
 	if ( (charcode == VTYPE_UTF8) || (charcode == CP_UTF8) ){
-		WriteText = WriteTextUTF8;
+		WriteText = WriteTextFileUTF8;
 		if ( ((src.A[0] == '[') || (src.A[0] == '{')) &&
 			 ((src.A[1] == '\r') || (src.A[1] == '\n') || (src.A[1] == '\"') || (src.A[1] == '\r') || (src.A[1] == '[') || (src.A[1] == '{')) ){
 			JSON = TRUE;
 		}
 	}else if ( (charcode == VTYPE_UNICODE) || (charcode == CP__UTF16L) ){
 		#ifdef UNICODE
-			WriteText = WriteTextNative;
+			WriteText = WriteTextFileNative;
 		#else
-			WriteText = WriteTextUTF16;
+			WriteText = WriteTextFileUTF16;
 		#endif
 	}else{ // Ansi
 		#ifdef UNICODE
-			WriteText = WriteTextA;
+			WriteText = WriteTextFileA;
 		#else
-			WriteText = WriteTextNative;
+			WriteText = WriteTextFileNative;
 		#endif
 	}
 	// â¸çsí«â¡

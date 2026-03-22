@@ -582,7 +582,7 @@ HANDLE FindFirstAsync(HWND hWnd, LPARAM lParam, const TCHAR *path, WIN32_FIND_DA
 			FreeFfa(sffa);
 			sffa = nextffa;
 			continue;
-		}else if ( !tstrcmp(path, sffa->path) ){ // 同じディレクトリ
+		}else if ( tstrcmp(path, sffa->path) == 0 ){ // 同じディレクトリ
 			if ( *flags & RENTRY_MODIFYUP ){	// 更新読込なら、廃棄する
 				FINDFIRSTASYNC *nextffa;
 

@@ -79,6 +79,7 @@ struct ComboList {	// コンボボックス処理用リストボックス
 
 #define LIST_THREAD_MAX 20
 
+#define IsRichMode(PES) ((PES)->RichType != UXTRICH_NO)
 
 #ifndef __ITextDocument_INTERFACE_DEFINED__
 #define __ITextDocument_INTERFACE_DEFINED__
@@ -134,33 +135,35 @@ typedef struct tagPPxEDSTRUCT {
 	CALLBACKMODULEENTRY KeyHookEntry;		// キー入力拡張モジュール
 	int ref;		// PPxEDSTRUCT 参照カウンタ
 	int flags;		// PPxRegistExEdit の PPXEDIT_ と同じ
-						// GUI情報
+				// GUI情報
 	DWORD style;	// Window style
 	DWORD exstyle;	// Window exstyle
 	DWORD fontX, fontY, OrgFontY;	// 文字高さ,初期文字高さ
 	int caretY;		// カレットのY
 	DWORD caretLY;	// カレットの行数Y
 	UINT tab;		// TAB 幅(ダイアログ単位)
-					// テキスト情報
+	BOOL mousepos;	// メニューの表示位置 FALSE:キー操作 TRUE:マウス操作
+	DWORD SyntaxType; // シンタックスハイライトの種類(書込み用ヒストリID)
+	ITextDocument *RichEdit;
+	int RichType;	// 使用中の RichEdit(UXTRICH_)
+				// テキスト情報
 	int CrCode;		// 保存時に使用する改行コード
 	UINT CharCP;	// 保存時に使用する文字コード
 					// 補完
-	ESTRUCT ED;			// GUI/CUI 共通構造体
-					// サーチ中の判断に使用
+	ESTRUCT ED;		// 検索・置換情報
+	struct PPeFindReplace *findrep;
+				// その他
 	WORD oldkey, oldkey2;	// 直前の入力キー
 
 	ThSTRUCT LocalStringValue;	// Edit内限定特殊環境変数
 		#define LSV_filename T("filename") // text filename
 		#define LSV_user_comb T("ListComb") // user combination
-	struct PPeFindReplace *findrep;
-	BOOL mousepos;	// メニューの表示位置 FALSE:キー操作 TRUE:マウス操作
-	DWORD SyntaxType; // シンタックスハイライトの種類(書込み用ヒストリID)
-						// 一覧表示関係
+
+				// 一覧表示関係
 	struct ComboList list;
 	DWORD fontYext;
 	HFONT hEditFont; // WM_SETFONT で指定されたフォント
 
-	ITextDocument *RichEdit;
 	volatile DWORD ActiveListThreadID; // 現在有効なスレッドのID
 	volatile int ListThreadCount; // 生きているスレッド数
 } PPxEDSTRUCT;
@@ -196,6 +199,7 @@ enum { TEXTSEL_ALL = 0, TEXTSEL_CHAR = 1, TEXTSEL_BACK, TEXTSEL_WORD, TEXTSEL_BE
 //--------------------------------------------------------------- PPD_EDL.C
 extern int xpbug;
 extern int X_esrx;
+extern UINT ReplaceDialogMessage;
 
 LRESULT CALLBACK EDsHell(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
 extern void InitExEdit(PPxEDSTRUCT *PES);
@@ -210,17 +214,22 @@ typedef struct {
 } EDITMODESTRUCT;
 #define EDITMODESTRUCT_DEFAULT 0, -1, -1
 
+typedef struct {
+	TCHAR *text;
+	TCHAR textbuf[0x410];
+	int len;
+} EditTextStruct;
+
+extern BOOL OpenEditText(PPxEDSTRUCT *PES, EditTextStruct *ets, int margin);
+extern void CloseEditText(EditTextStruct *ets);
+extern void SetMatchMode(PPxEDSTRUCT *PES, int mode);
+
 extern void FreeEdStruct(PPxEDSTRUCT *PES);
 extern void PPeSetTab(PPxEDSTRUCT *PES, int usetab);
 extern BOOL EditModeParam(EDITMODESTRUCT *ems, const TCHAR *param, const TCHAR *more);
 extern void XEditSetModify(PPxEDSTRUCT *PES);
 extern void XEditClearModify(PPxEDSTRUCT *PES);
 
-#define charmenu_items 13
-#define charmenu_other 10
-#define charmenu_sjis 2
-extern PPXINMENU returnmenu[];
-extern PPXINMENU charmenu[charmenu_items];
 extern int CloseLineList(PPxEDSTRUCT *PES);
 
 typedef struct {
@@ -243,6 +252,7 @@ typedef struct {
 
 extern BOOL USEFASTCALL PPeLogicalLinePos(PPxEDSTRUCT *PES, EditLPos *elp);
 extern void RichSyntaxColor(PPxEDSTRUCT *PES);
+extern ERRORCODE PPedCommand(PPxEDSTRUCT *PES, PPECOMMANDPARAM *param);
 
 //--------------------------------------------------------------- PPD_EDLC.C
 typedef int EDITDIST;
@@ -270,12 +280,29 @@ extern void CreateSubListWindow(PPxEDSTRUCT *PES);
 extern void CancelListThread(PPxEDSTRUCT *PES);
 extern BOOL ExtraEntrySearchString(const TCHAR *text, ESTRUCT *ED);
 extern void FreeFillTextFile(FILLTEXTFILE *filltext);
+extern int USEFASTCALL PPeFillTab(PPxEDSTRUCT *PES);
+extern int USEFASTCALL PPeFillIns(PPxEDSTRUCT *PES);
 
 //--------------------------------------------------------------- PPD_EDLL.C
 extern void ClosePPeTreeWindow(PPxEDSTRUCT *PES);
 extern void PPeTreeWindow(PPxEDSTRUCT *PES);
 
 //--------------------------------------------------------------- PPD_EDLM.C
+extern const PPXINMENU amenu[];
+extern const PPXINMENU amenu2[];
+extern const PPXINMENU f2menu[];
+extern const PPXINMENU returnmenu[];
+extern const PPXINMENU kmenu[];
+extern const PPXINMENU qmenu[];
+extern const PPXINMENU escmenu[];
+
+#define charmenu_items 13
+#define charmenu_other 10
+#define charmenu_sjis 2
+extern const PPXINMENU charmenu[charmenu_items];
+
+#define INMENU_BREAK B31 // 次の段へ
+
 #define PPE_OPEN_MODE_OPEN	0
 #define PPE_OPEN_MODE_INSERT	1
 #define PPE_OPEN_MODE_OPENNEW	-1
@@ -295,6 +322,10 @@ extern BOOL FileSave(PPxEDSTRUCT *PES, int mode);
 extern void FileOpen(PPxEDSTRUCT *PES, int mode);
 extern void JumptoLine(HWND hWnd, int line);
 extern void InitEditCharCode(PPxEDSTRUCT *PES);
+extern void GetPPePopupPositon(PPxEDSTRUCT *PES, POINT *pos);
+extern HMENU MakePopupMenus(const PPXINMENU *menus, DWORD check);
+extern void PPeMenu(PPxEDSTRUCT *PES, PPECOMMANDPARAM *param, const PPXINMENU *menus);
+extern int USEFASTCALL PPeGetFileName(PPxEDSTRUCT *PES);
 
 //--------------------------------------------------------------- PPD_EDLS.C
 #ifndef UNICODE
@@ -310,6 +341,10 @@ extern void FreeTextselStruct(TEXTSEL *ts);
 extern TCHAR *SearchFileInedMain(ESTRUCT *ED, TCHAR *str, int flags);
 
 extern BOOL SearchStr(PPxEDSTRUCT *PES, EDITDIST dist);
+extern BOOL SearchStrCheck(PPxEDSTRUCT *PES, int mode);
+extern void PPeReplaceStrCommand(PPxEDSTRUCT *PES, FINDREPLACE *freplace);
+extern void PPeReplaceStr(PPxEDSTRUCT *PES);
+
 extern int CheckXPbug(void);
 extern void GetHeight(PPxEDSTRUCT *PES, HFONT hFont);
 extern void LineCursor(PPxEDSTRUCT *PES, DWORD mes);

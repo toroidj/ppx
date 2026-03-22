@@ -1065,7 +1065,7 @@ LRESULT USEFASTCALL PPcNotify(PPC_APPINFO *cinfo, NMHDR *nmh)
 	if ( nmh->hwndFrom == cinfo->hHeaderWnd ){
 		switch (nmh->code){
 			case NM_CUSTOMDRAW:
-				if ( X_uxt[0] < UXT_MINPRESET ) break;
+				if ( X_uxt_color < UXT_MINPRESET ) break;
 				return HeaderDarkDraw((LPNMCUSTOMDRAW)nmh);
 
 			case NM_RCLICK:
@@ -1112,7 +1112,7 @@ void RecieveSyncPath(PPC_APPINFO *cinfo, const TCHAR *path, WPARAM wParam)
 
 	if ( wParam == 0 ){ // SyncPairEntry
 		for ( jumpN = 0 ; jumpN < cinfo->e.cellIMax ; jumpN++ ){
-			if ( !tstrcmp(CEL(jumpN).f.cFileName, entry) ){
+			if ( tstrcmp(CEL(jumpN).f.cFileName, entry) == 0 ){
 				MoveCellCsr(cinfo, jumpN - cinfo->e.cellN, NULL);
 				break;
 			}
@@ -1232,8 +1232,8 @@ BOOL USEFASTCALL WmCopyData(PPC_APPINFO *cinfo, COPYDATASTRUCT *copydata, WPARAM
 				ENTRYINDEX index;
 
 				for ( index = 0 ; index < cinfo->e.cellIMax ; index++ ){
-					if ( !tstrcmp(CellFileNameIndex(cinfo, index),
-							(TCHAR *)copydata->lpData) ){
+					if ( tstrcmp(CellFileNameIndex(cinfo, index),
+							(TCHAR *)copydata->lpData) == 0 ){
 						cinfo->MarkMask = MARKMASK_DIRFILE;
 						CellMark(cinfo, index, MARK_CHECK);
 						RefleshCell(cinfo, index);
@@ -1569,7 +1569,9 @@ void WmMouseUp(PPC_APPINFO *cinfo, int button, int oldmode, WPARAM wParam, LPARA
 		}
 		if ( cinfo->PushArea == PPCR_CELLTEXT ){
 			// 単独左クリック解除時に上下端に位置するなら隙間を空ける
-			if ( cinfo->list.scroll && (cinfo->cel.Area.cy > (XC_smar * 3)) ){
+			if ( cinfo->list.scroll &&
+				 !cinfo->list.orderZ &&
+				 (cinfo->cel.Area.cy > (XC_smar * SMAR_MIN)) ){
 				MoveCellCsr(cinfo, 0, NULL);
 			}
 			// 単独左クリック解除時にマークを一つにする
@@ -1580,7 +1582,9 @@ void WmMouseUp(PPC_APPINFO *cinfo, int button, int oldmode, WPARAM wParam, LPARA
 
 		if ( cinfo->PushArea == PPCR_CELLTAIL ){
 			// 単独左クリック解除時に上下端に位置するなら隙間を空ける
-			if ( cinfo->list.scroll && (cinfo->cel.Area.cy > (XC_smar * 3)) ){
+			if ( cinfo->list.scroll &&
+				 cinfo->list.orderZ &&
+				 (cinfo->cel.Area.cy > (XC_smar * SMAR_MIN)) ){
 				if ( (cinfo->e.cellPoint >= 0) && (cinfo->e.cellPoint < cinfo->e.cellIMax) ){
 					MoveCellCsr(cinfo, newHMpos - cinfo->e.cellN, NULL); // ←これだとカーソル動くので、スクロールのみにしないと。
 					cinfo->e.cellPoint = cinfo->e.cellN; // カーソル動いたので再設定
@@ -3403,7 +3407,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}else if ( message == WM_TaskbarButtonCreated ){
 				PPxCommonExtCommand(K_TBB_INIT, 0);
 			}
-			if ( X_uxt[0] == UXT_DARK ){
+			if ( X_uxt_color == UXT_DARK ){
 				if ( ((message <= 0x94) && (message >= 0x91)) ||
 //					 (message == WM_THEMECHANGED) ||
 					 (message == WM_NCPAINT) || (message == WM_NCACTIVATE) ){

@@ -71,11 +71,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	if ( X_ChooseMode != CHOOSEMODE_NONE ){
 		runcheck = 1;
-		X_sps = psp.SingleProcess = FALSE;
+		X_sps = psp.SingleProcess = 0;
 	}else{
 		runcheck = 2;
 		if ( X_combo != COMBO_OFF ){
-			X_sps = psp.SingleProcess = TRUE;
+			X_sps = psp.SingleProcess = 1;
 			runcheck = 3;
 			if ( ComboFix(&psp) == FALSE ){
 				result = EXIT_SUCCESS;
@@ -791,7 +791,7 @@ BOOL CreatePPcWindow(PPCSTARTPARAM *psp, MAINWINDOWSTRUCT *mws)
 
 void PPCui(HWND hWnd, const TCHAR *cmdline)
 {
-	TCHAR param[CMDLINESIZE], dir[VFPS];
+	TCHAR param[CMDLINESIZE], dir[VFPS], *last;
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
 
@@ -811,8 +811,9 @@ void PPCui(HWND hWnd, const TCHAR *cmdline)
 	si.lpReserved2	= NULL;
 
 	GetModuleFileName(hInst, dir, VFPS);
+	last = VFSFindLastEntry(dir);
 #ifdef WINEGCC
-	tstrcpy(tstrrchr(dir, '\\') + 1, T(PPCEXE)); //Z:\...\PPC.EXE を Z:\...\ppc に修正
+	tstrcpy(last + 1, T(PPCEXE)); //Z:\...\PPC.EXE を Z:\...\ppc に修正
 #endif
 	if ( cmdline ){
 		thprintf(param, TSIZEOF(param), T("\"%s\" %s"), dir, cmdline);
@@ -820,7 +821,7 @@ void PPCui(HWND hWnd, const TCHAR *cmdline)
 		thprintf(param, TSIZEOF(param), T("\"%s\""), dir);
 	}
 											// カレントディレクトリを作成
-	*tstrrchr(dir, '\\') = '\0'; // 最後は「\PPC.EXE」なので、漢字対策せず
+	*last = '\0'; // 最後は「\PPC.EXE」なので、漢字対策せず
 
 	if ( IsTrue(CreateProcess(NULL, param, NULL, NULL, FALSE,
 			CREATE_DEFAULT_ERROR_MODE, NULL, dir, &si, &pi)) ){

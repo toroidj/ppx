@@ -64,6 +64,12 @@ void GetSortSettings(HWND hDlg, XC_SORT *xs);
 #define FILE_SUPPORTS_GHOSTING				0x40000000
 #endif
 
+#ifndef FILE_SUPPORTS_BYPASS_IO
+#define FILE_SUPPORTS_BYPASS_IO             0x00000800
+#define FILE_SUPPORTS_STREAM_SNAPSHOTS      0x00001000
+#define FILE_SUPPORTS_CASE_SENSITIVE_DIRS   0x00002000
+#endif
+
 #ifndef FILE_READ_ONLY_VOLUME
 #define FILE_READ_ONLY_VOLUME				0x00080000
 #endif
@@ -90,46 +96,46 @@ void GetSortSettings(HWND hDlg, XC_SORT *xs);
 #define FILE_DAX_VOLUME					    0x20000000
 #endif
 
-
 struct DISKINFOSTRUCT {
 	DWORD flag;
 	const TCHAR *name;
 } DiskInfoFlags[] = {
-// x
-	{FS_CASE_SENSITIVE,			MES_7861}, // FILE_CASE_SENSITIVE_SEARCH
-	{FS_CASE_IS_PRESERVED,		MES_7860}, // FILE_CASE_PRESERVED_NAMES
-	{FS_UNICODE_STORED_ON_DISK,	MES_7862}, // FILE_UNICODE_ON_DISK
-	{FS_PERSISTENT_ACLS,		MES_7863}, // FILE_PERSISTENT_ACLS
-// x0
-	{FS_FILE_COMPRESSION,		MES_7864}, // FILE_FILE_COMPRESSION
-	{FILE_VOLUME_QUOTAS,		MES_7867},
-	{FILE_SUPPORTS_SPARSE_FILES, MES_7868},
-	{FILE_SUPPORTS_REPARSE_POINTS, MES_7869},
-// x00
-	{FILE_SUPPORTS_REMOTE_STORAGE, MES_786A},
-	{FILE_RETURNS_CLEANUP_RESULT_INFO, MES_7878},
-	{FILE_SUPPORTS_POSIX_UNLINK_RENAME, MES_7879},
-// x000
-	{FS_VOL_IS_COMPRESSED,		MES_7865}, // FILE_VOLUME_IS_COMPRESSED
-// x0000
-	{FILE_SUPPORTS_OBJECT_IDS,	MES_786B},
-	{FS_FILE_ENCRYPTION,		MES_786C}, // FILE_SUPPORTS_ENCRYPTION
-	{FILE_NAMED_STREAMS,		MES_7866},
-	{FILE_READ_ONLY_VOLUME,		MES_786D},
-// x00000
-	{FILE_SEQUENTIAL_WRITE_ONCE,	MES_786E},
-	{FILE_SUPPORTS_TRANSACTIONS,	MES_786F},
-	{FILE_SUPPORTS_HARD_LINKS,		MES_7870}, // Win7
-	{FILE_SUPPORTS_EXTENDED_ATTRIBUTES,	MES_7871}, // Win7
-// x000000
-	{FILE_SUPPORTS_OPEN_BY_FILE_ID,	MES_7872}, // Win7
-	{FILE_SUPPORTS_USN_JOURNAL,		MES_7873}, // Win7
-	{FILE_SUPPORTS_INTEGRITY_STREAMS,	MES_7874},
-	{FILE_SUPPORTS_BLOCK_REFCOUNTING,	MES_7875},
-// x0000000
-	{FILE_SUPPORTS_SPARSE_VDL,	MES_7876},
+	{FILE_READ_ONLY_VOLUME,		MES_786D}, // 5.0
+	{FILE_SEQUENTIAL_WRITE_ONCE,	MES_786E}, // 6.0
+
+	{FS_CASE_IS_PRESERVED,		MES_7860}, // 3.5 FILE_CASE_PRESERVED_NAMES
+	{FS_CASE_SENSITIVE,			MES_7861}, // 3.5 FILE_CASE_SENSITIVE_SEARCH
+	{FILE_SUPPORTS_CASE_SENSITIVE_DIRS, MES_787D}, // Win10 1803
+	{FS_UNICODE_STORED_ON_DISK,	MES_7862}, // 3.5 FILE_UNICODE_ON_DISK
+
+	{FS_PERSISTENT_ACLS,		MES_7863}, // 3.5 FILE_PERSISTENT_ACLS
+	{FS_FILE_ENCRYPTION,		MES_786C}, // 5.0 FILE_SUPPORTS_ENCRYPTION
+	{FS_FILE_COMPRESSION,		MES_7864}, // 3.5 FILE_FILE_COMPRESSION
+	{FS_VOL_IS_COMPRESSED,		MES_7865}, // 3.5 FILE_VOLUME_IS_COMPRESSED
+
+	{FILE_SUPPORTS_HARD_LINKS,		MES_7870}, // 6.1
+	{FILE_SUPPORTS_REPARSE_POINTS, MES_7869}, // 5.0
+	{FILE_NAMED_STREAMS,		MES_7866}, // 5.0
+	{FILE_SUPPORTS_SPARSE_FILES, MES_7868}, // 5.0
+	{FILE_SUPPORTS_SPARSE_VDL,	MES_7876}, // 10?
+	{FILE_SUPPORTS_EXTENDED_ATTRIBUTES,	MES_7871}, // 6.1
+	{FILE_SUPPORTS_OBJECT_IDS,	MES_786B}, // 5.0
+
+	{FILE_VOLUME_QUOTAS,		MES_7867}, // 5.0
+	{FILE_SUPPORTS_STREAM_SNAPSHOTS, MES_787C}, // 11?
+	{FILE_SUPPORTS_INTEGRITY_STREAMS,	MES_7874}, // 8.1
+	{FILE_SUPPORTS_BLOCK_REFCOUNTING,	MES_7875}, // 10?
+
+	{FILE_SUPPORTS_REMOTE_STORAGE, MES_786A}, // 5.0
+
+	{FILE_SUPPORTS_OPEN_BY_FILE_ID,	MES_7872}, // 6.1
+	{FILE_SUPPORTS_TRANSACTIONS,	MES_786F}, // 6.0
 	{FILE_DAX_VOLUME,			MES_7877}, // Win10 1607
-	{FILE_SUPPORTS_GHOSTING,	MES_787A},
+	{FILE_SUPPORTS_BYPASS_IO, MES_787B}, // 11?
+	{FILE_SUPPORTS_POSIX_UNLINK_RENAME, MES_7879}, // 11?
+	{FILE_SUPPORTS_GHOSTING,	MES_787A}, // 10?
+	{FILE_RETURNS_CLEANUP_RESULT_INFO, MES_7878}, // 11?
+	{FILE_SUPPORTS_USN_JOURNAL,		MES_7873}, // 6.1
 	{0, 0}
 };
 const TCHAR Disktype_Remote[] = MES_DIRE;
@@ -518,7 +524,7 @@ void InitDiskinfoDlgBox(HWND hDlg, PPC_APPINFO *cinfo)
 
 		for ( i = 0 ; DiskInfoFlags[i].flag ; i++ ){
 			if ( i3 & DiskInfoFlags[i].flag ){
-				thprintf(&thText, 0, T("%s, "), MessageText(DiskInfoFlags[i].name));
+				thprintf(&thText, 0, T("%Ms, "), DiskInfoFlags[i].name);
 			}
 		}
 		thprintf(&thText, 0, T("\r\n"));
@@ -613,7 +619,7 @@ void InitDiskinfoDlgBox(HWND hDlg, PPC_APPINFO *cinfo)
 			typep = T("?");
 	}
 	SetDlgItemText(hDlg, IDS_DSKI_DT, MessageText(typep));
-	thprintf(&thText, 0, T("Drive type: %s\r\n"), MessageText(typep));
+	thprintf(&thText, 0, T("Drive type: %Ms\r\n"), typep);
 	thprintf(&thText, 0, T("Drivename: %s\r\n"), drv);
 
 	if ( !GetVolumeNameC(cinfo->RealPath, volumeNameW) ){
@@ -631,7 +637,7 @@ void InitDiskinfoDlgBox(HWND hDlg, PPC_APPINFO *cinfo)
 		if ( hDF == INVALID_HANDLE_VALUE ){
 				thprintf(&thText, 0, T("volue open error(%Mm)\r\n"), GetLastError());
 		}else{
-			STORAGE_PROPERTY_QUERY query;
+			xSTORAGE_PROPERTY_QUERY query;
 			DWORD bytesWritten;
 			xDEVICE_SEEK_PENALTY_DESCRIPTOR result;
 			BYTE tmp[0x2000];
@@ -809,7 +815,7 @@ void InitDiskinfoDlgBox(HWND hDlg, PPC_APPINFO *cinfo)
 			if ( DeviceIoControl(hDF, IOCTL_STORAGE_QUERY_PROPERTY,
 					&query, DwordAlignment(sizeof(query)),
 					&result, sizeof(result), &bytesWritten, NULL) &&
-				 (bytesWritten >= sizeof(STORAGE_PROPERTY_QUERY)) ) {
+				 (bytesWritten >= sizeof(xSTORAGE_PROPERTY_QUERY)) ) {
 				thprintf(&thText, 0, T("drive seek type: %s\r\n"), result.IncursSeekPenalty ? T("Hard disk") : T("Solid State Drive"));
 			}
 
@@ -819,7 +825,7 @@ void InitDiskinfoDlgBox(HWND hDlg, PPC_APPINFO *cinfo)
 			if ( DeviceIoControl(hDF, IOCTL_STORAGE_QUERY_PROPERTY,
 					&query, DwordAlignment(sizeof(query)),
 					&result, sizeof(result), &bytesWritten, NULL) &&
-				 (bytesWritten >= sizeof(STORAGE_PROPERTY_QUERY)) ) {
+				 (bytesWritten >= sizeof(xSTORAGE_PROPERTY_QUERY)) ) {
 				thprintf(&thText, 0, T("drive Trim: %s\r\n"), result.IncursSeekPenalty ? T("yes") : T("no"));
 			}
 
@@ -829,7 +835,7 @@ void InitDiskinfoDlgBox(HWND hDlg, PPC_APPINFO *cinfo)
 			if ( DeviceIoControl(hDF, IOCTL_STORAGE_QUERY_PROPERTY,
 					&query, DwordAlignment(sizeof(query)),
 					&tmp, sizeof(tmp), &bytesWritten, NULL) &&
-				 (bytesWritten >= sizeof(STORAGE_PROPERTY_QUERY)) ) {
+				 (bytesWritten >= sizeof(xSTORAGE_PROPERTY_QUERY)) ) {
 				SetTemperatureInfo(&thText,
 						(xSTORAGE_TEMPERATURE_DATA_DESCRIPTOR *)tmp,
 						T("Adapter Temperature") );
@@ -841,7 +847,7 @@ void InitDiskinfoDlgBox(HWND hDlg, PPC_APPINFO *cinfo)
 			if ( DeviceIoControl(hDF, IOCTL_STORAGE_QUERY_PROPERTY,
 					&query, DwordAlignment(sizeof(query)),
 					&tmp, sizeof(tmp), &bytesWritten, NULL) &&
-				 (bytesWritten >= sizeof(STORAGE_PROPERTY_QUERY)) ) {
+				 (bytesWritten >= sizeof(xSTORAGE_PROPERTY_QUERY)) ) {
 				SetTemperatureInfo(&thText,
 						(xSTORAGE_TEMPERATURE_DATA_DESCRIPTOR *)tmp,
 						T("Device Temperature") );
@@ -871,10 +877,10 @@ void InitDiskinfoDlgBox(HWND hDlg, PPC_APPINFO *cinfo)
 				if ( DeviceIoControl(hDF, IOCTL_STORAGE_QUERY_PROPERTY,
 						&query, DwordAlignment(sizeof(query)),
 						&tmp, sizeof(tmp), &bytesWritten, NULL) &&
-						(bytesWritten >= sizeof(STORAGE_PROPERTY_QUERY)) ) {
-					thprintf(&thText, 0, T("id : %d: ok\r\n"),query.PropertyId);
+						(bytesWritten >= sizeof(xSTORAGE_PROPERTY_QUERY)) ) {
+					thprintf(&thText, 0, T("id : %d: ok\r\n"), query.PropertyId);
 				}else{
-					thprintf(&thText, 0, T("id : %d: xx\r\n"),query.PropertyId);
+					thprintf(&thText, 0, T("id : %d: xx\r\n"), query.PropertyId);
 						}
 			}
 			#endif
@@ -957,7 +963,7 @@ void SetMarkTarget(HWND hDlg, FILEMASKDIALOGSTRUCT *PFS)
 
 	if ( PFS->mode >= MARK_HIGHLIGHT1 ){
 		typename = buf2;
-		thprintf(buf2, TSIZEOF(buf2), T("%s %d"), MessageText(MES_LHIL), PFS->mode - MARK_HIGHLIGHT1 + 1);
+		thprintf(buf2, TSIZEOF(buf2), T("%Ms %d"), MES_LHIL, PFS->mode - MARK_HIGHLIGHT1 + 1);
 	}else if ( PFS->mode >= MARK_REVERSE ){
 		typename = MessageText(
 				MarkItemName[ (PFS->mode == MARK_HIGHLIGHTOFF) ?
@@ -965,7 +971,7 @@ void SetMarkTarget(HWND hDlg, FILEMASKDIALOGSTRUCT *PFS)
 					TMIN_REVERSE - PFS->mode - 1]);
 	}
 
-	thprintf(buf, TSIZEOF(buf), T("%s %s"), MessageText(MES_FBAC), typename);
+	thprintf(buf, TSIZEOF(buf), T("%Ms %s"), MES_FBAC, typename);
 	SetDlgItemText(hDlg, IDX_MASK_MODE, buf);
 }
 
@@ -1028,7 +1034,7 @@ void SetMaskTarget(HWND hDlg, FILEMASKDIALOGSTRUCT *PFS)
 			typename = MessageText(dsmd_list[PFS->mode - DSMD_TEMP]);
 		}
 	}
-	thprintf(buf, TSIZEOF(buf), T("%s %s"), MessageText(MES_FBAC), typename);
+	thprintf(buf, TSIZEOF(buf), T("%Ms %s"), MES_FBAC, typename);
 	SetDlgItemText(hDlg, IDX_MASK_MODE, buf);
 }
 
@@ -1224,7 +1230,7 @@ void MarkTargetMenu(HWND hDlg, HWND hButtonWnd, FILEMASKDIALOGSTRUCT *PFS)
 				1 - MARK_REVERSE - i + ID_MARKMIN, MarkItemName[i]);
 	}
 	for ( i = 0 ; i < PPC_HIGHLIGHT_COLORS ; i++ ){
-		thprintf(buf, TSIZEOF(buf), T("%s &%d"), MessageText(MES_LHIL), i + 1);
+		thprintf(buf, TSIZEOF(buf), T("%Ms &%d"), MES_LHIL, i + 1);
 		AppendMenuString(hMenu, i + ID_HIGHTLIGHT1, buf);
 	}
 

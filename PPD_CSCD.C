@@ -16,11 +16,6 @@
 #include "PPC_DISP.H"
 #pragma hdrstop
 
-COLORREF CS_color(TCHAR **linesrc, DWORD flags)			// キーワードを抽出
-{
-	return GetColor((const TCHAR **)linesrc, !(flags & fRC)); // A_color は自己参照させない
-}
-
 TCHAR *CD_color(TCHAR *dest, COLORREF color, DWORD flags)
 {
 	int i;
@@ -288,7 +283,9 @@ BOOL CS_ppcdisp(PPCUSTSTRUCT *PCS, TCHAR **linePtr, BYTE **binPtr)
 				nowcols += *destp++ = GetNumberWith((const TCHAR **)&line, 0, 255);
 				break;
 
-			case 'O':
+			case 'O': {
+				TCHAR *orgline;
+
 				if ( *line == 'd' ){
 					line++;
 					*destp++ = DE_fc_def;
@@ -306,11 +303,18 @@ BOOL CS_ppcdisp(PPCUSTSTRUCT *PCS, TCHAR **linePtr, BYTE **binPtr)
 					*destp++ = DE_fcolor;
 				}
 				if ( *line == '\"' ) line++;
-				*(COLORREF *)destp = CS_color(&line, 0);
-				destp += sizeof(COLORREF);
-				if ( *line == '\"' ) line++;
-				break;
 
+				orgline = line;
+				*(COLORREF *)destp = GetColor((const TCHAR **)&line, TRUE);
+				if ( orgline != line ){
+					destp += sizeof(COLORREF);
+					if ( *line == '\"' ) line++;
+					break;
+				}else{
+					ErrorItemMes(PCS, line, MessageText(MES_EUKW), NULL);
+					return FALSE;
+				}
+			}
 			case 'Q':
 				*destp++ = DE_lineNZS;
 				*destp++ = GetNumberWith((const TCHAR **)&line, 0, 3);
@@ -973,20 +977,12 @@ void CD_ppcdisp(PPCUSTSTRUCT *PCS, BYTE **binPtr, BYTE *binend)
 				if ( nextoffset >= 0 ) bin += nextoffset;
 				break;
 			}
-			case DE_MODULE: {
-				#ifdef UNICODE
-				WCHAR bufw[8];
-
-				AnsiToUnicode((char *)(bin + 2 + 4), bufw, 8);
-				#define CNAME bufw
-				#else
-				#define CNAME (bin + 2 + 4)
-				#endif
-				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE, T("X\"%s\",%d,%d"),
-					CNAME, *bin, *(bin + 1));
+			case DE_MODULE:
+				PCS->Smes = thprintf(PCS->Smes, CMDLINESIZE,
+						T("X\"%hs\",%d,%d"), (bin + 2 + 4), *bin, *(bin + 1));
 				bin += 16 - 1;
 				break;
-			}
+
 			case DE_SKIP:
 				continue;	// 空白を挿入させない
 

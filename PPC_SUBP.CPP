@@ -210,14 +210,13 @@ typedef enum tagIFILTER_INIT
 #endif
 
 // カラム拡張関連 - XPまで ====================================================
-TCHAR *GetColumnExtTextInfo(PPC_APPINFO *cinfo, int cellcolumn, TCHAR *dst)
+void GetColumnExtTextInfo(PPC_APPINFO *cinfo, int cellcolumn, ThSTRUCT *text)
 {
 	CELLEXTRASTRUCT *cdsptr;
 	COLUMNEXTDATAINFO *cndi;
 
-	if ( (cellcolumn < 0) || (cinfo->ColumnExtDlls.bottom == NULL) ){
-		return dst;
-	}
+	if ( (cellcolumn < 0) || (cinfo->ColumnExtDlls.bottom == NULL) ) return;
+
 	cdsptr = (CELLEXTRASTRUCT *)(BYTE *)(cinfo->e.CellExtra.bottom + cellcolumn);
 	for ( ; ; ){
 		if ( cdsptr->textoffset ){
@@ -227,17 +226,16 @@ TCHAR *GetColumnExtTextInfo(PPC_APPINFO *cinfo, int cellcolumn, TCHAR *dst)
 			while ( offset < cinfo->ColumnExtDlls.top ){
 				cndi = (COLUMNEXTDATAINFO *)(BYTE *)(cinfo->ColumnExtDlls.bottom + offset);
 				if ( index-- == 0 ){
-					dst = thprintf(dst, CMDLINESIZE, T("\r\n%s\t:"), (TCHAR *)(BYTE *)(cinfo->ColumnExtDlls.bottom + offset + sizeof(COLUMNEXTDATAINFO)) );
+					thprintf(text, THP_CAT, T("\r\n%s\t:"), (TCHAR *)(BYTE *)(cinfo->ColumnExtDlls.bottom + offset + sizeof(COLUMNEXTDATAINFO)) );
 					break;
 				}
 				offset = cndi->next;
 			}
-			dst = tstpcpy(dst, GetCellExtraText(cinfo, cdsptr) );
+			ThCatString(text, GetCellExtraText(cinfo, cdsptr) );
 		}
 		if ( cdsptr->nextoffset == 0 ) break;
 		cdsptr = CellExtraNext(cinfo, cdsptr);
 	}
-	return dst;
 }
 
 WORD GetColumnExtItemIndex(PPC_APPINFO *cinfo, const TCHAR *itemname)
@@ -576,26 +574,7 @@ void VistaProperties(const TCHAR *filename, ThSTRUCT *text)
 
 								hr = pd->GetDisplayName(&pszPropertyLabel);
 								if ( SUCCEEDED(hr) ){
-									TCHAR buf[0x1000];
-
-									#ifdef UNICODE
-										thprintf(buf, TSIZEOF(buf), L"%s\t:%s\r\n", pszPropertyLabel, ValueText);
-									#else
-									{
-										char *dest;
-
-										UnicodeToAnsi(pszPropertyLabel, buf, MAX_PATH);
-										dest = buf + tstrlen(buf);
-										*dest++ = '\t';
-										*dest++ = ':';
-										FixPropTextA(ValueText, dest);
-										dest += tstrlen(dest);
-										*dest++ = '\r';
-										*dest++ = '\n';
-										*dest = '\0';
-									}
-									#endif
-									ThCatString(text, buf);
+									thprintf(text, THP_CAT, T("%Ls\t:%Ls\r\n"), pszPropertyLabel, ValueText);
 									CoTaskMemFree(pszPropertyLabel);
 								}
 								pd->Release();
@@ -685,19 +664,18 @@ void GetVistaFileProps(PPC_APPINFO *cinfo, TCHAR *dest, int len, ENTRYCELL *cell
 		if ( proptypes[0] == '\0' ) return;
 	}
 
-	#ifdef UNICODE
-		#define propfilename filename
-	#else
-		WCHAR propfilename[VFPS];
-		AnsiToUnicode(filename, propfilename, VFPS);
-	#endif
+#ifdef UNICODE
+	#define propfilename filename
+#else
+	WCHAR propfilename[VFPS];
+	AnsiToUnicode(filename, propfilename, VFPS);
+#endif
 	HRESULT hr;
 	IPropertyStore *ps;
 
 	if ( DSHGetPropertyStoreFromParsingName == NULL ){
 		if ( InitPropSys() == FALSE ) return;
 	}
-
 
 #pragma warning(suppress: 6011) // InitPropSys で DSHGetPropertyStoreFromParsingName が初期化
 	hr = DSHGetPropertyStoreFromParsingName(propfilename, NULL, GPS_BESTEFFORT, XIID_IPropertyStore, reinterpret_cast<void**>(&ps));
@@ -723,66 +701,46 @@ void GetVistaFileProps(PPC_APPINFO *cinfo, TCHAR *dest, int len, ENTRYCELL *cell
 		AnsiToUnicode(ptp, TPTP, VFPS);
 	#endif
 
-	PROPERTYKEY propertyKey;
-	if ( SUCCEEDED(DPSGetPropertyKeyFromName(TPTP, &propertyKey)) ){
-		PROPVARIANT PropValue;
+		PROPERTYKEY propertyKey;
+		if ( SUCCEEDED(DPSGetPropertyKeyFromName(TPTP, &propertyKey)) ){
+			PROPVARIANT PropValue;
 
-		hr = ps->GetValue(propertyKey, &PropValue);
-		if ( SUCCEEDED(hr) ){
-			PWSTR ValueText;
-
-			hr = DPSFormatForDisplayAlloc(propertyKey, PropValue, PDFF_DEFAULT, &ValueText);
+			hr = ps->GetValue(propertyKey, &PropValue);
 			if ( SUCCEEDED(hr) ){
-				if ( ValueText[0] != '\0' ){
-				IPropertyDescription *pd;
+				PWSTR ValueText;
 
-				hr = DPSGetPropertyDescription(propertyKey, XIID_IPropertyDescription, reinterpret_cast<void**>(&pd));
+				hr = DPSFormatForDisplayAlloc(propertyKey, PropValue, PDFF_DEFAULT, &ValueText);
 				if ( SUCCEEDED(hr) ){
-					PWSTR pszPropertyLabel = NULL;
+					if ( ValueText[0] != '\0' ){
+						IPropertyDescription *pd;
 
-					hr = pd->GetDisplayName(&pszPropertyLabel);
-					if ( SUCCEEDED(hr) ){
-						TCHAR buf[0x1000];
-						int nlen;
+						hr = DPSGetPropertyDescription(propertyKey, XIID_IPropertyDescription, reinterpret_cast<void**>(&pd));
+						if ( SUCCEEDED(hr) ){
+							PWSTR pszPropertyLabel = NULL;
 
-						#ifdef UNICODE
-							thprintf(buf, TSIZEOF(buf), L"\r\n%s\t:%s", pszPropertyLabel, ValueText);
-						#else
-						{
-							char *dest;
+							hr = pd->GetDisplayName(&pszPropertyLabel);
+							if ( SUCCEEDED(hr) ){
+								int nlen;
 
-							dest = buf;
-							*dest++ = '\r';
-							*dest++ = '\n';
-							UnicodeToAnsi(pszPropertyLabel, dest, MAX_PATH);
-							dest += tstrlen(dest);
-							*dest++ = ':';
-							*dest++ = ' ';
-							FixPropTextA(ValueText, dest);
-							dest += tstrlen(dest);
-							*dest = '\0';
+								nlen = thprintf(dest, len, T("\r\n%Ls\t:%Ls"), pszPropertyLabel, ValueText) - dest;
+
+								CoTaskMemFree(pszPropertyLabel);
+								dest += nlen;
+								len -= nlen;
+							}
+							pd->Release();
 						}
-						#endif
-						CoTaskMemFree(pszPropertyLabel);
-						tstplimcpy(dest, buf, len);
-						nlen = tstrlen32(dest);
-						dest += nlen;
-						len -= nlen;
 					}
-					pd->Release();
+					CoTaskMemFree(ValueText);
 				}
-				}
-				CoTaskMemFree(ValueText);
+				DPropVariantClear(&PropValue);
 			}
-			DPropVariantClear(&PropValue);
 		}
-	}
 		if ( nextptp == NULL ) break;
 		ptp = nextptp + 1;
 	}
 	ps->Release();
 }
-
 
 // チップ拡張関連 =========================================================
 BOOL GetInfoTipText(const TCHAR *filename, int extlen, GETINFOTIPCALLBACK callbackfunc, void *data)

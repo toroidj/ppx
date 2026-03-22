@@ -293,6 +293,7 @@ void ShowImageToConsole(const TCHAR *param) // *image
 
 	show_width = screen.info.srWindow.Right - screen.info.srWindow.Left - 1;
 	if ( show_width > bmp_width ) show_width = bmp_width;
+
 #ifdef UNICODE
 	show_height = (screen.info.srWindow.Bottom - screen.info.srWindow.Top - 1) * 2;
 #else
@@ -302,8 +303,8 @@ void ShowImageToConsole(const TCHAR *param) // *image
 		show_width *= 10;
 		show_height *= 10;
 	}
-
 	if ( show_height > bmp_height ) show_height = bmp_height;
+
 	if ( ((show_width << 15)  / bmp_width) >
 		 ((show_height << 15) / bmp_height) ){
 		show_width = (bmp_width * show_height) / bmp_height;
@@ -323,6 +324,7 @@ void ShowImageToConsole(const TCHAR *param) // *image
 	bmpinfo.bmiHeader.biSizeImage = 0;
 	bmpinfo.bmiHeader.biClrUsed = 0;
 	bmpinfo.bmiHeader.biClrImportant = 0;
+
 	hDestBMP = CreateDIBSection(NULL, &bmpinfo, DIB_RGB_COLORS, &lpBits, NULL, 0);
 	if ( hDestBMP != NULL ){
 		int destY, destHeight;
@@ -436,7 +438,7 @@ void PPbEditModeCommand(TCINPUTSTRUCT *tis, const TCHAR *param) // *editmode
 		code = GetOptionParameter(&param, buf, &more);
 		if ( code == '\0' ) break;
 		if ( code == '-' ){
-			if ( !tstrcmp(buf + 1, T("SYNTAX")) ){
+			if ( tstrcmp(buf + 1, T("SYNTAX")) == 0 ){
 					if ( *more == '\0' ){
 						tis->useattr = tis->useattr ? 0 : 1;
 					}else if ( (tstrcmp(more, T("clear")) == 0) || (tstrcmp(more, T("off")) == 0) ){
@@ -523,16 +525,16 @@ DWORD_PTR PPbCommand(PPXAPPINFOUNION *uptr)
 
 DWORD_PTR PPbFunction(PPXAPPINFOUNION *uptr)
 {
-	if ( !tstrcmp(uptr->funcparam.param, T("EDITPROP")) ){
+	if ( tstrcmp(uptr->funcparam.param, T("EDITPROP")) == 0 ){
 		PPbGetPropFunction(&uptr->funcparam);
 		return PPXA_NO_ERROR;
 	}
-	if ( !tstrcmp(uptr->funcparam.param, T("CURSORTEXT")) ){
+	if ( tstrcmp(uptr->funcparam.param, T("CURSORTEXT")) == 0 ){
 		GetWordText(&tis, uptr->funcparam.dest, (uptr->funcparam.optparam[0] == 'o') ? GWSF_SPLIT_PARAM : 0);
 		return PPXA_NO_ERROR;
 	}
-	if ( !tstrcmp(uptr->funcparam.param, T("EDITTEXT")) ){
-		tstrcpy(uptr->funcparam.dest, EditText);
+	if ( tstrcmp(uptr->funcparam.param, T("EDITTEXT")) == 0 ){
+		CmdFunctionLongResult(&uptr->funcparam, EditText, -1);
 		return PPXA_NO_ERROR;
 	}
 	return PPXA_INVALID_FUNCTION;
@@ -1179,9 +1181,9 @@ int PPbExecuteInput(TCHAR *param, size_t size)
 		GetLineParamS((const TCHAR **)&ptr, buf, TSIZEOF(buf));
 		tstrupr(buf);
 									// “à•”ƒRƒ}ƒ“ƒh ---------------------------
-		if ( !tstrcmp(buf, T("%:")) ) continue;
+		if ( tstrcmp(buf, T("%:")) == 0 ) continue;
 
-		if ( !tstrcmp(buf, T("CD")) ){
+		if ( tstrcmp(buf, T("CD")) == 0 ){
 			ERRORCODE result;
 
 			GetLineParamS((const TCHAR **)&ptr, buf, TSIZEOF(buf));
@@ -1197,11 +1199,11 @@ int PPbExecuteInput(TCHAR *param, size_t size)
 			}
 		}
 
-		if ( !tstrcmp(buf, T("EXIT")) || !tstrcmp(buf, T("*EXIT")) ){
+		if ( (tstrcmp(buf, T("EXIT")) == 0) || (tstrcmp(buf, T("*EXIT")) == 0) ){
 			return -1;
 		}
 
-		if ( !tstrcmp(buf, T("PAUSE")) ){
+		if ( tstrcmp(buf, T("PAUSE")) == 0 ){
 			PauseCommand(ptr);
 			break;
 		}

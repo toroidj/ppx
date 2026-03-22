@@ -2227,7 +2227,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if ( message == WM_PPXCOMMAND ){
 				return PPvPPxCommand(&vinfo, wParam, lParam);
 			}
-			if ( X_uxt[0] == UXT_DARK ){
+			if ( X_uxt_color == UXT_DARK ){
 				if ( ((message <= 0x94) && (message >= 0x91)) ||
 //					 (message == WM_THEMECHANGED) ||
 					 (message == WM_NCPAINT) || (message == WM_NCACTIVATE) ){

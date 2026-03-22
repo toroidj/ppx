@@ -270,7 +270,7 @@ void RegisterFavoriteItem(PPXAPPINFO *info)
 	if ( p != itempath ) tstrcpy(itempath, p);
 	p = FindLastEntryPoint(itempath);
 	if ( *p == '\0' ) p = itempath;
-	thprintf(itemname, TSIZEOF(itemname), T("%%\"%s\"%%{%%|%s%%|%%}"), MessageText(MES_ADTE), p);
+	thprintf(itemname, TSIZEOF(itemname), T("%%\"%Ms\"%%{%%|%s%%|%%}"), MES_ADTE, p);
 	if ( PP_ExtractMacro(info->hWnd, info, NULL, itemname, itemname, 0) != NO_ERROR ){
 		return;
 	}

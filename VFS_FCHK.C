@@ -1983,7 +1983,7 @@ ERRORCODE vfd_EXE(const TCHAR *fname, const char *image, DWORD size, const char 
 		tstrcpy(buf, p);
 		tstrupr(buf);
 		for ( ; eet->ext ; eet++ ){
-			if ( !tstrcmp(eet->ext, buf) ){
+			if ( tstrcmp(eet->ext, buf) == 0 ){
 				OSext = eet->ext;
 				OSexttype = eet->exttype;
 				OSuse = eet->uses;
@@ -2072,25 +2072,20 @@ ERRORCODE vfd_EXE(const TCHAR *fname, const char *image, DWORD size, const char 
 				}
 				if ( result->flags & VFSFT_TYPETEXT ){
 					IMAGE_SECTION_HEADER *LastSection;
-					DWORD secsize;
+					DWORD extoffset;
 					FILE_STAT_DATA fsd;
 //					TCHAR *dst;
 
 					LastSection = IMAGE_FIRST_SECTION(xhdr) + xhdr->FileHeader.NumberOfSections - 1;
-					secsize = LastSection->PointerToRawData + LastSection->SizeOfRawData;
-					if ( IsTrue(GetFileSTAT(fname, &fsd)) ){
-						if ( ((fsd.nFileSizeLow > secsize) || fsd.nFileSizeHigh) &&
-							// EXEが1000h単位に揃えられているとき
-							 (fsd.nFileSizeLow != ((secsize + 0xfff) & 0xfffff000)) &&
-							// EXEが200h単位に揃えられているとき
-							 (fsd.nFileSizeLow != ((secsize + 0x1ff) & 0xfffffe00))
-						){
-							TCHAR *ap;
+					extoffset = LastSection->PointerToRawData +
+							max(LastSection->Misc.VirtualSize, LastSection->SizeOfRawData);
+					if ( IsTrue(GetFileSTAT(fname, &fsd)) &&
+							((fsd.nFileSizeLow > extoffset) || fsd.nFileSizeHigh) ){
+						TCHAR *ap;
 
-							ap = buf + tstrlen(buf) + 1;
-							thprintf(ap, MAX_PATH, T("%s with Archive 0x%x"), OSuse, secsize);
-							OSuse = ap;
-						}
+						ap = buf + tstrlen(buf) + 1;
+						thprintf(ap, MAX_PATH, T("%s with Archive 0x%x"), OSuse, extoffset);
+						OSuse = ap;
 					}
 					/*
 					dst = option;
@@ -2587,17 +2582,17 @@ ERRORCODE ReverseGetFileType(const TCHAR *FileName, VFSFILETYPE *result)
 	mode = (FileName[0] == ':');
 	for ( mainlist = ReverseList ; *mainlist != NULL ; mainlist++ ){
 		for ( list = *mainlist ; list->flags ; list++ ){
-			if ( !tstricmp(mode ? list->type : list->ext, FileName) ){
+			if ( tstricmp(mode ? list->type : list->ext, FileName) == 0 ){
 				SetFileType(result, list);
 				return NO_ERROR;
 			}
 		}
 	}
-	if ( mode && !tstricmp(DirHeader.type, FileName) ){
+	if ( mode && (tstricmp(DirHeader.type, FileName) == 0) ){
 		SetFileType(result, &DirHeader);
 		return NO_ERROR;
 	}
-	if ( !tstricmp(AllHeader.type, FileName) ){
+	if ( tstricmp(AllHeader.type, FileName) == 0 ){
 		SetFileType(result, &AllHeader);
 		return NO_ERROR;
 	}
@@ -2760,21 +2755,19 @@ VFSDLL DWORD PPXAPI ReadFileHeader(HANDLE hFile, BYTE *header, DWORD headersize)
 			xhdr = (IMAGE_NT_HEADERS32 *)(header + offset);
 			LastSection = IMAGE_FIRST_SECTION(xhdr) + xhdr->FileHeader.NumberOfSections - 1;
 			if ( hsize > ((BYTE *)LastSection - header + sizeof(IMAGE_SECTION_HEADER)) ){
-			size = LastSection->PointerToRawData + LastSection->SizeOfRawData;
-			GetFileInformationByHandle(hFile, &finfo);
-			// EXEヘッダが示すサイズが末尾+署名分のサイズより大きい
-			if ( (finfo.nFileSizeLow > (size + xhdr->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY].Size) ) &&
-					// EXEが1000h単位に揃えられていない?
-					(finfo.nFileSizeLow != ((size + 0xfff) & 0xfffff000)) ){
-				// EXEフォーマット末尾より後ろの一部分も取得
-				if ( MAX32 != SetFilePointer(hFile, size, NULL, FILE_BEGIN) ){
+				size = LastSection->PointerToRawData +
+						max(LastSection->Misc.VirtualSize, LastSection->SizeOfRawData);
+				GetFileInformationByHandle(hFile, &finfo);
+				// EXEヘッダが示すサイズが末尾+署名分のサイズより大きい
+				if ( finfo.nFileSizeLow > (size + xhdr->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY].Size) &&
+					// EXEフォーマット末尾より後ろの一部分も取得
+						(MAX32 != SetFilePointer(hFile, size, NULL, FILE_BEGIN)) ){
 					(void)ReadFile(hFile, header + VFS_TINYREADSIZE, VFS_ARCREADSIZE, &hsize, NULL);
 					// EXEフォーマット途中を取得
 					SetFilePointer(hFile, VFS_TINYREADSIZE, NULL, FILE_BEGIN);
 					hsize += VFS_TINYREADSIZE;
 					if ( headersize > hsize ) moreread = headersize - hsize;
 				}
-			}
 			}
 		}
 	}

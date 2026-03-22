@@ -176,7 +176,7 @@ DWORD OpenFtp(TCHAR *url, HANDLE *hFtp)
 		port = (INTERNET_PORT)GetNumber((const TCHAR **)&p);
 	}
 								// キャッシュを使うか
-	if ( (pass == NULL) && !tstrcmp(AuthHostCache, host) ){
+	if ( (pass == NULL) && (tstrcmp(AuthHostCache, host) == 0) ){
 		user = AuthUserCache;
 		pass = AuthPassCache;
 	}

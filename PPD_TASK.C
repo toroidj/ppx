@@ -637,7 +637,7 @@ int SendPPB(HWND hOwner, const TCHAR *param, int useID)
 				if ( hDlg == NULL ){
 					BOOL hide;
 
-					if ( X_uxt[0] == UXT_NA ) InitUnthemeCmd();
+					if ( X_uxt_color == UXT_NA ) InitUnthemeCmd();
 					wds.md.title = strSendPPb;
 					wds.PPbID = useID;
 					hDlg = CreateDialogParam(DLLhInst, MAKEINTRESOURCE(IDD_NULLMIN), NULL, WaitDlgBox, (LPARAM)&wds);
@@ -882,7 +882,7 @@ int PPcGetNo(int RegNo, int direction)
 	if ( direction == CGETW_PAIR ){
 		ID[2] = (TCHAR)(((ID[2] - 1) ^ 1) + 1);
 		for ( j = 0 ; j < X_Mtask ; j++ ){
-			if ( !tstrcmp(Sm->P[j].ID, ID) ) break;
+			if ( tstrcmp(Sm->P[j].ID, ID) == 0 ) break;
 		}
 	}else if ( direction >= 0 ){ // ëùâ¡ï˚å¸
 		for ( i = 0 ; i < X_MaxPPxID ; i++ ){
@@ -900,7 +900,7 @@ int PPcGetNo(int RegNo, int direction)
 			ID[2]--;
 			if ( ID[2] < 'A' ) ID[2] = 'Z';
 			for ( j = 0 ; j < X_Mtask ; j++ ){
-				if ( !tstrcmp( Sm->P[j].ID, ID) ){
+				if ( tstrcmp( Sm->P[j].ID, ID) == 0 ){
 					i = 999;
 					break;
 				}
@@ -1790,7 +1790,7 @@ void MakeJobInfoText(HWND hWnd, DWORD state, TCHAR *text)
 	}
 	statetype = state & JOBFLAG_NAMEMASK;
 	if ( statetype >= JOBSTATE_MAX ) statetype = JOBSTATE_UNDEFINED;
-	p = thprintf(text, CMDLINESIZE, T("%s%s:"), sstr, MessageText(JobTypeNames[statetype]) );
+	p = thprintf(text, CMDLINESIZE, T("%s%Ms:"), sstr, JobTypeNames[statetype]);
 	if ( hWnd == NULL ){
 		THREADSTRUCT *ts;
 
@@ -1910,7 +1910,7 @@ void InitJobListWindow(HWND hMainWnd)
 		GetPPxFont(PPXFONT_F_mes, GetMonitorDPI(hParentWnd), &cursfont);
 		SendMessage(Sm->JobList.hWnd, WM_SETFONT, (WPARAM)
 			CreateFontIndirect(&cursfont.font), TMAKELPARAM(TRUE, 0));
-		if ( (CJ_log[0] != C_AUTO) || (CJ_log[1] != C_AUTO) || (X_uxt[0] >= UXT_MINPRESET) ){
+		if ( (CJ_log[0] != C_AUTO) || (CJ_log[1] != C_AUTO) || (X_uxt_color >= UXT_MINPRESET) ){
 			InitSysColors();
 			CJ_log[0] = GetSchemeColor(CJ_log[0], C_WindowText);
 			CJ_log[1] = GetSchemeColor(CJ_log[1], C_WindowBack);

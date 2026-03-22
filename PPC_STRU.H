@@ -204,6 +204,8 @@ typedef struct {
 	int outr_hook;	// OUTHOOK_xxx
 } CURSORMOVER;
 
+#define SMAR_MIN 5 // XC_smar を有効にする係数
+
 // 各セルの情報 ---------------------------------------------------------------
 // type / C_entry 用 定義
 #define ECT_SYSMSG	0	// System message  ※f.nFileSizeLow に ERRORCODE

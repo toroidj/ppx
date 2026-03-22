@@ -34,8 +34,6 @@ const TCHAR RichText2[] = T("riched20.dll");
 //	const WCHAR RichTextClassD2D[] = L"RichEditD2D";  // ANSI版なし
 #endif
 
-HMODULE hRichEdit = NULL;
-
 void ShowErrorTip(HWND hWnd, const TCHAR *text, const TCHAR *path, ERRORCODE result)
 {
 	TCHAR buf[0x400];
@@ -48,12 +46,13 @@ void ShowErrorTip(HWND hWnd, const TCHAR *text, const TCHAR *path, ERRORCODE res
 	XMessage(hWnd, NULL, XM_NiERRld, T("%s"), buf);
 }
 
-int IsUseRichEdit(void)
+int IsUseRichEdit(int mode)
 {
-	if ( X_uxt[0] == UXT_NA ) InitUnthemeCmd();
-	if ( (X_uxt[2] > 0) && (hRichEdit == NULL) ){
+	if ( X_uxt_color == UXT_NA ) InitUnthemeCmd();
+	if ( mode < 0 ) mode = X_uxt_rich;
+	if ( (mode > UXTRICH_NO) && (hRichEdit == NULL) ){
 	#ifdef UNICODE
-		if ( X_uxt[2] == 3 ){ // 3: D2D  カラー絵文字使用可能
+		if ( mode == UXTRICH_DW ){ // D2D  カラー絵文字使用可能
 			hRichEdit = LoadLibrary(RichTextOffice);
 			if ( hRichEdit == NULL ){
 				TCHAR path[MAX_PATH];
@@ -78,36 +77,95 @@ int IsUseRichEdit(void)
 				}
 			}
 		}
-		if ( (X_uxt[2] >= 2) && (hRichEdit == NULL) ){ // 2: V4.1  XP以降, GDI,BMP外の文字対応
+		if ( (mode >= UXTRICH_V4) && (hRichEdit == NULL) ){ // 2: V4.1  XP以降, GDI,BMP外の文字対応
 			hRichEdit = LoadLibrary(RichText5);
-			X_uxt[2] = 2;
+			if ( X_uxt_rich > UXTRICH_V4 ) X_uxt_rich = UXTRICH_V4;
+			mode = UXTRICH_V4;
 		}
 	#endif
 		if ( hRichEdit == NULL ){ // 1: V2/V3(Me,2000以降)  GDI,BMP内のみ対応
-			X_uxt[2] = 1;
+			if ( X_uxt_rich > UXTRICH_V3 ) X_uxt_rich = UXTRICH_V3;
+			mode = UXTRICH_V3;
 			hRichEdit = LoadLibrary(RichText2);
 		}
-		if ( hRichEdit == NULL ) X_uxt[2] = 0;
+		if ( hRichEdit == NULL ){
+			if ( X_uxt_rich > UXTRICH_NO ) X_uxt_rich = UXTRICH_NO;
+			mode = UXTRICH_NO;
+		}
 	}
-	return X_uxt[2];
+	return mode;
 }
 
-const TCHAR *RichEditClassname(void)
+const TCHAR *RichEditClassname(int mode)
 {
-	if ( IsUseRichEdit() <= 0 ) return EditClassName;
+	mode = IsUseRichEdit(mode);
+	if ( mode <= UXTRICH_NO ) return EditClassName;
 
 	#ifdef UNICODE
-	if ( X_uxt[2] == 3 ){
+	if ( mode == UXTRICH_DW ){
 		return RichTextClassD2D;
-	}else if ( X_uxt[2] != 2 ){
-		return RichTextClass2W;
-	}else{
+	}else if ( mode == UXTRICH_V4 ){
 		return RichTextClass5W;
+	}else{ // UXTRICH_V3
+		return RichTextClass2W;
 	}
 	#else
 	return RichTextClass2A;
 	#endif
 }
+
+		/* 桁折りできなくなる？
+			if ( ((DLGITEMTEMPLATE *)(dpitem - sizeof(DLGITEMTEMPLATE)))->style & WS_VSCROLL ){
+				((DLGITEMTEMPLATE *)(dpitem - sizeof(DLGITEMTEMPLATE)))->style |= ES_DISABLENOSCROLL;
+			}
+		*/
+		/*
+		if ( X_uxt_color == UXT_DARK ){ // 3D 境界線を無くす → 無くすと Ctrl + Enter が無効になる
+			((DLGITEMTEMPLATE *)(dpitem - sizeof(DLGITEMTEMPLATE)))->style &= ~WS_BORDER;
+		}
+		*/
+
+#if 0
+{-------------------
+//	XMessage(NULL, NULL, XM_DbgLOG, T("%d: atom %s"),i,ClassAtomString[*(WORD *)(dpitem + 2)-0x80] );
+	if ( (i == 0) && (*(WORD *)(dpitem + sizeof(WORD)) == 0x81) ){ // EDIT
+
+	#ifdef UNICODE
+		const WCHAR *RTClassName;
+
+		if ( X_uxt_rich == UXTRICH_DW ){
+			RTClassName = RichTextClassD2D;
+		}else{
+			if ( X_uxt_rich == UXTRICH_V4 ){
+				RTClassName = RichTextClass5W;
+			}else{ // UXTRICH_V3
+				RTClassName = RichTextClass2W;
+			}
+		}
+	#else
+		#define RTClassName RichTextClass2W
+	#endif
+		#define ES_DISABLENOSCROLL 0x00002000
+		// ※ sizeof(RichTextClassW) で sizeof(RichTextClassD2D) を
+		//    済ませているので文字数が変わった時は再実装(文字列
+		//    サイズ取得と、DWORDアライメント調整) が必要
+		#define RTClassSize sizeof(RichTextClass2W)
+		newdialog = HeapReAlloc(ProcHeap, 0, dialog, dialogsize + RTClassSize + sizeof(WORD));
+		if ( newdialog == NULL ) break;
+		dpmax = newdialog + dialogsize;
+		dpitem = newdialog + (dpitem - dialog);
+		dialog = newdialog;
+		memmove(dpitem + RTClassSize, dpitem + sizeof(WORD) * 2,
+				dpmax - (dpitem + sizeof(WORD) * 2));
+				memcpy(dpitem, RTClassName, RTClassSize);
+		dialogsize += RTClassSize;
+		dpitem += RTClassSize;
+		dpmax += RTClassSize;
+	}else{
+		dpitem += sizeof(WORD) * 2;
+	}
+}
+#endif
 
 /*
 プロパティシート
@@ -142,6 +200,7 @@ PPXDLL LPDLGTEMPLATE PPXAPI GetDialogTemplate(HWND hParentWnd, HANDLE hinst, LPC
 									// フォント情報の作成
 	monitordpi = GetMonitorDPI(hParentWnd);
 	GetPPxFont(PPXFONT_F_dlg, monitordpi, &BoxFont);
+//	XMessage(NULL, NULL, XM_DbgLOG, T("Dialog point:%d"),BoxFont.font.lfHeight);
 
 	if ( (dialog_res->style & DS_SETFONT) && // カスタマイザの時の特別処理
 		 ((LONG_PTR)lpszTemplate >= ID_CUST_MIN) &&
@@ -284,7 +343,7 @@ PPXDLL LPDLGTEMPLATE PPXAPI GetDialogTemplate(HWND hParentWnd, HANDLE hinst, LPC
 	memmove(dp + fontsize, dpitem, dialogsize - (dpitem - dialog));
 	memcpy(dp, fontdata, fontsize);
 
-	if ( IsUseRichEdit() > 0 ){ // Class EDIT を RichEdit に変換する
+	if ( IsUseRichEdit(-1) > 0 ){ // Class EDIT を RichEdit に変換する
 		BYTE *dpmax, *newdialog;
 		int left;
 
@@ -310,28 +369,19 @@ PPXDLL LPDLGTEMPLATE PPXAPI GetDialogTemplate(HWND hParentWnd, HANDLE hinst, LPC
 						#ifdef UNICODE
 							const WCHAR *RTClassName;
 
-							if ( X_uxt[2] == 3 ){
+							if ( X_uxt_rich == UXTRICH_DW ){
 								RTClassName = RichTextClassD2D;
 							}else{
-								if ( X_uxt[2] != 2 ){
-									RTClassName = RichTextClass2W;
-								}else{
+								if ( X_uxt_rich == UXTRICH_V4 ){
 									RTClassName = RichTextClass5W;
+								}else{ // UXTRICH_V3
+									RTClassName = RichTextClass2W;
 								}
 							}
-							/*
-							if ( X_uxt[0] == UXT_DARK ){ // 3D 境界線を無くす → 無くすと Ctrl + Enter が無効になる
-								((DLGITEMTEMPLATE *)(dpitem - sizeof(DLGITEMTEMPLATE)))->style &= ~WS_BORDER;
-							}
-							*/
 						#else
 							#define RTClassName RichTextClass2W
-							/*
-							if ( X_uxt[0] == UXT_DARK ){ // 3D 境界線を無くす → 無くすと Ctrl + Enter が無効になる
-								((DLGITEMTEMPLATE *)(dpitem - sizeof(DLGITEMTEMPLATE)))->style &= ~WS_BORDER;
-							}
-							*/
 						#endif
+
 						/* 桁折りできなくなる？
 						if ( ((DLGITEMTEMPLATE *)(dpitem - sizeof(DLGITEMTEMPLATE)))->style & WS_VSCROLL ){
 	#define ES_DISABLENOSCROLL 0x00002000
@@ -483,7 +533,7 @@ static const TCHAR *GetDialogTemplateText(const BYTE **dpitem, char *text)
 		*dpitem += sizeof(WORD) * 2;
 
 		if ( atom == 0x81 ){ // EDIT
-			return RichEditClassname();
+			return RichEditClassname(-1);
 		}
 
 		if ( (atom >= 0x80) && (atom <= 0x85) ){

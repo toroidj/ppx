@@ -301,7 +301,7 @@ void MoreDrag(PPC_APPINFO *cinfo)
 	}
 
 	MakeFN_REGEXP(&fn, targetnames);
-	if ( !FilenameRegularExpression(classname, &fn) ){
+	if ( FilenameRegularExpression(classname, &fn) == FRRESULT_NO ){
 		FreeFN_REGEXP(&fn);
 		return;
 	}

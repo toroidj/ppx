@@ -177,14 +177,54 @@ PPXDLL BOOL PPXAPI GetFileHash(const TCHAR *filename, const TCHAR *hashtype, TCH
 	return result;
 }
 
+#define TinySigSize 132
+#define CheckTinySig(pointer) (\
+	((*(DWORD *)(pointer - sizeof(DWORD)) & 0xffe0e0e0) == 0x606060) && \
+	((*(DWORD *)(pointer - sizeof(DWORD) * 2) & 0xe0e0e0e0) == 0x60606060) )
+#ifndef IMAGE_NT_OPTIONAL_HDR64_MAGIC
+#define IMAGE_NT_HEADERS32 IMAGE_NT_HEADERS
+#endif
+
 PPXDLL int PPXAPI VerifyImage(BYTE *image, DWORD imagesize)
 {
 	int success = VERIFYZIP_FAILED;
-
+	HANDLE hBCRYPT;
 	BCRYPT_ALG_HANDLE hAlg = NULL;
 	BCRYPT_KEY_HANDLE hKey = NULL;
 
-	HANDLE hBCRYPT = LoadWinAPI("BCRYPT.DLL", NULL, BCRYPTDLL, LOADWINAPI_LOAD);
+	if ( imagesize < (DWORD)0x90 ) return VERIFYZIP_FAILED;
+	if ( CheckTinySig(image + imagesize) ){
+		// ファイル末尾
+	}else{
+		DWORD offset, extoffset;
+		IMAGE_NT_HEADERS32 *xhdr;
+		IMAGE_SECTION_HEADER *LastSection;
+
+		if ( ((IMAGE_DOS_HEADER *)image)->e_magic != IMAGE_DOS_SIGNATURE ){
+			return VERIFYZIP_FAILED;
+		}
+		offset = ((IMAGE_DOS_HEADER *)image)->e_lfanew; // 拡張ヘッダへのoffset
+		if ( offset > (imagesize - 0x180) ) return VERIFYZIP_FAILED;
+
+		xhdr = (IMAGE_NT_HEADERS32 *)(image + offset);
+		if ( xhdr->Signature != IMAGE_NT_SIGNATURE ) return VERIFYZIP_FAILED;
+
+		LastSection = IMAGE_FIRST_SECTION(xhdr) + xhdr->FileHeader.NumberOfSections - 1;
+		extoffset = LastSection->PointerToRawData +
+				max(LastSection->Misc.VirtualSize, LastSection->SizeOfRawData);
+		if ( CheckTinySig(image + extoffset) ){
+			imagesize = extoffset;
+		}else{
+			extoffset += TinySigSize;
+			if ( CheckTinySig(image + extoffset) ){
+				imagesize = extoffset;
+			}else{
+				return VERIFYZIP_FAILED;
+			}
+		}
+	}
+
+	hBCRYPT = LoadWinAPI("BCRYPT.DLL", NULL, BCRYPTDLL, LOADWINAPI_LOAD);
 
 	if ( hBCRYPT == NULL ) return VERIFYZIP_NOSUPPORTVERIFY;
 
@@ -192,13 +232,13 @@ PPXDLL int PPXAPI VerifyImage(BYTE *image, DWORD imagesize)
 		success = VERIFYZIP_NOSUPPORTVERIFY;
 	}
 
-	if ( success ){
+	if ( success != VERIFYZIP_SUCCEDD ){
 		if ( STATUS_SUCCESS != DBCryptImportKeyPair(hAlg, NULL, BCRYPT_ECCPUBLIC_BLOB, &hKey, DefaultPublicKey, DefaultPublicKeySize, 0) ){
 			success = VERIFYZIP_NOSUPPORTVERIFY;
 		}
 	}
 
-	if ( success ) for(;;){
+	if ( success != VERIFYZIP_SUCCEDD ) for(;;){
 		DWORD DataSize;
 		DWORD SignatureSize;
 		DWORD HashDataSize;
@@ -206,12 +246,12 @@ PPXDLL int PPXAPI VerifyImage(BYTE *image, DWORD imagesize)
 		BYTE *Signature;
 
 		success = VERIFYZIP_FAILED;
-		if ( imagesize < (DWORD)0x100 ) break;
+
 		SignatureSize = ((*(image + imagesize - 4) - 'a') << 8) + ((*(image + imagesize - 3) - 'a') << 4) + (*(image + imagesize - 2) - 'a');
 		if ( SignatureSize >= 0x100 ) break;;
 
 		DataSize = imagesize - SignatureSize;
-		if ( *image == 'P' ) DataSize -= sizeof(WORD);
+		if ( *image == 'P' ) DataSize -= sizeof(WORD); // zip comment
 		Signature = image + imagesize - SignatureSize;
 		SignatureSize = (SignatureSize - 3 - 1) / 2;
 
@@ -308,7 +348,7 @@ DWORD_PTR USECDECL UserCommandInfo(USERCOMMANDSTRUCT *info, DWORD cmdID, PPXAPPI
 		}
 
 		case PPXCMDID_FUNCTION:
-			if ( !tstrcmp(uptr->funcparam.param, T("ARG")) ){
+			if ( tstrcmp(uptr->funcparam.param, T("ARG")) == 0 ){
 				const TCHAR *ptr;
 				int index;
 
@@ -461,7 +501,6 @@ void ZapMain(EXECSTRUCT *Z, const TCHAR *command, const TCHAR *exepath, const TC
 void ZExtractLog(EXECSTRUCT *Z, const TCHAR *param)
 {
 	TCHAR cmdname[128];
-	size_t paramlen;
 
 	if ( Z->command < CID_MINID ){
 		tstrcpy(cmdname, T("execute"));
@@ -469,23 +508,9 @@ void ZExtractLog(EXECSTRUCT *Z, const TCHAR *param)
 		thprintf(cmdname, TSIZEOF(cmdname), T("*%s"), CmdName[Z->command - CID_MINID]);
 		Strlwr(cmdname);
 	}else{
-		thprintf(cmdname, TSIZEOF(cmdname), T("unknown execute %d"), Z->command);
+		thprintf(cmdname, TSIZEOF(cmdname), T("unknown execute ID %d"), Z->command);
 	}
-	paramlen = tstrlen(param) + 128 + 2; // 区切り + \0
-	if ( paramlen >= 1020 ){
-		TCHAR *bufptr, *ptr;
-
-		bufptr = HeapAlloc(DLLheap, 0, TSTROFF(paramlen));
-		if ( bufptr != NULL ){
-			ptr = tstpcpy(bufptr, cmdname);
-			*ptr++ = ' ';
-			tstrcpy(ptr, param);
-			XMessage(NULL, NULL, XM_DbgLOG, T("%s"), bufptr);
-			HeapFree(DLLheap, 0, bufptr);
-			return;
-		}
-	}
-	XMessage(NULL, NULL, XM_DbgLOG, T("%s %s"), cmdname, param);
+	XMessage(NULL, NULL, XM_DbgLOG, T("%s: %s"), cmdname, param);
 }
 
 void ComZExecPPx(EXECSTRUCT *Z, const TCHAR *ppxname, TCHAR *param)
@@ -503,7 +528,8 @@ void ComZExecPPx(EXECSTRUCT *Z, const TCHAR *ppxname, TCHAR *param)
 		MakeTempEntry(MAX_PATH, pathbuf, FILE_ATTRIBUTE_DIRECTORY);
 		path = pathbuf;
 	}
-	if ( (GetOptionParameter(&ptr, buf, NULL) == '-') && !tstrcmp(buf + 1, T("RUNAS")) ){
+	if ( (GetOptionParameter(&ptr, buf, NULL) == '-') &&
+		 (tstrcmp(buf + 1, T("RUNAS")) == 0) ){
 		CatPath(buf, DLLpath, ppxname);
 		if ( PPxShellExecute(Z->hWnd, T("RUNAS"), buf, ptr, path, 0, pathbuf) == NULL ){
 			PopupErrorMessage(Z->hWnd, buf, pathbuf);
@@ -542,7 +568,7 @@ void CustCmdSub(EXECSTRUCT *Z, TCHAR *text, TCHAR *textmax, BOOL reload)
 	int result;
 
 	result = PPcustCStore(text, textmax, PPXCUSTMODE_APPEND, &log, SureDialog);
-	if ( log ){
+	if ( log != NULL ){
 		if ( reload ){
 			TCHAR *logp = log;
 
@@ -576,12 +602,10 @@ void CustFile(EXECSTRUCT *Z, const TCHAR *filename, BOOL reload)
 	HeapFree(ProcHeap, 0, mem);
 }
 
-void CustLine(EXECSTRUCT *Z, const TCHAR *line, BOOL reload)
+void CustLine(EXECSTRUCT *Z, TCHAR *line, BOOL reload)
 {
-	#define MAXLEN_WSPRINTF (1024 - 1) // Win95等は1023, WinNT等は1024
-	TCHAR buf[MAXLEN_WSPRINTF + 5]; // wsprintf の最大サイズ(1024) と '\0' 分
 	TCHAR *param, *param2, *subkey, separator;
-	int len;
+	ThuSTRUCT thu;
 
 	PPxSendMessage(WM_PPXCOMMAND, K_Scust, 0);
 	param = tstrchr(line, '=');
@@ -595,27 +619,16 @@ void CustLine(EXECSTRUCT *Z, const TCHAR *line, BOOL reload)
 	separator = *param;
 	*param++ = '\0';
 
+	ThuInit(&thu);
 	subkey = tstrchr(line, ':');
 	if ( subkey != NULL ){
 		*subkey = '\0';
-		len = wsprintf(buf, T("%s = {\n%s %c%s\n}"), line, subkey + 1, separator, param);
+		thprintf(&thu.th, THP_CAT, T("%s = {\n%s %c%s\n}"), line, subkey + 1, separator, param);
 	}else{
-		len = wsprintf(buf, T("%s %c%s"), line, separator, param);
+		thprintf(&thu.th, THP_CAT, T("%s %c%s"), line, separator, param);
 	}
-	if ( len < MAXLEN_WSPRINTF ){
-		CustCmdSub(Z, buf, buf + tstrlen(buf), reload);
-	}else{ // wsprintf では無理だった
-		ThSTRUCT th;
-
-		ThInit(&th);
-		if ( subkey != NULL ){
-			thprintf(&th, 0, T("%s = {\n%s %c%s\n}"), line, subkey + 1, separator, param);
-		}else{
-			thprintf(&th, 0, T("%s %c%s"), line, separator, param);
-		}
-		CustCmdSub(Z, (TCHAR *)th.bottom, (TCHAR *)(char *)(th.bottom + th.top), reload);
-		ThFree(&th);
-	}
+	CustCmdSub(Z, ThuStrT(&thu), ThuStrLastT(&thu), reload);
+	ThuFree(&thu);
 }
 
 BOOL GetSetParams(TCHAR **name, TCHAR **param)
@@ -1026,7 +1039,7 @@ void CmdDoForfile(EXECSTRUCT *Z, TCHAR *param, const TCHAR *cmdline)
 	do{
 		if ( IsRelativeDirectory(ff.cFileName) ) continue;
 		if ( ff.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-		if ( FinddataRegularExpression(&ff, &fn) ){
+		if ( FinddataRegularExpression(&ff, &fn) != FRRESULT_NO ){
 			VFSFullPath(p, ff.cFileName, param);
 			PP_ExtractMacro(Z->hWnd, Z->Info, NULL, cmd, NULL, 0);
 		}
@@ -1293,10 +1306,10 @@ void CmdClosePPx(const TCHAR *param) // *closeppx
 					 (GetParent(hWnd) != NULL) ){
 					continue; // 一体化窓上のC_Z はここで処理しない(CZxx 回避)
 				}
-				if ( FilenameRegularExpression(text, &fn) ){
+				if ( FilenameRegularExpression(text, &fn) != FRRESULT_NO ){
 					ClosePPxOne(hWnd, FALSE);
 				}
-			}else if ( FilenameRegularExpression(id, &fn) ){
+			}else if ( FilenameRegularExpression(id, &fn) != FRRESULT_NO ){
 				ClosePPxOne(hWnd, FALSE);
 			}
 		}
@@ -1312,7 +1325,7 @@ void CmdClosePPx(const TCHAR *param) // *closeppx
 			hComboWnd = Sm->ppc.hComboWnd[index];
 			if ( (hComboWnd == NULL) || (hComboWnd == BADHWND) ) continue;
 			text[2] = (TCHAR)('A' + index);
-			if ( FilenameRegularExpression(text, &fn) ){
+			if ( FilenameRegularExpression(text, &fn) != FRRESULT_NO ){
 				PostMessage(hComboWnd, WM_CLOSE, 0, 0);
 			}
 		}
@@ -2866,7 +2879,7 @@ void CmdIfMatch(EXECSTRUCT *Z, TCHAR *param) // *ifmatch
 		fnresult = FilenameRegularExpression(param, &fn);
 	}
 	FreeFN_REGEXP(&fn);
-	if ( fnresult ) return; // 一致したのでそのまま実行
+	if ( fnresult != FRRESULT_NO ) return; // 一致したのでそのまま実行
 fin:
 	for (;;){ // 行末までスキップ
 		TCHAR c;
@@ -2981,9 +2994,9 @@ void CmdLineCust(EXECSTRUCT *Z, TCHAR *line) // *linecust
 	ThInit(&thmakedata);
 
 	if ( sub != NULL ){
-		thprintf(&thmakedata, 0, T("%s = {\n%s %c"), line, sub, separator);
+		thprintf(&thmakedata, THP_CAT, T("%s = {\n%s %c"), line, sub, separator);
 	}else{
-		thprintf(&thmakedata, 0, T("%s %c"), line, separator);
+		thprintf(&thmakedata, THP_CAT, T("%s %c"), line, separator);
 	}
 	top1st = thmakedata.top;
 //	data1st = destp;
@@ -2997,7 +3010,7 @@ void CmdLineCust(EXECSTRUCT *Z, TCHAR *line) // *linecust
 	// 同一行
 	if ( *custtext != '\0' ){
 		if ( *org_top != '\0' ) ThCatString(&thmakedata, T("\n\t"));
-		thprintf(&thmakedata, 0, T("%s %s"), id, custtext);
+		thprintf(&thmakedata, THP_CAT, T("%s %s"), id, custtext);
 	}
 	// 後部
 	if ( *org_end != '\0' ){
@@ -3574,7 +3587,7 @@ DWORD_PTR USECDECL CmdEnumExecuteInfo(struct ENUMEXECUTEINFO *info, DWORD cmdID,
 		case PPXCMDID_NEXTENUM:
 			for (; VFSFindNext(info->hFF, &info->ff); ){
 				if ( !IsRelativeDir(info->ff.cFileName) ){
-					if ( FinddataRegularExpression(&info->ff, &info->fn) ){
+					if ( FinddataRegularExpression(&info->ff, &info->fn) != FRRESULT_NO ){
 						return 1;
 					}
 				}
@@ -3663,7 +3676,7 @@ void CmdEnumExecute(EXECSTRUCT *Z, const TCHAR *param) // *execute @(列挙実行)
 
 	do {
 		if ( IsRelativeDir(eei.ff.cFileName) ) continue;
-		if ( FinddataRegularExpression(&eei.ff, &eei.fn) == FALSE ) continue;
+		if ( FinddataRegularExpression(&eei.ff, &eei.fn) == FRRESULT_NO ) continue;
 		Z->result = PP_ExtractMacro(Z->hWnd, &eei.info, NULL, param, NULL, 0);
 		break;
 	} while ( IsTrue(VFSFindNext(eei.hFF, &eei.ff)) );

@@ -1047,7 +1047,7 @@ ERRORCODE MarkEntry(PPC_APPINFO *cinfo, const TCHAR *wildcard, int mode, DWORD a
 			cell = &CEL(index);
 			if ( (cell->f.dwFileAttributes & DirMask) ) continue;
 			if ( cell->attr & (ECA_PARENT | ECA_THIS) ) continue;
-			if ( FinddataRegularExpression(&cell->f, &fn) ){
+			if ( FinddataRegularExpression(&cell->f, &fn) != FRRESULT_NO ){
 				CellMark(cinfo, index, mode);
 			}
 		}
@@ -1059,7 +1059,7 @@ ERRORCODE MarkEntry(PPC_APPINFO *cinfo, const TCHAR *wildcard, int mode, DWORD a
 			cell = &CEL(index);
 			if ( (cell->f.dwFileAttributes & DirMask) ) continue;
 			if ( cell->attr & (ECA_PARENT | ECA_THIS) ) continue;
-			if ( FinddataRegularExpression(&cell->f, &fn) ){
+			if ( FinddataRegularExpression(&cell->f, &fn) != FRRESULT_NO ){
 				cell->highlight = hldata;
 			}
 		}
@@ -1621,17 +1621,17 @@ void PPcChangeWindow(PPC_APPINFO *cinfo, int direction)
 	if ( nhWnd != NULL ){
 		if ( direction == PPCHGWIN_PAIR ){
 			nhWnd = PPcGetWindow(cinfo->RegNo, CGETW_PAIR);
-			if ( nhWnd == NULL ) goto newppc;
 		}
 
-		if ( IsIconic(nhWnd) ){
-			SendMessage(nhWnd, WM_SYSCOMMAND, SC_RESTORE, 0xffff0000);
+		if ( nhWnd != NULL ){
+			if ( IsIconic(nhWnd) ){
+				SendMessage(nhWnd, WM_SYSCOMMAND, SC_RESTORE, 0xffff0000);
+			}
+			ForceSetForegroundWindow(nhWnd);
+			SetFocus(nhWnd);
+			return;
 		}
-		ForceSetForegroundWindow(nhWnd);
-		SetFocus(nhWnd);
-		return;
 	}
-newppc:
 	if ( cinfo->swin & SWIN_WBOOT ){
 		BootPairPPc(cinfo);
 	} else{
@@ -1757,7 +1757,7 @@ void SetComment(PPC_APPINFO *cinfo, DWORD CommentID, ENTRYCELL *cell, const TCHA
 	if ( CommentID == 0 ){
 		if ( (cell->comment != EC_NOCOMMENT) &&
 			(cinfo->e.Comments.bottom != NULL) &&
-			!tstrcmp(ThPointerT(&cinfo->e.Comments, cell->comment), comment) ){
+			(tstrcmp(ThPointerT(&cinfo->e.Comments, cell->comment), comment) == 0) ){
 			return; // •ÏX–³‚µ
 		}
 
@@ -3128,8 +3128,7 @@ void ClipFiles(PPC_APPINFO *cinfo, DWORD effect, DWORD cliptypes)
 	if ( OpenClipboardCheck(cinfo) == FALSE ) return;
 	EmptyClipboard(); // ¦ WM_DESTROYCLIPBOARD ‚ªŽÀs‚³‚êACLIPDATAS‰Šú‰»
 
-	if ( cliptypes & CFT_FILE ){
-		CF_xSHELLIDLIST = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
+	if ( cliptypes & CFT_DnD ){
 		CF_FILENAMEW = RegisterClipboardFormat(CFSTR_FILENAMEW);
 		CF_xDROPEFFECT = RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
 
@@ -3142,11 +3141,14 @@ void ClipFiles(PPC_APPINFO *cinfo, DWORD effect, DWORD cliptypes)
 		if ( cinfo->CLIPDATAS[CLIPTYPES_HDROP] != NULL ){
 			SetClipboardData(CF_HDROP, cinfo->CLIPDATAS[CLIPTYPES_HDROP]);
 		}
+	}
 
+	if ( cliptypes & CFT_SHN ){
+		CF_xSHELLIDLIST = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
 		cinfo->CLIPDATAS[CLIPTYPES_SHN] = CreateShellIdList(cinfo);
 		SetClipboardData(CF_xSHELLIDLIST, NULL);
-
 	}
+
 	if ( cliptypes & CFT_TEXT ){
 		cinfo->CLIPDATAS[CLIPTYPES_TEXT] = CreateHText(cinfo);
 /*
@@ -3156,7 +3158,7 @@ void ClipFiles(PPC_APPINFO *cinfo, DWORD effect, DWORD cliptypes)
 */
 		SetClipboardData(CF_TTEXT, NULL);
 	}
-	if ( cliptypes & CFT_FILE ){
+	if ( cliptypes & CFT_DnD ){
 		SetClipboardData(CF_xDROPEFFECT, cinfo->CLIPDATAS[CLIPTYPES_DROPEFFECT]);  // C4701ok
 	}
 	CloseClipboard();
@@ -3307,7 +3309,7 @@ BOOL MaskEntryMain(PPC_APPINFO *cinfo, XC_MASK *maskorg, const TCHAR *filename)
 			if ( (cell->attr & (ECA_PARENT | ECA_THIS)) ||
 				(!(cell->f.dwFileAttributes & AttrMask) &&
 				((cell->f.dwFileAttributes & DirMask) ||
-					FinddataRegularExpression(&cell->f, &fn))) ){
+					(FinddataRegularExpression(&cell->f, &fn) != FRRESULT_NO))) ){
 				CELt(cinfo->e.cellIMax) = index;
 
 				if ( cell->f.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ){
@@ -3622,7 +3624,7 @@ ERRORCODE ExecuteEntry(PPC_APPINFO *cinfo)
 	if ( buf[0] != '\0' ) tstrcat(buf, T(";"));
 	tstrcat(buf, T(EXTPATHEXT));
 	MakeFN_REGEXP(&fn, buf);
-	if ( FilenameRegularExpression(CEL(cinfo->e.cellN).f.cFileName, &fn) ){
+	if ( FilenameRegularExpression(CEL(cinfo->e.cellN).f.cFileName, &fn) != FRRESULT_NO ){
 		ti.firstC = EC_LAST;
 		ti.lastC = EC_LAST;
 	} else{
@@ -4473,9 +4475,8 @@ void DirOption_Icon_Menu(struct DirOptionMenuArgs *DOMA, const struct DirOptionM
 				DOMA->opttype, dos->CommandName, i - 1);
 		}
 	}
-	thprintf(buf, TSIZEOF(buf), T("%s : %s"),
-			MessageText(dos->MenuItemName),
-			MessageText(dos->IconShowModeList[icontype]));
+	thprintf(buf, TSIZEOF(buf), T("%Ms : %Ms"),
+			dos->MenuItemName, dos->IconShowModeList[icontype]);
 	AppendMenu(DOMA->hPopupMenu, MF_EPOP, (UINT_PTR)hSubMenu, buf);
 }
 
@@ -4512,7 +4513,8 @@ void DirOption_OptCommand(struct DirOptionMenuArgs *DOMA, struct DirOptionOptCom
 	ThAddString(DOMA->TH, buf);
 
 	// menu title
-	len = thprintf(buf, TSIZEOF(buf), T("%s...(&%c) : "), MessageText(doo->menuname), doo->menuacc) - buf;
+	len = thprintf(buf, TSIZEOF(buf), T("%Ms...(&%c) : "),
+			doo->menuname, doo->menuacc) - buf;
 	GetLineParamS(&paramptr, buf + len, TSIZEOF(buf) - len);
 	AppendMenuString(DOMA->hPopupMenu, (*DOMA->index)++, buf);
 }
@@ -4581,7 +4583,7 @@ HMENU DirOptionMenu(PPC_APPINFO *cinfo, HMENU hPopupMenu, DWORD *index, ThSTRUCT
 	DirOption_Icon_Menu(&DOMA, &DirOptionMenuData_Entry, ls.cust.dset.cellicon);
 
 	if ( nowmode == DSMD_TEMP ){
-		thprintf(buf, TSIZEOF(buf), T("%s(&M): %s"), MessageText(MES_TFEM),
+		thprintf(buf, TSIZEOF(buf), T("%Ms(&M): %s"), MES_TFEM,
 				(cinfo->DsetMask[0] == MASK_NOUSE) ? cinfo->mask.file : cinfo->DsetMask);
 		AppendMenuString(hPopupMenu, (*index)++, buf);
 		ThAddString(TH, T("%K\"@\\F"));
@@ -4618,7 +4620,7 @@ HMENU DirOptionMenu(PPC_APPINFO *cinfo, HMENU hPopupMenu, DWORD *index, ThSTRUCT
 
 			for ( ; SortItems[index] != NULL ; index++ ){
 				if ( ls.cust.dset.sort.mode.dat[0] == sortIDtable[index] ){
-					thprintf(buf, TSIZEOF(buf), T("\"%s\""), MessageText(SortItems[index]));
+					thprintf(buf, TSIZEOF(buf), T("\"%Ms\""), SortItems[index]);
 					sort = buf;
 					break;
 				}

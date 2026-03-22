@@ -417,7 +417,7 @@ int GetStringListCommand(const TCHAR *param, const TCHAR *commands)
 	// count = 0 ‚Ìó‘Ô
 
 	while ( *commands ){
-		if ( !tstrcmp(param, commands) ) return count;
+		if ( tstrcmp(param, commands) == 0 ) return count;
 		commands += tstrlen(commands) + 1;
 		count++;
 	}

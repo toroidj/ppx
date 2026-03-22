@@ -381,7 +381,7 @@ BOOL CheckAndLoadSusiePlugin(SUSIE_DLL *sudll, const TCHAR *filename, THREADSTRU
 		FN_REGEXP fn;
 
 		MakeFN_REGEXP(&fn, p);
-		if ( !FilenameRegularExpression(filename, &fn) ){
+		if ( FilenameRegularExpression(filename, &fn) == FRRESULT_NO ){
 			FreeFN_REGEXP(&fn);
 			return FALSE;
 		}
@@ -664,7 +664,7 @@ VFSDLL int PPXAPI VFSCheckDir(_Inout_ TCHAR *filename, BYTE *header, DWORD hsize
 				#else
 					result = FilenameRegularExpression(vcs.filename, &buf.fn);
 				#endif
-				if ( result && IsTrue(LoadUnDLL(uD)) ){
+				if ( (result != FRRESULT_NO) && IsTrue(LoadUnDLL(uD)) ){
 					AppendMenuString(hPopupMenu, menuid++, uD->DllName);
 				}
 				FreeFN_REGEXP(&buf.fn);
@@ -1024,7 +1024,7 @@ BOOL UnArc_IsReady(const UN_DLL *uD)
 			if ( count > 0 ){
 				count--;
 			}else{
-				if ( X_uxt[0] == UXT_NA ) InitUnthemeCmd();
+				if ( X_uxt_color == UXT_NA ) InitUnthemeCmd();
 				wds.md.title = uD->DllName;
 				hWaitDlg = CreateDialogParam(DLLhInst, MAKEINTRESOURCE(IDD_NULL), NULL, WaitDlgBox, (LPARAM)&wds);
 				ShowWindow(hWaitDlg, SW_SHOWNOACTIVATE);
@@ -1304,7 +1304,7 @@ int VFSUnWildCheckMain(UN_DLL *uD, VUCHECKSTRUCT *vcs)
 
 #define VFSUnWildCheckTemplate\
 	if ( uD->CheckWildcard != NULL ){\
-		if ( VFSUnWildCheckMain(uD, vcs) == 0 ) return FALSE;\
+		if ( VFSUnWildCheckMain(uD, vcs) == FRRESULT_NO ) return FALSE;\
 	}
 
 

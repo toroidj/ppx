@@ -771,7 +771,7 @@ BOOL ListUpDown(HWND hWnd, PPxEDSTRUCT *PES, int offset, int repeat)
 	if ( !(PES->flags & PPXEDIT_NOINCLIST) ){
 		if ( PES->list.hWnd == NULL ){
 			if ( PES->flags & PPXEDIT_TEXTEDIT ) return FALSE;	// PPe はリストがないときは処理しない
-			if ( !(PES->style & WS_VSCROLL) && !(PES->flags & PPXEDIT_RICHEDIT) ) return FALSE;	// スクロールバー無は未対応
+			if ( !(PES->style & WS_VSCROLL) && !IsRichMode(PES) ) return FALSE;	// スクロールバー無は未対応
 		}
 		// リスト表示時の処理 -------------------------------------------------
 		if ( (PES->list.ListFocus == LISTU_FOCUSSUB) || // 第２リスト上？
@@ -949,8 +949,8 @@ BOOL ListUpDown(HWND hWnd, PPxEDSTRUCT *PES, int offset, int repeat)
 	{
 		TCHAR buf[100];
 
-		thprintf(buf, TSIZEOF(buf), "Key:%d mode:%d index:%d"
-					, PES->oldkey, PES->list.mode, PES->list.index);
+		thprintf(buf, TSIZEOF(buf), "Key:%d mode:%d index:%d",
+				PES->oldkey, PES->list.mode, PES->list.index);
 		SetWindowText(GetParentCaptionWindow(hWnd), buf);
 	}
 #endif
@@ -2795,6 +2795,113 @@ void KeyStepFill(PPxEDSTRUCT *PES, TCHAR *option)
 	#endif
 	KeyStepFillMain(&ksfinfo);
 }
+
+
+//----------------------------------------------- Tab/Ins によるファイル名補完
+int USEFASTCALL PPeFillMain(PPxEDSTRUCT *PES)
+{
+	EditTextStruct ets;
+	ECURSOR cursor;
+	TCHAR *ptr;
+	DWORD mode;
+	HWND hWnd;
+
+	mode = PES->ED.cmdsearch & CMDSEARCH_MATCHFLAGS;
+
+	if ( OpenEditText(PES, &ets, 0) == FALSE ) return 0;
+	if ( IsRichMode(PES) ) tstrreplace(ets.text, T("\r\n"), T("\n"));
+
+												// 編集文字列(全て)を取得
+	hWnd = PES->hWnd;
+	GetEditSel(hWnd, ets.text, &cursor);
+	SendMessage(hWnd, WM_SETREDRAW, FALSE, 0);
+	mode |= ((PES->list.WhistID & PPXH_COMMAND) ?
+					CMDSEARCH_CURRENT : CMDSEARCH_OFF) |
+			((PES->flags & PPXEDIT_SINGLEREF) ? 0 : CMDSEARCH_MULTI) |
+			CMDSEARCH_EDITBOX;
+
+	if ( (PES->list.WhistID & (PPXH_DIR | PPXH_PPCPATH)) &&
+		 IsTrue(GetCustDword(T("X_fdir"), TRUE)) ){
+		setflag(mode, CMDSEARCH_DIRECTORY);
+	}
+
+	ptr = SearchFileIned(&PES->ED, ets.text, &cursor, mode);
+	if ( ptr != NULL ){
+		size_t len;
+
+		SendMessage(hWnd, EM_SETSEL, cursor.start, cursor.end);
+								// ※↑SearchFileIned 内で加工済み
+		SendMessage(hWnd, EM_REPLACESEL, 0, (LPARAM)ptr);
+		SendMessage(hWnd, EM_SETSEL, 0, 0);	// 表示開始桁を補正させる
+
+		len = tstrlen(ptr);
+		if ( len && (*(ptr + len - 1) == '\"') ) len--;
+#ifndef UNICODE
+		if ( xpbug < 0 ) CaretFixToW(ptr, (DWORD *)&len);
+#endif
+		SendMessage(hWnd, EM_SETSEL, cursor.start + len, cursor.start + len);
+		SendMessage(hWnd, WM_SETREDRAW, TRUE, 0);
+		InvalidateRect(hWnd, NULL, FALSE);
+		SetMessageForEdit(PES->hWnd, NULL);
+	}else{
+		SendMessage(hWnd, WM_SETREDRAW, TRUE, 0);
+		SetMessageForEdit(PES->hWnd, MES_EENF);
+	}
+	CloseEditText(&ets);
+	return 0;
+}
+
+int USEFASTCALL PPeFillInit(PPxEDSTRUCT *PES)
+{
+	if ( PES->flags & PPXEDIT_LISTCOMP ){
+		if ( PES->list.mode >= LIST_FILL ){
+			if ( PES->list.ListFocus != LISTU_NOLIST ){
+				PES->oldkey2 = 1;
+				if ( ListUpDown(PES->hWnd, PES, 1, 0) == FALSE ) return 0;
+				return 0;
+			}
+		}
+		FloatList(PES, EDITDIST_NEXT_FILL);
+		return 0;
+	}
+	// 一覧無し補完
+	return PPeFillMain(PES);
+}
+
+int USEFASTCALL PPeFillIns(PPxEDSTRUCT *PES)
+{
+	resetflag(PES->ED.cmdsearch, CMDSEARCH_FLOAT);
+	return PPeFillInit(PES);
+}
+
+int USEFASTCALL PPeFillTab(PPxEDSTRUCT *PES)
+{
+	DWORD X_ltab[2] = Default_X_ltab;
+
+	if ( PES->flags & (PPXEDIT_TEXTEDIT | PPXEDIT_LINE_MULTILINE)){
+		if ( PES->flags & PPXEDIT_WANTALLKEY ){
+			PostMessage(PES->hWnd, WM_CHAR, (WPARAM)'\t', 0);
+		}
+		return 1;	// PPeなら本来のTAB
+	}
+	if ( !(PES->flags & PPXEDIT_TABCOMP) ){
+		HWND hWnd = PES->hWnd;
+
+		if ( PES->flags & PPXEDIT_LINE_MULTI ) return 1; // 複数行一行編集のとき
+		SetFocus(GetNextDlgTabItem(GetParentCaptionWindow(hWnd), hWnd, FALSE));
+		return 0;
+	}
+	// 補完
+	GetCustData(T("X_ltab"), &X_ltab, sizeof(X_ltab));
+	if ( X_ltab[1] == 0 ){
+		if ( X_flst_part && (X_ltab[0] < 2) ) X_ltab[0] = 2;
+		resetflag(PES->ED.cmdsearch, CMDSEARCH_MATCHFLAGS);
+		SetMatchMode(PES, X_ltab[0] );
+	}
+	return PPeFillInit(PES);
+}
+
+
 
 #ifndef CB_GETCOMBOBOXINFO
 #define CB_GETCOMBOBOXINFO 0x0164 // XP以降

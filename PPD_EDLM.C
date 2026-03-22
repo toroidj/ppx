@@ -9,6 +9,174 @@
 #include "PPD_EDL.H"
 #pragma hdrstop
 
+//abcdefg  j lmnopq stu w  z
+const PPXINMENU amenu[] = {
+	{ K_c | 'Z',	T("%G\"JMUN|Undo\"(&U)\tCtrl+Z")},
+	{PPXINMENY_SEPARATE, NULL},
+	{ K_c | 'X',	T("%G\"JMCU|Cut\"(&T)\tCtrl+X")},
+	{ K_c | 'C',	T("%G\"JMCL|Copy\"(&C)\tCtrl+C")},
+	{ K_c | 'V',	T("%G\"JMPA|Paste\"(&P)\tCtrl+V")},
+	{ K_del,		T("%G\"JMDE|Delete\"(&D)\tDelete")},
+	{PPXINMENY_SEPARATE, NULL},
+	{ K_c | 'A',	T("%G\"JMAL|Select All\"(&A)\tCtrl+A")},
+
+	{ KE_defmenu | INMENU_BREAK,	T("%G\"MEDM|Original menu\"(&B)\tShift+F10")},
+	{ K_c | ']',	T("%G\"MEMD|File &menu\"\tCtrl+]")},
+	{ K_c | 'Q',	T("%G\"MEED|Edit menu\"\tCtrl+&Q")},
+	{ K_s | K_F2,	T("%G\"MEST|Settings menu\"(&S)\tShift+F2")},
+	{PPXINMENY_SEPARATE, NULL},
+	{ KE_qu,		T("%G\"SWCA|Word case transfer\"(&W)\tCtrl+Q-U")},
+	{ KE_kz,		T("%G\"SWCZ|&Zen/han transfer\"\tCtrl+K-Z")},
+	{ KE_er,		T("&Run as admin\tESC-R")},
+//	{ KE_ee,		T("&Execute command\tESC-E")},
+
+	{ KE_qj | INMENU_BREAK,	T("%G\"SJLN|&Jump to Line\"\tCtrl+Q-J")},
+	{ K_c | 'F',	T("%G\"VCHF|Find\"(&F)\tCtrl+F")},
+	{PPXINMENY_SEPARATE, NULL},
+	{ K_raw | K_s | K_c | 'P', T("Path List(&N)\tCtrl+Shift+P")},
+	{ K_raw | K_s | K_c | 'L', T("PPc &List\tCtrl+Shift+L")},
+	{ K_c | K_s | 'D', T("F&older dialog...\tCtrl+Shift+D")},
+	{ K_c | K_s | 'I', T("%G\"VIMF|Insert selected filename...\"(&G)\tCtrl+Shift+I")},
+	{ 0, NULL }
+};
+
+const TCHAR amenu2str[] = T("&Insert");
+const PPXINMENU amenu2[] = {
+	{ K_c | 'N',	T("File&name\tCtrl+N")},
+	{ K_c | 'P',	T("Full&path Filename\tCtrl+P")},
+	{ K_c | 'E',	T("Filename without &ext\tCtrl+E")},
+	{ K_c | 'T',	T("File ext\tCtrl+&T")},
+	{ K_c | 'R',	T("Filename on curso&r\tCtrl+&R")},
+	{ K_c | '0',	T("PPx path\tCtrl+&0")},
+	{ K_c | '1',	T("Current path\tCtrl+&1")},
+	{ K_c | '2',	T("Pair path\tCtrl+&2")},
+	{ K_F5,			T("now &Date\tF5")},
+	{ 0, NULL }
+};
+
+const PPXINMENU f2menu[] = {
+	{ KE_qj,	MES_SJLN},
+//	{ KE_2b,	T("&Block Top/End")},
+//	{ KE_2l,	T("Restore &Line")},
+//	{ KE_2s,	T("&Screen Lines")}, // 行数変更
+//	{ KE_kr,	T("&Read Only")},
+	{ KE_qv,	MES_MERO}, //T("&View Mode")},
+	{ KE_2t,	T("&TAB stop...")},
+	{ KE_2c,	T("&Char code...")},
+	{ KE_2r,	T("&Return code...")},
+	{ KE_2p,	MES_MEWW}, // T("&Word wrap")},
+	{ K_c | K_s | 'G',	T("Syntax highlight (&G)")}, // T("&Word wrap")},
+	{ KE_2x,	MES_MERS}, // T("Regexp serach(&X)")},
+//	{ KE_2a,	T("&Auto Save")},
+	{ 0, NULL }
+};
+
+const PPXINMENU escmenu[] = {
+	{ K_c | 'O',	MES_MCOP },
+	{ K_F12,		T("&Save as...")},
+//	{ KE_en,		T("&New Files")},
+//	{ ,				T("&Read Files")},
+//	{ K_c | 'L',	T("&Load File")}, // 差し替え読み込み
+	{ KE_ea,		T("&Append to file") },
+//	{ ,				T("&Path Rename")}, // filename を変更、保存はしない
+	{ KE_ed,		T("&Duplicate PPe")},
+//	{ KE_eu,		T("&Undo Edit")}, // 再読み込み
+	{ KE_ei,		T("&Insert from file")},
+//	{ ,				T("Close all(&X)")},
+	{ K_c | 'Q',	MES_MEED}, // T("edit menu")},
+	{ K_s | K_F2,	T("%G\"MEST|settings menu\"(&G)")},
+	{PPXINMENY_SEPARATE, NULL },
+	{ KE_kp	,		T("&Print by PPv")}, // 印刷
+	{PPXINMENY_SEPARATE, NULL },
+	{ K_s | K_F1,	T("&Help")},
+	{PPXINMENY_SEPARATE, NULL },
+	{ KE_er,		T("&Run as admin")},
+	{ KE_ee,		T("&Exec command")},
+	{ KE_ec,		MES_TABC },
+//	{ KE_eq,		T("&Quit")},
+	{ 0, NULL }
+};
+
+const PPXINMENU kmenu[] = {
+	{ KE_kp,	T("&Print by PPv")},
+//	{ KE_ku,	T("&Undo Paste")},
+//	{ KE_kc,	T("Paste(&Copy)")},
+//	{ KE_kk,	T("Copy Line/Bloc&k")},
+	{ KE_kd,	MES_MEDL}, // T("&Duplicate line")},
+	{ KE_kz,	MES_SWCZ},
+//	{ KE_kr,	T("&Read only")},
+//	{ KE_kb,	T("Column &Block")},
+//	{ KE_ky,	T("&Y clear stack")},
+//	{ KE_k0,	T("Set Marker #&0")},
+//	{ KE_k1,	T("Set Marker #&1")},
+//	{ KE_k2,	T("Set Marker #&2")},
+//	{ KE_k3,	T("Set Marker #&3")},
+//	{ KE_k4,	T("Set Marker #&4")},
+	{ 0, NULL }
+};
+
+const PPXINMENU qmenu[] = {
+//	{ KE_qh,	T("Cut word left(&H)")},
+//	{ KE_qt,	T("Cu&t BOL")},
+//	{ KE_qy,	T("Cut EOL(&Y)")},
+	{ KE_qu,	T("%G\"SWCA|Word case\"(&U)")},
+	{ KE_kz,	MES_SWCZ},
+	{ KE_kd,	MES_MEDL}, // T("&Duplicate line")},
+	{ KE_qv,	MES_MERO}, //T("&View Mode")},
+//	{ KE_ql,	T("Restore &Line")},
+//	{ KE_qf,	T("Set &Find string")},
+//	{ KE_qo,	T("Replece Next(&O)")},
+//	{ KE_qp,	T("&Put File Name")},
+	{ K_c | K_s | 'I', T("%G\"VIMF|Insert selected filename...\"(&N)")},
+	{ K_s | K_F7,	T("%G\"MEFS|&Insert find str\"\tShift+F7")},
+
+	{ KE_qj,	MES_SJLN},
+	{ KE_qr,	MES_SJTT}, // T("Top of text(&R)")},
+	{ KE_qc,	MES_SJTE}, // T("End of text(&C)")},
+//	{ KE_qp,	T("Last &Position")},
+//	{ KE_qo,	T("Replace Next(&O)")},
+//	{ KE_qlw,	T("Left of Window(&[)")},
+//	{ KE_qrw,	T("Right of Window(&])")},
+//	{ KE_qs,	T("Top of Line(&S)")},
+//	{ KE_qd,	T("End of Line(&D)")},
+	{ KE_qe,	MES_SJWT}, // T("Top of Window(&E)")},
+	{ KE_qx,	MES_SJWE}, // T("End of Window(&X)")},
+//	{ KE_qk,	T("Jump Brac&ket")},
+//	{ KE_qm,	T("Set &Marker #0")},
+//	{ KE_q0,	T("Jump to Marker #&0")},
+//	{ KE_q1,	T("Jump to Marker #&1")},
+//	{ KE_q2,	T("Jump to Marker #&2")},
+//	{ KE_q3,	T("Jump to Marker #&3")},
+//	{ KE_q4,	T("Jump to Marker #&4")},
+//	{ KE_qb,	T("&Block Top/End")},
+	{ 0, NULL }
+};
+
+const PPXINMENU returnmenu[] = {
+	{ VTYPE_CRLF + 1,	T("C&R LF(Windows)")},
+	{ VTYPE_CR + 1,		T("&CR")},
+	{ VTYPE_LF + 1,		T("&LF(Unix)")},
+	{ 0, NULL }
+};
+
+const PPXINMENU charmenu[charmenu_items] = {
+	{ CP__US,			T("US(&A)")},
+	{ CP__LATIN1,		T("&Latin1")},
+	{ VTYPE_SYSTEMCP,	T("&Shift_JIS")},
+	{ VTYPE_EUCJP,		T("&EUC-JP")},
+	{ CP__UTF16L,		T("UTF-1&6")},
+	{ VTYPE_UNICODE,	T("&UTF-16LE(BOM)")},
+	{ CP__UTF16B,		T("UTF-1&6BE")},
+	{ VTYPE_UNICODEB,	T("UTF-1&6BE(BOM)")},
+	{ CP_UTF8,			T("UTF-&8")},
+	{ VTYPE_UTF8,		T("UTF-8(&BOM)")},
+	{ 0, NULL }, //	{ VTYPE_SYSTEM/CP_UTF8,	charmenustr_lcp},
+	{ 0, NULL }, //	{ VTYPE_OTHER		, T("codepage : %d")}
+	{ 0, NULL }
+};
+
+const TCHAR GetFileExtsStr[] = T("All Files\0*.*\0\0");
+
 BOOL SjisToEUCjp(char **text, DWORD *size)
 {
 	BYTE *ptr, *maxptr;
@@ -618,4 +786,118 @@ void JumptoLine(HWND hWnd, int line)
 		SendMessage(hWnd, EM_SETSEL, wP, wP);
 		SendMessage(hWnd, EM_SCROLLCARET, 0, 0);
 	}
+}
+
+void GetPPePopupPositon(PPxEDSTRUCT *PES, POINT *pos)
+{
+	if ( PES->mousepos ){
+		GetCursorPos(pos);
+	}else{
+		GetCaretPos(pos);
+		pos->y += PES->fontY;
+		ClientToScreen(PES->hWnd, pos);
+	}
+}
+
+HMENU MakePopupMenus(const PPXINMENU *menus, DWORD check)
+{
+	HMENU hMenu;
+	TCHAR strbuf[0x200];
+
+	hMenu = CreatePopupMenu();
+	while ( menus->key ){
+		if ( menus->str != NULL ){
+			const TCHAR *str;
+
+			if ( *menus->str == '%' ){
+				PP_ExtractMacro(NULL, NULL, NULL, menus->str, strbuf, 0);
+				str = strbuf;
+			}else{
+				str = MessageText(menus->str);
+			}
+
+			AppendMenu(hMenu,
+					((menus->key == check) ? MF_CHECKED : 0) |
+					((menus->key & INMENU_BREAK) ? MF_ES | MF_MENUBARBREAK : MF_ES),
+					menus->key & ~INMENU_BREAK, str);
+		}else{
+			AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
+		}
+		menus++;
+	}
+	return hMenu;
+}
+
+void PPeMenu(PPxEDSTRUCT *PES, PPECOMMANDPARAM *param, const PPXINMENU *menus)
+{
+	POINT pos;
+	HMENU popup;
+	WORD key;
+
+	GetPPePopupPositon(PES, &pos);
+	popup = MakePopupMenus(menus, 0);
+	if ( menus == amenu ){
+		AppendMenu(popup, MF_EPOP, (UINT_PTR)MakePopupMenus(amenu2, 0), amenu2str);
+	}
+	if ( menus == f2menu ){
+		if ( !(PES->style & ES_AUTOHSCROLL) ){
+			CheckMenuItem(popup, KE_2p, MF_BYCOMMAND | MF_CHECKED );
+		}
+		if ( PES->flags & PPXEDIT_SYNTAXCOLOR ){
+			CheckMenuItem(popup, K_s | K_c | 'G', MF_BYCOMMAND | MF_CHECKED );
+		}
+		if ( X_esrx ) CheckMenuItem(popup, KE_2x, MF_BYCOMMAND | MF_CHECKED );
+		if ( PES->style & ES_READONLY ){
+			CheckMenuItem(popup, KE_qv, MF_BYCOMMAND | MF_CHECKED );
+		}
+	}
+	key = (WORD)TrackPopupMenu(popup, TPM_TDEFAULT, pos.x, pos.y, 0, PES->hWnd, NULL);
+	DestroyMenu(popup);
+	if ( key != 0 ){
+		param->key = (WORD)(key | K_raw);
+		PPedCommand(PES, param);
+	}
+}
+
+int USEFASTCALL PPeGetFileName(PPxEDSTRUCT *PES)
+{
+	TCHAR buf[VFPS], path[VFPS];
+	PPXCMDENUMSTRUCT work;
+	HMODULE hCOMDLG32;
+	impGetOpenFileName DGetOpenFileName;
+	HWND hWnd = PES->hWnd;
+	OPENFILENAME ofile = {sizeof(ofile), NULL, NULL, GetFileExtsStr, NULL, 0, 0,
+		NULL, VFPS, NULL, 0, NULL, NULL, OFN_HIDEREADONLY | OFN_SHAREAWARE,
+		0, 0, WildCard_All, 0, NULL, NULL OPENFILEEXTDEFINE };
+
+	ofile.lpstrTitle = MessageText(MES_TSFN);
+	PPxEnumInfoFunc(PES->info, '1', path, &work);
+	hCOMDLG32 = LoadSystemDLL(SYSTEMDLL_COMDLG32);
+	if ( hCOMDLG32 == NULL ) return 0;
+	GETDLLPROCT(hCOMDLG32, GetOpenFileName);
+	if ( DGetOpenFileName == NULL ) return 0;
+	tstrcpy(buf, NilStr);  // 例えば、d:\\winnt\\*.*
+	ofile.hwndOwner = hWnd;
+	ofile.lpstrFile = buf;
+	ofile.lpstrInitialDir = path;
+	if ( !DGetOpenFileName(&ofile) ){
+		FreeLibrary(hCOMDLG32);
+		return 0;
+	}
+	FreeLibrary(hCOMDLG32);
+	if ( PES->flags & PPXEDIT_SINGLEREF ){
+		SendMessage(hWnd, EM_SETSEL, 0, EC_LAST);
+	}else{
+		DWORD wP, lP;
+
+		SendMessage(hWnd, EM_GETSEL, (WPARAM)&wP, (LPARAM)&lP);
+		if ( tstrchr(buf, ' ') != NULL ){ // 空白があるので、「"|"」の|に挿入
+			SendMessage(hWnd, EM_REPLACESEL, 0, (LPARAM)T("\"\""));
+			SendMessage(hWnd, EM_SETSEL, wP + 1, wP + 1);
+			PostMessage(hWnd, WM_KEYDOWN, VK_RIGHT, 0);
+			PostMessage(hWnd, WM_KEYUP, VK_RIGHT, 0);
+		}
+	}
+	SendMessage(hWnd, EM_REPLACESEL, 1, (LPARAM)buf);
+	return 0;
 }

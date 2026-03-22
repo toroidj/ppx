@@ -1100,6 +1100,8 @@ void DrawBitmap(PPVPAINTSTRUCT *pps, PPvViewObject *vo)
 		ImageDrawedBox.right = lwidth;
 		ImageDrawedBox.bottom = lheight;
 
+		//DxDrawBGpattern(DxDraw, &ImageDrawedBox);
+
 #ifdef USEDIRECTX
 		IfDXmode(pps->ps.hdc) {
 			if ( FALSE == DxDrawDIB(DxDraw, vo->bitmap.ShowInfo, vo->bitmap.bits.ptr, &ImageDrawedBox, &pps->view, &vo->bitmap.DxCache) ){
@@ -1172,6 +1174,8 @@ void DrawBitmap(PPVPAINTSTRUCT *pps, PPvViewObject *vo)
 		ImageDrawedBox.top = ltop - VOi->offY;
 		ImageDrawedBox.right = lwidth;
 		ImageDrawedBox.bottom = lheight;
+
+		//DxDrawBGpattern(DxDraw, &ImageDrawedBox);
 
 #ifdef USEDIRECTX
 		IfDXmode(pps->ps.hdc){

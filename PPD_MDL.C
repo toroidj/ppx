@@ -327,8 +327,8 @@ DWORD_PTR USECDECL CommandModuleInfoFunc(COMMANDMODULEINFOSTRUCT *ppxa, DWORD cm
 			WCHAR *strW;
 			const TCHAR *result;
 			BSTR sysstr;
-
 			HWND hTargetWnd = (HWND)PPxInfoFunc(ppxa->parent, PPXCMDID_COMBOTABHWND, uptr);
+
 			if ( hTargetWnd == NULL ){
 				return PPXA_INVALID_FUNCTION;
 			}
@@ -386,6 +386,7 @@ DWORD_PTR USECDECL CommandModuleInfoFunc(COMMANDMODULEINFOSTRUCT *ppxa, DWORD cm
 
 		case PPXCMDID_ENTRYFROMNAME: {
 			DWORD_PTR result;
+
 			((PPXUPTR_ENTRYINFOA *)bufA)->result = bufA + 16;
 			UnicodeToAnsi(uptr->entryinfo.result, bufA + 16, VFPS);
 			result = PPxInfoFunc(ppxa->parent, cmdID, bufA);
@@ -462,14 +463,9 @@ DWORD_PTR USECDECL CommandModuleInfoFunc(COMMANDMODULEINFOSTRUCT *ppxa, DWORD cm
 			return PPXA_NO_ERROR;
 		}
 
-		case PPXCMDID_DEBUGLOG: {
-			char *extbuf;
-
-			extbuf = UnicodeToAnsiLong(uptr->str, bufA, sizeof(bufA));
-			XMessage(NULL, NULL, XM_DbgLOG, T("%s"), extbuf);
-			if ( extbuf != bufA ) HeapFree(DLLheap, 0, extbuf);
+		case PPXCMDID_DEBUGLOG:
+			XMessage(NULL, NULL, XM_DbgLOG, T("%Ls"), uptr->str);
 			return PPXA_NO_ERROR;
-		}
 
 		case PPXCMDID_REPORTTEXT: {
 			char *extbuf;
@@ -2125,6 +2121,23 @@ void ChoiceFunction(EXECSTRUCT *Z, TCHAR *param)
 	if ( ext_buf != NULL ) HeapFree(DLLheap, 0, ext_buf);
 }
 
+PPXDLL BOOL PPXAPI CmdFunctionLongResult(PPXMDLFUNCSTRUCT *funcparam, const TCHAR *result, int length)
+{
+	if ( length < 0 ) length = tstrlen(result) + 1;
+	if ( length >= CMDLINESIZE ){
+		TCHAR *newptr = (TCHAR *)HeapAlloc(ProcHeap, 0, length * sizeof(TCHAR));
+		if ( newptr == NULL ){
+			funcparam->dest[0] = '\0';
+			return FALSE;
+		}
+		funcparam->dest = newptr;
+	}
+	if ( result != NULL ){
+		memcpy(funcparam->dest, result, length * sizeof(TCHAR));
+	}
+	return TRUE;
+}
+
 void CallFunction(EXECSTRUCT *Z, TCHAR *cmdname, DWORD namehash, const TCHAR *funcparam)
 {
 	PPXMDLFUNCSTRUCT mdlparam;
@@ -2148,7 +2161,7 @@ void CallFunction(EXECSTRUCT *Z, TCHAR *cmdname, DWORD namehash, const TCHAR *fu
 		if ( mdlparam.dest == Z->dst ){
 			if ( Z->func.quotation ) ZQuotationDoubler_Buf(Z);
 			Z->dst += tstrlen(mdlparam.dest);
-		}else{
+		}else{ // í∑Ç¢èÍçá(CmdFunctionLongResult)
 			SetLongDestMain(Z, mdlparam.dest, 0);
 			HeapFree(ProcHeap, 0, mdlparam.dest);
 		}

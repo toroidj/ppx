@@ -1937,8 +1937,7 @@ void SetButtonPositionList(HWND hDlg, const TCHAR *label)
 	for ( mtl = MouseTypeList ; mtl->enables ; mtl++ ){
 		if ( (mtl->enables & ppType) &&
 			 (mtl->enables & (1 << (bindex + CE_SHIFT))) ){
-			thprintf(buf, TSIZEOF(buf), T("%s %s"),
-					mtl->type, MessageText(mtl->name));
+			thprintf(buf, TSIZEOF(buf), T("%s %Ms"), mtl->type, mtl->name);
 			SendMessage(hCmb, CB_ADDSTRING, 0, (LPARAM)buf);
 		}
 	}
@@ -1978,7 +1977,7 @@ void SelectedType(HWND hDlg, TABLEINFO *tinfo)
 			}else{
 				p = label;
 			}
-			if ( !tstricmp(p, labelbuf) ){
+			if ( tstricmp(p, labelbuf) == 0 ){
 				tinfo->index_type = lvi.iItem;
 				break;
 			}
@@ -2209,12 +2208,12 @@ void EnumTypeList(HWND hDlg, TABLEINFO *tinfo)
 		if ( (typekey != '?') && (CheckTypeName(typekey, name) == FALSE) ){
 			continue;
 		}
-		if ( !FilenameRegularExpression(name, &fn) ) continue;
+		if ( FilenameRegularExpression(name, &fn) == FRRESULT_NO ) continue;
 
 		comment = FALSE;
 		for ( list = TypeLists ; list->name ; list++ ){
 			if ( tstrcmp( name, list->name ) == 0 ){
-				thprintf(name, TSIZEOF(name), T("%s /%s"), MessageText(list->text), list->name);
+				thprintf(name, TSIZEOF(name), T("%Ms /%s"), list->text, list->name);
 				comment = TRUE;
 				break;
 			}
@@ -2238,9 +2237,9 @@ void EnumTypeList(HWND hDlg, TABLEINFO *tinfo)
 	for ( list = TypeLists ; list->name ; list++ ){
 		if ( CheckTypeName(typekey, list->name) == FALSE ) continue;
 		if ( IsExistCustData(list->name) ) continue;
-		if ( !FilenameRegularExpression(list->name, &fn) ) continue;
+		if ( FilenameRegularExpression(list->name, &fn) == FRRESULT_NO ) continue;
 
-		thprintf(name, TSIZEOF(name), T("%s /%s"), MessageText(list->text), list->name);
+		thprintf(name, TSIZEOF(name), T("%Ms /%s"), list->text, list->name);
 		ListView_InsertItem(hLVTypeWnd, &lvi);
 	}
 	FreeFN_REGEXP(&fn);
@@ -2604,7 +2603,7 @@ void InitMouseList(HWND hDlg)
 
 	blist = MouseButtonList;
 	for (;;){
-		thprintf(buf, TSIZEOF(buf), T("%s %s"), blist->type, MessageText(blist->name));
+		thprintf(buf, TSIZEOF(buf), T("%s %Ms"), blist->type, blist->name);
 		SendDlgItemMessage(hDlg, IDC_ALCMOUSEB, CB_ADDSTRING, 0, (LPARAM)buf);
 		blist++;
 		if ( blist->type[0] == '\0' ) break;
@@ -2856,7 +2855,7 @@ void InitTablePage(HWND hDlg, TABLEINFO *tinfo)
 	tinfo->hLVTypeWnd = GetDlgItem(hDlg, IDV_EXTYPE);
 	tinfo->ListViewLastSort = 0;
 
-	if ( X_uxt[0] >= UXT_MINMODIFY ){ // Listview の処理アドレスは同じなので、分けていない
+	if ( X_uxt_color >= UXT_MINMODIFY ){ // Listview の処理アドレスは同じなので、分けていない
 		hOldAlclistProc = (WNDPROC)SetWindowLongPtr(tinfo->hLVAlcWnd, GWLP_WNDPROC, (LONG_PTR)AlcListProc);
 	}
 
@@ -2918,7 +2917,7 @@ void InitTablePage(HWND hDlg, TABLEINFO *tinfo)
 		TCHAR buf[MAX_PATH];
 
 		for ( MaskList = MenuMaskList; MaskList->name != NULL; MaskList++ ){
-			thprintf(buf, TSIZEOF(buf), T("%s; %s"), MessageText(MaskList->name), MaskList->mask);
+			thprintf(buf, TSIZEOF(buf), T("%Ms; %s"), MaskList->name, MaskList->mask);
 			SendDlgItemMessage(hDlg, IDC_TB_TYPEMASK, CB_ADDSTRING, 0, (LPARAM)buf );
 		}
 		SendDlgItemMessage(hDlg, IDC_TB_TYPEMASK, CB_SETCURSEL, 0, 0);

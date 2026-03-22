@@ -526,8 +526,11 @@ ENTRYINDEX IncSearchMain(PPC_APPINFO *cinfo, const TCHAR *findstr, ENTRYINDEX fi
 			if ( n < 0 ) n = cinfo->e.cellIMax - 1;
 			if ( n >= cinfo->e.cellIMax ) n = 0;
 
-			if ( ((XC_isea[0] & ISEA_FNAME) && FinddataRegularExpression(&CEL(n).f, &fn)) ||
-				 ((XC_isea[0] & ISEA_COMMENT) && (CEL(n).comment != EC_NOCOMMENT) && FilenameRegularExpression(ThPointerT(&cinfo->e.Comments, CEL(n).comment), &fn)) ){
+			if ( ((XC_isea[0] & ISEA_FNAME) &&
+					(FinddataRegularExpression(&CEL(n).f, &fn) != FRRESULT_NO)) ||
+				 ((XC_isea[0] & ISEA_COMMENT) &&
+				 	(CEL(n).comment != EC_NOCOMMENT) &&
+				 	(FilenameRegularExpression(ThPointerT(&cinfo->e.Comments, CEL(n).comment), &fn) != FRRESULT_NO)) ){
 
 				if ( offset > INCOFF_EXT ){
 					FreeFN_REGEXP(&fn);

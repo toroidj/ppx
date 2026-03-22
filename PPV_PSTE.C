@@ -10,7 +10,7 @@
 #include "PPV_FUNC.H"
 #pragma hdrstop
 
-UINT CF_SHELLIDLIST;
+UINT CF_xSHELLIDLIST;
 
 INT_PTR CALLBACK GetPasteTypeMain(HWND hDlg, UINT iMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -116,7 +116,7 @@ HGLOBAL PasteMain(UINT type, VIEWOPTIONS *viewopts, HANDLE clipdata)
 			result = NULL;
 			break;
 		}
-		if ( type == CF_SHELLIDLIST ){
+		if ( type == CF_xSHELLIDLIST ){
 			TCHAR text[0x10000];
 			DWORD sisize;
 
@@ -218,7 +218,7 @@ void PPvPaste(HWND hWnd)
 		CloseClipboard();
 		return; // 何もない
 	}
-	CF_SHELLIDLIST = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
+	CF_xSHELLIDLIST = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
 
 	// 最優先形式を取得
 	type = tmptype = EnumClipboardFormats(0);
@@ -243,7 +243,7 @@ void PPvPaste(HWND hWnd)
 		}else if ( (tmptype == CF_DIB) ||
 			 (tmptype == CF_DIBV5) ||
 			 (tmptype == CF_ENHMETAFILE) ||
-			 (tmptype == CF_SHELLIDLIST) ){	// 優先形式にサポート形式有り
+			 (tmptype == CF_xSHELLIDLIST) ){	// 優先形式にサポート形式有り
 			type = tmptype;
 		}else{
 			tmptype = EnumClipboardFormats(tmptype);
@@ -283,7 +283,7 @@ ERRORCODE PPvPasteType(HWND hWnd)
 		CloseClipboard();
 		return ERROR_CANCELLED;
 	}
-	CF_SHELLIDLIST = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
+	CF_xSHELLIDLIST = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
 	viewdata = PasteMain(type, &viewopts, NULL);
 	CloseClipboard();
 	if ( viewdata != NULL ){

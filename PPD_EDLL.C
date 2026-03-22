@@ -472,7 +472,7 @@ void USEFASTCALL tInputInitDialog(HWND hDlg, TINPUTSTRUCT *ts)
 			MakeFN_REGEXP(&fn, param);
 			mov = FilenameRegularExpression(line, &fn);
 			FreeFN_REGEXP(&fn);
-			if ( mov ){
+			if ( mov != FRRESULT_NO ){
 				PXREGEXPS *rexps;
 				if ( IsTrue(InitRegularExpression(&rexps, keyword, SLASH_REQUIRE)) ){
 					RegularExpressionReplace(rexps, line;

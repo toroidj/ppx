@@ -288,7 +288,7 @@ typedef struct {
 /*ClipPrecision*/					CLIP_DEFAULT_PRECIS, \
 /*Quality*/							DEFAULT_QUALITY, \
 /*PitchAndFamily*/					FF_DONTCARE, \
-/*FaceName*/						T("Arial")}
+/*FaceName*/						T("MS Shell Dlg")}
 
 #define Default_F_unfix_JA T("ＭＳ Ｐゴシック")
 
@@ -316,7 +316,7 @@ typedef struct {
 #define EnableTextChangeNotifyItem(hWnd, ID) SendDlgItemMessage(hWnd, ID, EM_SETEVENTMASK, 0, SendDlgItemMessage(hWnd, ID, EM_GETEVENTMASK, 0, 0) | ENM_CHANGE);
 #define DisableTextChangeNotifyItem(hWnd, ID) SendDlgItemMessage(hWnd, ID, EM_SETEVENTMASK, 0, SendDlgItemMessage(hWnd, ID, EM_GETEVENTMASK, 0, 0) & ~ENM_CHANGE);
 
-// X_uxt 用定数
+// X_uxt_color
 #define UXT_NA  -4	// 設定未取得
 #define UXT_OFF -3	// 動作無し
 #define UXT_GDI -2	// デザインのみ変更
@@ -324,10 +324,20 @@ typedef struct {
 #define UXT_DARK 0	// dark mode
 #define UXT_LIGHT 1	// light mode
 
+// X_uxt_rich, X_uxt_ppe_rich
+#define UXTRICH_NO 0
+#define UXTRICH_V3 1
+#define UXTRICH_V4 2
+#define UXTRICH_DW 3
+
 #define UXT_MINMODIFY UXT_GDI
 #define UXT_MINPRESET UXT_DARK
-#define X_uxt_items 3
-#define X_uxt_defvalue UXT_NA, 0, 0
+#define X_uxt_items 4
+#define X_uxt_defvalue UXT_NA, 0, 0, 0
+#define X_uxt_color X_uxt[0] // UXT_
+#define X_uxt_window_corner X_uxt[1]
+#define X_uxt_rich X_uxt[2] // UXTRICH_
+#define X_uxt_ppe_rich X_uxt[3] // UXTRICH_
 
 #define COLOR_DARK_FRAME_HIGH	0xFF2B2B2B
 #define COLOR_DARK_FRAME_FACE	0x404040

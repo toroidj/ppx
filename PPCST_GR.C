@@ -873,7 +873,7 @@ void LoadButtonImages(HWND hDlg)
 
 	TreeHeight = (int)SendMessage(hItemTreeWnd, TVM_GETITEMHEIGHT, 0, 0) - 2;
 	// チェックボックス等の画像を用意
-	if ( (X_uxt[0] >= UXT_MINMODIFY) || (GetSystemMetrics(SM_CXICON) > 32) || (TreeHeight > 16) ){
+	if ( (X_uxt_color >= UXT_MINMODIFY) || (GetSystemMetrics(SM_CXICON) > 32) || (TreeHeight > 16) ){
 		HBITMAP hBMP;
 		HDC hDC, hMemDC;
 		RECT box;
@@ -1033,21 +1033,21 @@ void ChangeCustEnv(HWND hDlg)
 	HWND hPropWnd;
 	int old_uxt;
 
-	old_uxt = X_uxt[0];
+	old_uxt = X_uxt_color;
 	GetCustData(T("X_uxt"), &X_uxt, sizeof(X_uxt));
 	// Dark から Off にすると 色反映されないところがあるので UXT_GDI を経由する
-	if ( (X_uxt[0] == UXT_OFF) && (old_uxt == UXT_DARK) ){
-		X_uxt[0] = UXT_GDI;
+	if ( (X_uxt_color == UXT_OFF) && (old_uxt == UXT_DARK) ){
+		X_uxt_color = UXT_GDI;
 		SetCustData(T("X_uxt"), &X_uxt, sizeof(X_uxt));
 		PPxCommonExtCommand(K_UxTheme, KUT_LOADCUST);
 		hPropWnd = GetParent(hDlg);
 		LocalizeDialogText(hPropWnd, 0);
-		X_uxt[0] = UXT_OFF;
+		X_uxt_color = UXT_OFF;
 		SetCustData(T("X_uxt"), &X_uxt, sizeof(X_uxt));
 	}
 
 	PPxCommonCommand(hDlg, 0, K_Lcust);
-	X_uxt[0] = PPxCommonExtCommand(K_UxTheme, KUT_LOADCUST);
+	X_uxt_color = PPxCommonExtCommand(K_UxTheme, KUT_LOADCUST);
 	GUILoadCust();
 	if ( hIndexTreeWnd != NULL ){
 		TreeView_DeleteAllItems(hIndexTreeWnd);
@@ -1057,8 +1057,8 @@ void ChangeCustEnv(HWND hDlg)
 	hPropWnd = GetParent(hDlg);
 	SetTabTitles(hPropWnd);
 	LocalizeDialogText(hPropWnd, 0);
-	if ( (hIndexTreeWnd != NULL) && (X_uxt[0] != old_uxt) ){
-		if ( X_uxt[0] == UXT_OFF ){
+	if ( (hIndexTreeWnd != NULL) && (X_uxt_color != old_uxt) ){
+		if ( X_uxt_color == UXT_OFF ){
 			SendMessage(hIndexTreeWnd, TVM_SETBKCOLOR, 0, (LPARAM)WinColors.c.DialogBack);
 			SendMessage(hIndexTreeWnd, TVM_SETTEXTCOLOR, 0, (LPARAM)WinColors.c.DialogText);
 			SendMessage(hItemTreeWnd, TVM_SETBKCOLOR, 0, (LPARAM)WinColors.c.DialogBack);

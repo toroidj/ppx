@@ -364,6 +364,7 @@ BOOL IsArcfolderFile(const TCHAR *filename, BYTE *header)
 // ERROR_BAD_PATHNAME	ファイルでなかった
 // ERROR_FILE_EXISTS	形式が分かったけど、完全でないファイル
 // ERROR_INVALID_DRIVE	形式が分からなかったファイル
+// ERROR_INVALID_NAME	(wine のみ)ファイルではない(ディレクトリ)
 ERRORCODE FileDirectory(TCHAR *fname, VFSFINDFIRST *VFF, WIN32_FIND_DATA *findfile, const TCHAR *fwild, TCHAR *DllName)
 {
 	HANDLE hFile;
@@ -1019,8 +1020,10 @@ VFSDLL HANDLE PPXAPI VFSFindFirst(const TCHAR *dir, WIN32_FIND_DATA *findfile)
 					errorcode = ERROR_DIRECTORY;
 				}
 			}
+		#ifndef WINEGCC
 			// ERROR_INVALID_NAME は listfileチェックのみ
 			if ( errorcode == ERROR_INVALID_NAME ) goto error;
+		#endif
 			if ( tstrlen(Fname) >= VFPS ) goto error;
 										// FileDirectory ?
 			temperror = FileDirectory(Fname, VFF, findfile, Fwild, DllName);

@@ -107,10 +107,10 @@ extern const CLABEL Ctbl[];
 // ppd_cust.c
 extern void ErrorMes(PPCUSTSTRUCT *PCS, const TCHAR *mes);
 extern void WarningMes(PPCUSTSTRUCT *PCS, const TCHAR *mes);
+extern void ErrorItemMes(PPCUSTSTRUCT *PCS, const TCHAR *mes, const TCHAR *kword, const TCHAR *sname);
 extern BYTE GetNumberWith(const TCHAR **line, BYTE def, DWORD max);
 
 // ppd_cscd.c
-extern COLORREF CS_color(TCHAR **linesrc, DWORD flags);
 extern TCHAR *CD_color(TCHAR *dest, COLORREF color, DWORD flags);
 extern void CD_ppcdisp(PPCUSTSTRUCT *PCS, BYTE **binPtr, BYTE *binend);
 extern BOOL CS_ppcdisp(PPCUSTSTRUCT *PCS, TCHAR **linePtr, BYTE **binPtr);

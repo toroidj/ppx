@@ -1,6 +1,6 @@
 @echo off
 rem XVER: 123 or 123p1
-set XVER=207
+set XVER=208
 set RETAIL=1
 goto Init
 
@@ -8,8 +8,8 @@ rem ** archive files ** (1%RETAIL% geq 1 ... with archive)
 :archivelist
 set ppcommon=PPLIB%arcbit%%tail%.DLL
 if 1%RETAIL% geq 1 set ppc=PPC%tail%.EXE
-if 1%RETAIL% geq 1 (set ppv=PPV%tail%.EXE) ELSE set ppv=
-if 1%RETAIL% geq 1 (set ppb=PPB%tail%.EXE) ELSE set ppb=
+if %RETAIL% geq 1 (set ppv=PPV%tail%.EXE) ELSE set ppv=
+if %RETAIL% geq 1 (set ppb=PPB%tail%.EXE) ELSE set ppb=
 if 1%RETAIL% geq 1 (set ppcust=PPCUST%tail%.EXE) ELSE set ppcust=
 if %RETAIL% geq 1 (set pptray=PPTRAY%tail%.EXE) ELSE set pptray=
 if %RETAIL% geq 1 (set ppffix=PPFFIX%tail%.EXE) ELSE set ppffix=

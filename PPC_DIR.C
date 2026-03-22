@@ -1500,7 +1500,7 @@ void SetExtColor(ENTRYCELL *cell, const TCHAR *nameext, BYTE *extcolor)
 			MakeFN_REGEXP(&fn, (TCHAR *)(BYTE *)(ecptr + sizeof(WORD)) + 1);
 			fnresult = FinddataRegularExpression(&cell->f, &fn);
 			FreeFN_REGEXP(&fn);
-			if ( fnresult ){
+			if ( fnresult != FRRESULT_NO ){
 				extC = *(COLORREF *)(ecptr + sizeof(WORD) + TSTROFF(tstrlen((TCHAR *)(BYTE *)(ecptr + sizeof(WORD))) + 1) );
 				if ( extC >= C_Scheme1_MIN ){
 					extC = GetSchemeColor(extC, C_S_INFO);
@@ -1523,8 +1523,8 @@ void SetCellInfo(PPC_APPINFO *cinfo, ENTRYCELL *cell, BYTE *extcolor)
 		p = (COMMENTENTRY *)cinfo->e.Comments.bottom;
 		while( p->nextoffset != 0 ){
 			if ( (cell->f.cAlternateFileName[0] &&
-					!tstricmp(p->name, cell->f.cAlternateFileName)) ||
-				 !tstricmp(p->name, cell->f.cFileName) ){
+					(tstricmp(p->name, cell->f.cAlternateFileName) == 0) ) ||
+				 (tstricmp(p->name, cell->f.cFileName) == 0) ){
 				cell->comment = (char *)p->name - cinfo->e.Comments.bottom +
 						p->comment;
 				break;
@@ -1728,7 +1728,7 @@ void USEFASTCALL UpdateEntry_Deleted(PPC_APPINFO *cinfo, ENTRYCELL *cell, struct
 		if ( (cell->attr & (ECA_PARENT | ECA_THIS)) ||
 			 ( !(cell->f.dwFileAttributes & m->Attr) &&
 				((cell->f.dwFileAttributes & m->Dir) ||
-				FinddataRegularExpression(&cell->f, &m->FileMask)))){
+				(FinddataRegularExpression(&cell->f, &m->FileMask) != FRRESULT_NO) ))){
 			if ( (cell->f.dwFileAttributes &
 					FILE_ATTRIBUTE_DIRECTORY) &&
 					 !(cell->attr & (ECA_PARENT | ECA_THIS)) ){
@@ -1928,7 +1928,7 @@ void UpdateEntry(PPC_APPINFO *cinfo, TCHAR *readpath, int *flag)
 				if ( (chkcell->attr & (ECA_PARENT | ECA_THIS)) ||
 					 (!(chkcell->f.dwFileAttributes & namemask.Attr) &&
 						((chkcell->f.dwFileAttributes & namemask.Dir) ||
-						 FinddataRegularExpression(&chkcell->f, &namemask.FileMask)))
+						 (FinddataRegularExpression(&chkcell->f, &namemask.FileMask) != FRRESULT_NO)))
 				){
 					if ( chkcell->f.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ){
 						if ( chkcell->attr & (ECA_PARENT | ECA_THIS) ){
@@ -2328,7 +2328,7 @@ void ReadEntryMain(PPC_APPINFO *cinfo, TCHAR *readpath, int *flags)
 			if ( (cell->attr & (ECA_PARENT | ECA_THIS)) ||		// ..
 				 (!(cell->f.dwFileAttributes & namemask.Attr) &&
 				  ((cell->f.dwFileAttributes & namemask.Dir) ||
-					FinddataRegularExpression(&cell->f, &namemask.FileMask)) ) ){
+					(FinddataRegularExpression(&cell->f, &namemask.FileMask) != FRRESULT_NO)) ) ){
 
 				if ( cell->f.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ){
 					if ( cell->attr & (ECA_PARENT | ECA_THIS) ){
@@ -3153,7 +3153,7 @@ BOOL LoadSettingMain(LOADSETTINGS_TMP *ls, const TCHAR *path)
 			GetLineParamS(&ptr, ls->cmd, TSIZEOF(ls->cmd));
 			continue;
 		}
-		XMessage(NULL, NULL, XM_NiERRld, T("XC_dset:%s %s:%s"), path, ptr, MessageText(MES_EUKW));
+		XMessage(NULL, NULL, XM_NiERRld, T("XC_dset:%s %s:%Ms"), path, ptr, MES_EUKW);
 		return FALSE;
 	}
 	return TRUE;
@@ -3248,7 +3248,7 @@ void LoadSettingWildcard(LOADSETTINGS_TMP *ls, const TCHAR *path)
 		MakeFN_REGEXP(&fn, keyword + 1);
 		fnresult = FilenameRegularExpression(path, &fn);
 		FreeFN_REGEXP(&fn);
-		if ( fnresult ){
+		if ( fnresult != FRRESULT_NO ){
 			LoadSettingMain(ls, keyword);
 			return;
 		}

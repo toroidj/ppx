@@ -81,7 +81,7 @@ typedef struct {
 } TIPMATCHSTRUCT;
 
 
-BOOL CheckStringMatch(const TCHAR *target, WHERESTRUCT *Pws);
+int CheckStringMatch(const TCHAR *target, WHERESTRUCT *Pws);
 
 typedef struct {
 	PPXAPPINFO info;
@@ -225,7 +225,7 @@ void WINAPI TipMatchCallback(TIPMATCHSTRUCT *tms, const TCHAR *text)
 	tms->result = CheckStringMatch(text, tms->Pws);
 }
 
-BOOL TipMatch(const TCHAR *name, WHERESTRUCT *Pws)
+int TipMatch(const TCHAR *name, WHERESTRUCT *Pws)
 {
 	TIPMATCHSTRUCT tms;
 	const TCHAR *ls;
@@ -245,7 +245,7 @@ BOOL ColumnMatch(WHERESTRUCT *Pws, const TCHAR *name, WIN32_FIND_DATA *ff)
 	return tms.result;
 }
 
-BOOL FileMatch(const TCHAR *name, WHERESTRUCT *Pws)
+int FileMatch(const TCHAR *name, WHERESTRUCT *Pws)
 {
 	TCHAR *image, *text;
 	BOOL result;
@@ -258,10 +258,10 @@ BOOL FileMatch(const TCHAR *name, WHERESTRUCT *Pws)
 	return result;
 }
 
-BOOL CheckStringMatch(const TCHAR *target, WHERESTRUCT *Pws)
+int CheckStringMatch(const TCHAR *target, WHERESTRUCT *Pws)
 {
 	if ( Pws->UseFnText == FALSE ){	// 部分一致
-		return tstristr(target, Pws->st.text) ? TRUE : FALSE;
+		return (tstristr(target, Pws->st.text) != NULL) ? FRRESULT_MATCH : FRRESULT_NO;
 	}else{		// 正規表現
 		return FilenameRegularExpression(target, &Pws->fnText);
 	}
@@ -641,14 +641,14 @@ void CheckText(WHERESTRUCT *Pws, WriteTextStruct *sts, const TCHAR *name)
 				Pws->hitcount++;
 				WriteFF2(sts, name + Pws->baselen);
 			}
-		}else if ( IsTrue(TipMatch(name, Pws)) ){
+		}else if ( TipMatch(name, Pws) != FRRESULT_NO ){
 			Pws->hitcount++;
 			WriteFF2(sts, name + Pws->baselen);
 		}
 	}else{
 		if ( !sts->w.ff->nFileSizeHigh &&
 			 (sts->w.ff->nFileSizeLow < Pws->imgsize) &&
-			 IsTrue(FileMatch(name, Pws)) ){
+			 (FileMatch(name, Pws) != FRRESULT_NO) ){
 			Pws->hitcount++;
 			WriteFF2(sts, name + Pws->baselen);
 		}
@@ -682,7 +682,7 @@ ERRORCODE WhereIsDirComment(TCHAR *dir, WHERESTRUCT *pws, WriteTextStruct *sts)
 				TCHAR *cp;
 
 				cp = p->name + p->comment / sizeof(TCHAR);
-				if ( CheckStringMatch(cp, pws) ){
+				if ( CheckStringMatch(cp, pws) != FRRESULT_NO ){
 					VFSFullPath(name, p->name, dir);
 					if ( IsTrue(GetFileSTAT(src, &ff)) ){
 						pws->hitcount++;
@@ -722,10 +722,10 @@ end:
 // エントリに対するコメント検索
 void WhereIsCellComment(PPC_APPINFO *cinfo, ENTRYCELL *cell, WHERESTRUCT *pws, WriteTextStruct *sts)
 {
-	if ( FinddataRegularExpression(&cell->f, &pws->fn1) &&
-		 FinddataRegularExpression(&cell->f, &pws->fn2) ){
+	if ( (FinddataRegularExpression(&cell->f, &pws->fn1) != FRRESULT_NO) &&
+		 (FinddataRegularExpression(&cell->f, &pws->fn2) != FRRESULT_NO) ){
 		if ( (cell->comment != EC_NOCOMMENT) &&
-		 	 CheckStringMatch(ThPointerT(&cinfo->e.Comments, cell->comment), pws) ){
+		 	 (CheckStringMatch(ThPointerT(&cinfo->e.Comments, cell->comment), pws) != FRRESULT_NO) ){
 			pws->hitcount++;
 			sts->w.comment = ThPointerT(&cinfo->e.Comments, cell->comment);
 			sts->w.ff = &cell->f;
@@ -785,8 +785,8 @@ ERRORCODE WhereIsDir(const TCHAR *dir, WHERESTRUCT *pws, WriteTextStruct *sts)
 		name[MAX_PATH] = '\0'; // 名前の大きさ検出用
 		CatPath(name, (TCHAR *)dir, ff.cFileName);
 
-		if ( FinddataRegularExpression(&ff, &pws->fn1) &&
-			 FinddataRegularExpression(&ff, &pws->fn2) ){
+		if ( (FinddataRegularExpression(&ff, &pws->fn1) != FRRESULT_NO) &&
+			 (FinddataRegularExpression(&ff, &pws->fn2) != FRRESULT_NO) ){
 			if ( pws->st.dir || !(ff.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ){
 				if ( !(ff.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
 						pws->st.text[0] ){
@@ -854,8 +854,8 @@ ERRORCODE WhereIsDirVFS(TCHAR *dir, WHERESTRUCT *pws, WriteTextStruct *sts)
 		if ( (dirlen + tstrlen(ff.cFileName) + 4) >= VFPS ) continue; // OVER_VFPS_MSG
 		CatPath(name, dir, ff.cFileName);
 
-		if ( FinddataRegularExpression(&ff, &pws->fn1) &&
-			 FinddataRegularExpression(&ff, &pws->fn2) ){
+		if ( (FinddataRegularExpression(&ff, &pws->fn1) != FRRESULT_NO) &&
+			 (FinddataRegularExpression(&ff, &pws->fn2) != FRRESULT_NO) ){
 			if ( pws->st.dir || !(ff.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ){
 				if ( !(ff.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
 						pws->st.text[0] ){
@@ -1066,8 +1066,8 @@ ERRORCODE WhereIsMain(PPC_APPINFO *cinfo, WHERESTRUCT *Pws)
 					if ( Pws->st.exmode == WDEXM_COMMENT ){
 						WhereIsCellComment(cinfo, cell, Pws, &sts);
 					}else if (
-							FinddataRegularExpression(&cell->f, &Pws->fn1) &&
-							FinddataRegularExpression(&cell->f, &Pws->fn2) ){
+							(FinddataRegularExpression(&cell->f, &Pws->fn1) != FRRESULT_NO) &&
+							(FinddataRegularExpression(&cell->f, &Pws->fn2) != FRRESULT_NO) ){
 						VFSFullPath(temp, cell->f.cFileName, cinfo->RealPath);
 						sts.w.ff = &cell->f;
 						if ( Pws->st.text[0] != '\0' ){

@@ -1259,7 +1259,7 @@ BOOL CDropTarget::DropDDFormat(LPDATAOBJECT pDataObj, POINTL *pt, DWORD dwEffect
 			tstrcpy(mCinfo->Jfname, uptr);
 			::read_entry(mCinfo, RENTRY_JUMPNAME | RENTRY_NOHIST);
 			sDrop += tstrlen(sDrop) + 1;
-			if ( !tstrcmp(sDrop, uptr) ) sDrop += tstrlen(sDrop) + 1;
+			if ( tstrcmp(sDrop, uptr) == 0 ) sDrop += tstrlen(sDrop) + 1;
 			if ( *sDrop ){
 				mCinfo->MarkMask = MARKMASK_DIRFILE;
 				CellMark(mCinfo, mCinfo->e.cellN, MARK_CHECK);

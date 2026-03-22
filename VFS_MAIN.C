@@ -383,27 +383,27 @@ VFSDLL int PPXAPI VFSGetDibDelay(const TCHAR *filename, void *param, SIZE32_T pa
 					(LPSTR)(BYTE *)((BYTE *)image + BINoffset),
 					(LONG_PTR)(sizeL - BINoffset),
 					SUSIE_SOURCE_MEM,
-					Info, Bm, (FARPROC)SusieProgressCallback, 0)) ){
+					Info, Bm, (SUSIE_PROGRESS)SusieProgressCallback, 0)) ){
 				goto success;
 			}
 			susie_result = sudll->GetPicture(
 					(LPSTR)(BYTE *)((BYTE *)image + BINoffset),
 					(LONG_PTR)(sizeL - BINoffset),
-					SUSIE_SOURCE_MEM, Info, Bm, (FARPROC)SusieProgressCallback, 0);
+					SUSIE_SOURCE_MEM, Info, Bm, (SUSIE_PROGRESS)SusieProgressCallback, 0);
 			if ( susie_result == SUSIEERROR_NOERROR ) goto success;
 			if ( (susie_result < 0) || (susie_result == SUSIEERROR_INTERNAL) ){
 #ifdef UNICODE
 				if ( sudll->GetPictureW != NULL ){
 					if ( SUSIEERROR_NOERROR == sudll->GetPictureW(filename, 0,
 							SUSIE_SOURCE_DISK, Info, Bm,
-							(FARPROC)SusieProgressCallback, 0) ){
+							(SUSIE_PROGRESS)SusieProgressCallback, 0) ){
 						goto success;
 					}
 				}else
 #endif
 				if ( SUSIEERROR_NOERROR == sudll->GetPicture(TFILENAME, 0,
 						SUSIE_SOURCE_DISK, Info, Bm,
-						(FARPROC)SusieProgressCallback, 0) ){
+						(SUSIE_PROGRESS)SusieProgressCallback, 0) ){
 					goto success;
 				}
 			}
@@ -597,7 +597,7 @@ ERRORCODE GetDiskItem(VFSGIFA *gifa, const DISKIMAGESTRUCT *di, const TCHAR *Arc
 			return ERROR_NO_MORE_FILES;
 		}
 		for ( ; ; ){
-			if ( !tstrcmp(findfile.cFileName, name) ) break;
+			if ( tstrcmp(findfile.cFileName, name) == 0 ) break;
 			if ( di->FindEntry(&dist, NULL, &findfile) == FALSE ){
 				di->Close(&dist);
 				return ERROR_NO_MORE_FILES;

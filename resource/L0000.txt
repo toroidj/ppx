@@ -1,6 +1,6 @@
 +1.42	=#{ English ; 0409 is Locale ID (LCID)	=#{ 日本語
 ; 版数（自動更新用 123 / 1234)
-0000		2065		2065
+0000		208		208
 ; ～0x0fff OS 定義
 ; ID	macroID	eng	trans-e	日本語	comment
 0001		OK
@@ -78,7 +78,7 @@
 7042	IDS_FOP_DEST	&Dest	Destination(&D)	先(&D)
 7043	IDS_FOP_RENAME	Rename(&E)		名前(&E)
 7044	IDS_FOP_DIV	Divide size(&V)		分割(&V)
-7045	IDS_FOP_RENUM	S.Num(&N)	Serial Number(&N)	連番(&M)
+7045+2.08	IDS_FOP_RENUM	S.Num(&K)	Serial Number(&K)	連番(&K)
 7046	IDE_FOP_LOG				ログ
 7047	IDX_FOP_SACL	Copy SACL(&C)		監査(&C)	VFSFOP_OPTFLAG_SACL
 7048	IDX_FOP_DIR	&Directory		ディレクトリ(&D)	PPcのフィルタで使用
@@ -369,6 +369,9 @@
 7878		Cleanup result		クリーンアップ通知
 7879		POSIX's unlink		POSIX削除
 787A		Ghosting		ゴーストイメージ
+787B		Bypass IO		バイパスIO
+787C		Stream Snapshots		ストリームスナップショット
+787D		Case sensitive dirs		ディレクトリ単位 大／小文字区別
 ;   FileMask 7880-78bf
 7880	IDD_MASK
 7881	IDX_MASK_DIR	&Directory Mask		ディレクトリ&D

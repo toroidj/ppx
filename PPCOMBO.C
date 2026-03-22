@@ -38,6 +38,8 @@ HWND hComboFocusWnd = NULL; // 現在のフォーカスがある窓(Main/Subのどちらもあり得
 HWND hComboSubPaneFocus = NULL; // 現在の右側窓フォーカス(1ペインの時は、隠れている反対窓)
 
 //-------------------------------------
+TCHAR BadTip[] = T("???");
+
 LRESULT WmComboCommand(HWND hComboWnd, WPARAM wParam, LPARAM lParam);
 void WmComboPosChanged(HWND hComboWnd);
 
@@ -1211,6 +1213,8 @@ LRESULT WmComboNotify(NMHDR *nmh)
 			return 0;
 		}
 		if ( DocksNeedTextNotify(&Combo.Docks, nmh) ) return 0;
+		((LPTOOLTIPTEXT)nmh)->lpszText = BadTip;
+		((LPTOOLTIPTEXT)nmh)->hinst = NULL;
 		return 0;
 	}
 	if ( nmh->hwndFrom == Combo.ToolBar.hWnd ){
@@ -1844,7 +1848,7 @@ LRESULT USEFASTCALL KCW_EntryCombo(HWND hEntryWnd, DWORD type)
 				}
 
 				for ( index = 0; index < Combo.Closed.Items; index++ ){
-					if ( !tstrcmp(Combo.Closed.list[index].ID, cws->cinfo->RegSubCID) ){
+					if ( tstrcmp(Combo.Closed.list[index].ID, cws->cinfo->RegSubCID) == 0 ){
 						Combo.Closed.list[index].ID[0] = '\0'; // 閉じたIDを再利用
 						break;
 					}
@@ -1854,6 +1858,7 @@ LRESULT USEFASTCALL KCW_EntryCombo(HWND hEntryWnd, DWORD type)
 	}
 
 	if ( type >= KCW_entry_DEFPANE ){
+//	XMessage(NULL, NULL, XM_DbgLOG, T("add pane %d"),type / KCW_entry_DEFPANE - 1);
 		showpane = GetPspPane( (type / KCW_entry_DEFPANE) - 1 );
 	}
 				// ペインを追加して登録
@@ -2173,6 +2178,35 @@ void KCW_dockCommand(WORD id, LPARAM lParam)
 	SortComboWindows(SORTWIN_LAYOUTALL);
 }
 
+void Ready_PainWidthFix(int i)
+{
+	if ( !(X_combos[0] & CMBS_VPANE) ){	// 横整列
+		if ( (Combo.show[i - 1].box.top == Combo.show[i].box.top) &&
+			 (Combo.show[i - 1].box.left < Combo.show[i].box.left) &&
+			 ((Combo.show[i - 1].box.left + Combo.show[i - 1].box.right + SplitPix) > Combo.show[i].box.left) ){
+			Combo.show[i - 1].box.right = Combo.show[i].box.left - Combo.show[i - 1].box.left - SplitPix;
+			if ( Combo.show[i - 1].box.right < PaneMinSize ){
+				Combo.show[i - 1].box.right = (Combo.show[i].box.left - Combo.show[i - 1].box.left) / 2 - SplitPix;
+				if ( Combo.show[i - 1].box.right < PaneMinSize ){
+					Combo.show[i - 1].box.right = PaneMinSize - SplitPix;
+				}
+			}
+		}
+	}else{
+		if ( (Combo.show[i - 1].box.left == Combo.show[i].box.left) &&
+			 (Combo.show[i - 1].box.top < Combo.show[i].box.top) &&
+			 ((Combo.show[i - 1].box.top + Combo.show[i - 1].box.bottom + PaneMinHeight) > Combo.show[i].box.top) ){
+			Combo.show[i - 1].box.bottom = Combo.show[i].box.top - Combo.show[i - 1].box.top - PaneMinHeight;
+			if ( Combo.show[i - 1].box.bottom < PaneMinSize ){
+				Combo.show[i - 1].box.bottom = (Combo.show[i].box.top - Combo.show[i - 1].box.top) / 2 - SplitPix;
+				if ( Combo.show[i - 1].box.bottom < PaneMinSize ){
+					Combo.show[i - 1].box.bottom = PaneMinSize - SplitPix;
+				}
+		 	}
+		 }
+	}
+}
+
 void KCW_ReadyCombo(HWND hFocusTargetWnd)
 {
 	#ifndef RELEASE
@@ -2361,8 +2395,10 @@ void KCW_ReadyCombo(HWND hFocusTargetWnd)
 			for ( i = 0 ; i < Combo.ShowCount ; i++ ){
 				TCHAR buf[10];
 
-				thprintf(buf, TSIZEOF(buf), T("%s%d"), ComboID, i + 1);
+				thprintf(buf, TSIZEOF(buf), T("%s%d"), ComboID, i);
 				GetCustTable(Str_WinPos, buf, &Combo.show[i].box, sizeof(RECT));
+				// ペインが Combo.ShowCount より少ない状態で終了するとペイン 0 がペイン 1 に被さって、ペイン 1 が狭くなるので調整する
+				if ( i > 0 ) Ready_PainWidthFix(i);
 			}
 
 			PPcHeapFree(OrgShowItem);
@@ -2819,7 +2855,7 @@ LRESULT WmComboCommand(HWND hComboWnd, WPARAM wParam, LPARAM lParam)
 
 				cinfo = Combo.base[baseindex].cinfo;
 				if ( (cinfo != NULL) &&
-					 (!tstricmp((TCHAR *)lParam, cinfo->path)) ){
+					 (tstricmp((TCHAR *)lParam, cinfo->path) == 0) ){
 					SetFocus(Combo.base[baseindex].hWnd);
 					return SENDCOMBO_OK + 1;
 				}
@@ -3087,7 +3123,13 @@ void WmComboPaint(HWND hWnd)
 	EndPaint(hWnd, &dcs.ps);
 }
 
+#ifdef RELEASE
+LRESULT CALLBACK ComboProc(HWND hComboWnd, UINT message, WPARAM wParam, LPARAM lParam)
+	#define ComboProcFunc ComboProc
+#else
 LRESULT CALLBACK ComboProcMain(HWND hComboWnd, UINT message, WPARAM wParam, LPARAM lParam)
+	#define ComboProcFunc ComboProcMain
+#endif
 {
 	switch (message){
 		case WM_NCCREATE:
@@ -3301,7 +3343,7 @@ LRESULT CALLBACK ComboProcMain(HWND hComboWnd, UINT message, WPARAM wParam, LPAR
 		}
 
 		case WM_PPCOMBO_PRECLOSE:
-			ComboProcMain(hComboWnd, WM_PARENTNOTIFY, WM_DESTROY, lParam);
+			ComboProcFunc(hComboWnd, WM_PARENTNOTIFY, WM_DESTROY, lParam);
 			break;
 
 		case WM_DPICHANGED:
@@ -3317,7 +3359,7 @@ LRESULT CALLBACK ComboProcMain(HWND hComboWnd, UINT message, WPARAM wParam, LPAR
 			}else if ( message == WM_TaskbarButtonCreated ){
 				PPxCommonExtCommand(K_TBB_INIT, 0);
 			}
-			if ( X_uxt[0] == UXT_DARK ){
+			if ( X_uxt_color == UXT_DARK ){
 				if ( ((message <= 0x94) && (message >= 0x91)) ||
 				//	 (message == WM_THEMECHANGED) ||
 					 (message == WM_NCPAINT) || (message == WM_NCACTIVATE) ){
@@ -3329,6 +3371,7 @@ LRESULT CALLBACK ComboProcMain(HWND hComboWnd, UINT message, WPARAM wParam, LPAR
 	return 0;
 }
 
+#ifndef RELEASE
 // 再入状況を確認するためのデバッグコード
 int ComboProcNested = 0;
 UINT ComboProcMsg[NestedMsgs];
@@ -3345,3 +3388,4 @@ LRESULT CALLBACK ComboProc(HWND hComboWnd, UINT message, WPARAM wParam, LPARAM l
 	ComboProcNested--;
 	return result;
 }
+#endif

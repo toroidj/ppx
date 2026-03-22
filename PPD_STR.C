@@ -41,6 +41,7 @@ const BYTE ZHtbl[] =
 #else
 const WCHAR ZHtbl[] = L"。「」、・ヲァィゥェォャュョッーアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン゛゜ガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ";
 #endif
+const TCHAR StrNull[] = T("(null)");
 
 // 1bytes 文字 → 2bytes 文字変換 ---------------------------------------------
 PPXDLL TCHAR * PPXAPI Strsd(TCHAR *dststr, const TCHAR *srcstr)
@@ -376,10 +377,10 @@ int thprintf_expand_main(void *buffer, TCHAR *dest, int reqsize)
 	thprintf_set_top(buffer, dest);
 
 	if ( ThSize((ThSTRUCT *)buffer, TSTROFF(reqsize)) != FALSE ){
-	//	printf("[thprintf_expand realloc:%d]", ((ThSTRUCT *)buffer)->size);
+		// XMessage(NULL, NULL, XM_DbgLOG, T("thprintf_expand ok %d %d %d"),((ThSTRUCT *)buffer)->size, TSTROFF(reqsize),thprintf_left(buffer));
 		return thprintf_left(buffer);
 	}
-	// printf("[thprintf_expand realloc x]");
+	// XMessage(NULL, NULL, XM_DbgLOG, T("thprintf_expand ng %d %d"),((ThSTRUCT *)buffer)->size, TSTROFF(reqsize));
 	return 0;
 }
 
@@ -387,7 +388,7 @@ int thprintf_expand_main(void *buffer, TCHAR *dest, int reqsize)
 	if ( reqlen > left ){ \
 		int nleft; \
 		if ( ((buflen) > 0) || ((nleft = thprintf_expand_main(buffer, dest, reqlen)) == 0) ){ \
-			XMessage(NULL, NULL, XM_DbgLOG, T("thprintf over 2: %s"), message);\
+			XMessage(NULL, NULL, XM_DbgLOG, T("thprintf over 2: %d %d %s"), buflen, nleft, message);\
 			reqlen = left; \
 		}else{ \
 			left = nleft; \
@@ -476,16 +477,18 @@ int thprintf_extra(THPRINTF_STRUCT *ts, t_va_list *arglist) // %Mx
 	int length;
 
 	c = *ts->src++;
-	if ( (c == 'd') || (c == 'u') ){ // %Md 単位型 UINT32
+	if ( (c == 'd') || (c == 'u') ){ // %Md, %Mu 単位型 UINT32
 		DWORD num;
 
 		num = t_va_arg(*arglist, DWORD);
-		length = FormatNumber(buf, XFN_DECIMALPOINT | XFN_MINKILO, ts->columns ? ts->columns : ts->left, num, 0) - buf;
-	}else if ( (c == 'D') || (c == 'U') ){ // %Md 単位型 UINT32
+		length = FormatNumber(buf, XFN_DECIMALPOINT | XFN_MINKILO,
+				ts->columns ? ts->columns : ts->left, num, 0) - buf;
+	}else if ( (c == 'D') || (c == 'U') ){ // %MD, %MU 単位型 UINT32
 		DWORD num;
 
 		num = t_va_arg(*arglist, DWORD);
-		length = FormatNumber(buf, XFN_DECIMALPOINT | XFN_MINKILO | XFN_HEXUNIT, ts->columns ? ts->columns : ts->left, num, 0) - buf;
+		length = FormatNumber(buf, XFN_DECIMALPOINT | XFN_MINKILO | XFN_HEXUNIT,
+				ts->columns ? ts->columns : ts->left, num, 0) - buf;
 	}else if ( (c == 'L') && ((*ts->src == 'd') || (*ts->src == 'u')) ){ // %MLd 単位型 UINT64
 		UINTHL num;
 
@@ -517,19 +520,19 @@ int thprintf_extra(THPRINTF_STRUCT *ts, t_va_list *arglist) // %Mx
 	}else if ( c == 'm' ){ // %Mm Win32 error message
 		PPErrorMsg(buf, (ERRORCODE)t_va_arg(*arglist, ERRORCODE));
 		length = tstrlen(buf);
-	/*
 	}else if ( c == 's' ){ // %Ms MessageText 処理あり文字列
 		const TCHAR *str;
 
 		str = t_va_arg(*arglist, const TCHAR *);
-		length = (str != NULL) ? tstrlen(str) : 0;
+		if ( str == NULL ) str = StrNull;
+		str = MessageText(str);
+		length = tstrlen(str);
 		thprintf_spacing(ts->buffer, ts->buflen, ts->dest, ts->left, length, ts->columns, ts->space, NilStr);
 		thprintf_check_left(ts->buffer, ts->buflen, ts->dest, ts->left, length, NilStr)
 		memcpy(ts->dest, str, TSTROFF(length));
 		ts->dest += length;
 		ts->left -= length;
 		return length;
-	*/
 	}else{
 		*ts->dest++ = '%';
 		*ts->dest++ = 'M';
@@ -616,7 +619,8 @@ PPXDLL TCHAR * PPXAPI thvprintf(_Out_writes_opt_z_(buflen) void *buffer, int buf
 			const TCHAR *str;
 
 			str = t_va_arg(arglist, const TCHAR *);
-			length = (str != NULL) ? tstrlen(str) : 0;
+			if ( str == NULL ) str = StrNull;
+			length = tstrlen(str);
 			thprintf_spacing(buffer, buflen, dest, left, length, columns, space, message);
 			thprintf_check_left(buffer, buflen, dest, left, length, message);
 			memcpy(dest, str, TSTROFF(length));

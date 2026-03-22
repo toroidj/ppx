@@ -51,7 +51,7 @@ BOOL CheckOpen(void)
 	if ( data[0] == '\0' ){
 		GetRegStrLocal(HKEY_LOCAL_MACHINE, RegOpen, NilStr, data);
 	}
-	return !tstrcmp(data, T("PPc"));
+	return tstrcmp(data, T("PPc")) == 0;
 }
 
 #define DeleteRegisterContextDepth 3
