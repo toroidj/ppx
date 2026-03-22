@@ -168,7 +168,6 @@ void RichChangeSynColor(PPxEDSTRUCT *PES, EDITCOLORS *ec)
 	if ( ec->text < C_S_AUTO ){
 		setflag(chfmt.dwMask, CFM_COLOR);
 		chfmt.crTextColor = ec->text;
-		if ( X_vclr ) VisibledTextColor(&chfmt.crTextColor, ec->back < C_S_AUTO ? ec->back : C_WindowBack);
 	}
 	if ( ec->back < C_S_AUTO ){
 		setflag(chfmt.dwMask, CFM_BACKCOLOR);

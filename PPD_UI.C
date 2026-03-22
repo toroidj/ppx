@@ -2459,7 +2459,6 @@ PPXDLL int PPXAPI GetAccessApplications(const TCHAR *checkpath, TCHAR *text)
 void InitSysColors_main(void)
 {
 	ThemeColors.ExtraDrawFlags = 0;
-	GetCustData(T("X_vclr"), &X_vclr, sizeof(X_vclr));
 	GetCustData(T("C_win"), &ThemeColors.c, sizeof(ThemeColors.c));
 /*
 	if ( C_WindowText == C_AUTO ){ // Ver1.76 カラーテーマの設定ミス対策
@@ -2866,47 +2865,4 @@ PPXDLL LRESULT PPXAPI DarkMenuWndProc(HWND hWnd, HANDLE *hMenuTheme, UINT messag
 
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
-}
-
-// 明るさを 0-255000 で表現
-#define ColorBrightR 299
-#define ColorBrightG 587
-#define ColorBrightB 114
-#define ColorBright(color) (((int)GetRValue(color) * ColorBrightR) + ((int)GetGValue(color) * ColorBrightG) + ((int)GetBValue(color) * ColorBrightB))
-#define ColorVisibleBright 50000
-#define ColorVisibleBoost 20000
-void VisibledTextColor(COLORREF *text_color, COLORREF back_color)
-{
-	int text_bright, back_bright, diff_bright;
-	int r, g, b;
-
-	text_bright = ColorBright(*text_color);
-	back_bright = ColorBright(back_color);
-
-	diff_bright = text_bright - back_bright;
-	if ( (diff_bright >= ColorVisibleBright) ||
-		 (diff_bright <= -ColorVisibleBright) ){
-		return;
-	}
-//	XMessage(NULL, NULL, XM_DbgLOG, T("color visib %x %d"),*text_color,diff_bright);
-	if ( diff_bright > 0 ){ // 文字の明るさ不足
-		diff_bright = ColorVisibleBright - diff_bright;
-		if ( diff_bright < ColorVisibleBoost ) diff_bright = ColorVisibleBoost;
-		r = (int)GetRValue(*text_color) + (diff_bright / ColorBrightR);
-		if ( r > 255 ) r = 255;
-		g = (int)GetGValue(*text_color) + (diff_bright / ColorBrightG);
-		if ( g > 255 ) g = 255;
-		b = (int)GetBValue(*text_color) + (diff_bright / ColorBrightB);
-		if ( b > 255 ) b = 255;
-	}else{ // 文字の暗さ不足
-		diff_bright = -ColorVisibleBright - diff_bright;
-		if ( diff_bright > -ColorVisibleBoost ) diff_bright = -ColorVisibleBoost;
-		r = (int)GetRValue(*text_color) + (diff_bright / ColorBrightR);
-		if ( r < 0 ) r = 0;
-		g = (int)GetGValue(*text_color) + (diff_bright / ColorBrightG);
-		if ( g < 0 ) g = 0;
-		b = (int)GetBValue(*text_color) + (diff_bright / ColorBrightB);
-		if ( b < 0 ) b = 0;
-	}
-	*text_color = RGB(r, g, b);
 }

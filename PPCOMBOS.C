@@ -1059,7 +1059,7 @@ void CreateTabGroupSelector(COMBOTABINFO *tabs)
 {
 	HWND hTabWnd;
 	TABHOOKSTRUCT *THS;
-	DWORD style = WS_CHILD | WS_VISIBLE | TCS_TOOLTIPS |
+	DWORD style = WS_CHILD | WS_VISIBLE | // TCS_TOOLTIPS |
 			TCS_HOTTRACK | TCS_FOCUSNEVER | CCS_NODIVIDER;
 
 	THS = HeapAlloc(hProcessHeap, 0, sizeof(TABHOOKSTRUCT));
@@ -1165,6 +1165,7 @@ ERRORCODE NewTabGroupMain(int targetpane, const TCHAR *groupname)
 
 			tabs->group = newgroup;
 			tabs->group[tabs->groupcount].hCurWnd = NULL;
+			tabs->hTipWnd = TabCtrl_GetToolTips(hTabWnd);
 			tabs->group[tabs->groupcount++].hWnd = tabs->hWnd = hTabWnd;
 
 			if ( !(X_combos[1] & CMBS1_HIDESELECTOR) &&
@@ -1806,6 +1807,7 @@ ERRORCODE SelectGroup(int showindex, int groupindex)
 	if ( groupindex >= tabs->groupcount ) return ERROR_INVALID_PARAMETER;
 
 	tabs->hWnd = tabs->group[groupindex].hWnd;
+	tabs->hTipWnd = TabCtrl_GetToolTips(tabs->hWnd);
 
 	if ( X_combos[1] & CMBS1_SELECTEDGROUP ){
 		tabs->show_all = 0;
@@ -1814,17 +1816,18 @@ ERRORCODE SelectGroup(int showindex, int groupindex)
 	if ( tabs->hSelecterWnd != NULL ){
 		TabCtrl_SetCurSel(tabs->hSelecterWnd, groupindex);
 	}
-
-	if ( (X_combos[0] & CMBS_TABEACHITEM) || (Combo.ShowCount <= 1) ){ // 個別タブなら、選択タブを利用
-	XMessage(NULL, NULL, XM_DbgDIA, T("1"));
-		tabindex = TabCtrl_GetCurSel(tabs->hWnd);
-	// 共用タブの場合、hCurWnd が使えたらそのタブ、使えない場合は空きタブを捜す
-	}else{
+	// hCurWnd が使えたらそのタブを使う。そうでなければ、選択タブ、未使用タブ
+	if ( (X_combos[0] & CMBS_TABSEPARATE) || (Combo.ShowCount <= 1) ){ // 個別タブ
+		tabindex = -1;
+		if ( (X_combos[0] & CMBS_TABSEPARATE) && (tabs->group[groupindex].hCurWnd != NULL) ){
+			tabindex = GetTabItemIndex_R(tabs->group[groupindex].hCurWnd, showindex);
+		}
+		if ( tabindex < 0 ) tabindex = TabCtrl_GetCurSel(tabs->hWnd);
+	}else{ // 共用タブ
 		COMBOTABINFO *a_tabs;
 		int a_tabindex, show_i;
 		HWND hChgWnd;
 
-	XMessage(NULL, NULL, XM_DbgDIA, T("2"));
 		tabindex = GetTabItemIndex_R(tabs->group[groupindex].hCurWnd, showindex);
 		if ( tabindex < 0 ){
 			tabindex = TabCtrl_GetCurSel(tabs->hWnd);
@@ -1855,10 +1858,11 @@ ERRORCODE SelectGroup(int showindex, int groupindex)
 			InvalidateRect(Combo.hWnd, NULL, TRUE);
 		}
 
+		// 他のペインについて同じ処理
 		for ( show_i = 0; show_i < Combo.ShowCount; show_i++){
 			if ( show_i == showindex ) continue;
-			// XMessage(Combo.hWnd, NULL, XM_MesLogWnd, T("%d check%d"),showindex,show_i);
 			a_tabs = &Combo.show[show_i].tab;
+			// XMessage(Combo.hWnd, NULL, XM_MesLogWnd, T("pabe %d, check pane %d, curwnd=%x"),showindex,show_i,a_tabs->group[groupindex].hCurWnd);
 			if ( ((a_tabindex = SearchTabData(a_tabs->group[groupindex].hWnd, a_tabs->group[groupindex].hCurWnd)) >= 0) ){
 				// XMessage(Combo.hWnd, NULL, XM_MesLogWnd, T("hit %d"),show_i);
 				SelectComboWindow(show_i, a_tabs->group[groupindex].hCurWnd, FALSE);

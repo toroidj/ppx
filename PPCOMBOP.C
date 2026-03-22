@@ -1402,6 +1402,7 @@ int GetTabItemIndex_AndChangeGroup(HWND hWnd, int tabwndindex)
 				}
 				if ( tie.lParam == (LPARAM)hWnd ){
 					Combo.show[tabwndindex].tab.hWnd = hTabWnd;
+					Combo.show[tabwndindex].tab.hTipWnd = TabCtrl_GetToolTips(hTabWnd);
 					return tabindex;
 				}
 			}
